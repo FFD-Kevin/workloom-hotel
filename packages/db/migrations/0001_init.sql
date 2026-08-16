@@ -297,7 +297,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON
   skills, skill_installs, industry_assets, credentials
 TO workloom_gateway;
 GRANT SELECT, INSERT ON biz_events TO workloom_gateway;
-GRANT USAGE, SELECT ON SEQUENCE biz_events_seq TO workloom_gateway;
+GRANT USAGE, SELECT ON SEQUENCE biz_events_seq_seq TO workloom_gateway; -- bigserial 列名 seq → 序列名 biz_events_seq_seq
 
 -- ============================================================================
 -- RLS 行级隔离（F7.1）：按 app.workspace_id / app.tenant_id 连接级设置过滤；

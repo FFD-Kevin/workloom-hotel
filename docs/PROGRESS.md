@@ -8,7 +8,7 @@
 
 | 阶段 | 状态 | tag |
 |---|---|---|
-| 阶段一 环境初始化 | 🚧 批次 1 已推送（待 Mac 实测回填门禁） | —（批次 2 后打 `v0.1.0`） |
+| 阶段一 环境初始化 | ✅ 完成（A1–A7，Linux 沙箱实测全绿；Mac 实测项见「待回填」） | `v0.1.0` |
 | 阶段二 后端 API | ⬜ 未开始（**首卡 B0「dsh 落地验证」，D12**：vendor fork 锁 rc.6 → 跑通 dsh web → 最小插件挂载实证 → 对接报告） | — |
 | 阶段三 前端页面 | ⬜ 未开始 | — |
 | 阶段四 联调与启动脚本 | ⬜ 未开始 | — |
@@ -19,22 +19,45 @@
 - [x] A2 五元事件 zod Schema（附录 E 逐字段）+ 枚举 + 常量 + ID 工具 + 4 条 vitest — commit `2aa6c72`
 - [x] A3 18 表 DDL（手写 `packages/db/migrations/0001_init.sql`）+ append-only 触发器 + RLS + 双角色 + Drizzle 类型镜像 — commit `2aa6c72`
 - [x] A4 bundles/hotel：7 preset + 基线围栏 R1–R6 + 对象/阶段枚举 + 一店一档 Schema + 3 官方技能 — commit `2aa6c72`
-- [ ] A5 seed 演示数据（demo 租户/云栖酒店/3 成员/7 Agent/档案/100 条五元事件）
-- [ ] A6 apps/server 最小入口（Hono+tRPC）+ apps/web 壳（tokens.css+舰桥框架+空 P1）
-- [ ] A7 start.sh / stop.sh + README 快速开始复核 + tag `v0.1.0`
+- [x] A5 seed 演示数据（demo 租户/云栖酒店/3 成员/7 Agent/档案/围栏 R1–R6 装载/技能安装/触发器 ×2/演示线程 ×3/夜班班次/审批样例/组织记忆/100 条五元事件+哈希链）— `scripts/seed.ts`
+- [x] A6 apps/server 最小入口（Hono+tRPC v11 fetch adapter+健康检查）+ apps/web 壳（tokens.css+舰桥框架+空 P1+链路自检卡）— `apps/server` / `apps/web`
+- [x] A7 start.sh / stop.sh / reset.sh + README 快速开始复核 + tag `v0.1.0`
 
 ## 最后游标
 
-- **下一步**：阶段一批次 2（A5–A7）。首个文件：`scripts/seed.ts`。
-- **待回填（Mac 实测门禁）**：`bash scripts/doctor.sh`；`docker compose up -d`；`pnpm install` 零报错；`pnpm db:migrate` 输出；`pnpm -C packages/shared test` 4 绿；`UPDATE biz_events` 被触发器拒绝（append-only 实测）。
+- **下一步**：阶段二首卡 **B0「dsh 落地验证」（D12）**。首个动作：vendor fork `@deepseek-ai/dsh@0.1.0-rc.6` 锁 commit 至 `vendor/dsh`，跑通 `pnpm dsh web`，按官方 cookbook 挂载最小插件（hello-fence）实证，产出 `docs/dsh-integration.md`（六插件 × seam 映射表）。
+- **此后顺序**：B1 网关/事件写入 → B2 检索 → B3 记忆 → B4 围栏 → B5 鉴权/tenancy → B6 审批 → B7 model-router → B8 runtime 三态派遣 → B9 夜班 → B10 巡检/技能。
+
+## 实测记录（2026-08-16 · Linux 沙箱，Node 24.19 / pnpm 10.14 / PG 17.11 + pgvector 0.8.6）
+
+| 门禁 | 结果 |
+|---|---|
+| `pnpm install` 零报错 | ✅（注：无软链文件系统不支持 pnpm，需常规磁盘目录） |
+| `pnpm db:migrate` | ✅ 双角色创建 + 0001_init.sql 应用成功 |
+| `pnpm -C packages/shared test` | ✅ 4 绿（修复了 zod4 `z.iso.datetime()` 不认 `+08:00` 偏移的批次 1 遗留 bug，见下） |
+| `pnpm db:seed` | ✅ 100 事件写入、H-1 验收完整率 100%；复跑幂等丢弃 100 条（L1.4） |
+| append-only 实测 | ✅ gateway 角色 UPDATE/DELETE biz_events 被拒（触发器+权限双保险） |
+| 旁路直写防控（F1.2） | ✅ workloom_app INSERT biz_events → permission denied |
+| RLS 越权返回空（L7.1） | ✅ 未设/越权 workspace 上下文查询均返回 0 行 |
+| tRPC 握手 | ✅ `GET /trpc/system.health` 200（db:up）；vite 代理链路同步验证 |
+| web 构建与走查 | ✅ `vite build` 通过；无头浏览器截图确认星盟战舰基底+舰桥框架可见 |
+
+**批次 1 遗留修复（本批次顺手回填）**：
+1. `event-schema.ts`：三处 `z.iso.datetime()` 改 `z.iso.datetime({ offset: true })`（附录 E 示例带 `+08:00`，原写法单测「接受合法事件」失败）。
+2. `0001_init.sql`：GRANT 序列名 `biz_events_seq` → `biz_events_seq_seq`（bigserial 列名为 seq 的实际序列名）。
+3. 根 `package.json`：补 `pg`/`yaml`/`@workloom/shared` 依赖声明（migrate.ts/seed.ts 实际引用）；`@vitejs/plugin-react` pin `5.2.0`（6.x 依赖 vite 8 内部路径，与总纲 pin 的 vite 7 不兼容）。
+
+## 待回填（Mac 实测门禁）
+
+沙箱已覆盖上表全部机制项；以下 Mac 特有项待真机复核：`bash scripts/doctor.sh` 输出、`docker compose up -d`（OrbStack/Docker Desktop）、`./scripts/start.sh` 一条命令端到端（沙箱无 docker，docker 分支未实跑）。
 
 ## 运行方式
 
-见 `README.md` 快速开始。
+见 `README.md` 快速开始（`./scripts/start.sh` 一键）。
 
 ## 已知限制与说明
 
-- 依赖解析以 Mac 首次 `pnpm install` 为准（交付侧沙箱未跑安装）。
 - 数据库迁移采用手写 SQL（`migrations/*.sql`）为 DDL 事实源，`packages/db/src/schema.ts` 为类型镜像，两者必须同步演进（DECISIONS D9）。
-- RLS：表 owner（迁移/种子账号）默认绕过策略；应用连接须事务内 `set_config('app.workspace_id' / 'app.tenant_id')`（已由 `packages/db/src/client.ts` 的 `withWorkspace` 封装）。
+- RLS：表 owner（迁移/种子账号）默认绕过策略；应用连接须事务内 `set_config('app.workspace_id' / 'app.tenant_id')`（已由 `packages/db/src/client.ts` 的 `withWorkspace` 封装；seed 的 gateway 写入用会话级 set_config）。
 - LLM 默认 `mock` provider（无 Key 全流程可跑）；真实模型在 `.env` 配 `LLM_PROVIDER/LLM_API_KEY`（阶段二 B7 落地）。
+- 事件库 append-only：reset=整库重建（`scripts/reset.sh`），不做清表 DELETE。

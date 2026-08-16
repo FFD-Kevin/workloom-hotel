@@ -7,6 +7,11 @@
   "engines": {
     "node": ">=24.0.0"
   },
+  "dependencies": {
+    "@workloom/shared": "workspace:*",
+    "pg": "8.23.0",
+    "yaml": "2.9.0"
+  },
   "scripts": {
     "dev": "concurrently -k -n server,web \"pnpm -C apps/server dev\" \"pnpm -C apps/web dev\"",
     "db:migrate": "tsx --env-file=.env scripts/migrate.ts",
@@ -20,6 +25,7 @@
     "concurrently": "^9.1.0",
     "tsx": "^4.19.0",
     "typescript": "^5.9.0",
-    "vitest": "^3.2.0"
+    "vitest": "^3.2.0",
+    "yaml": "2.9.0"
   }
 }

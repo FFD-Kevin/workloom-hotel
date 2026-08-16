@@ -23,7 +23,8 @@ export type Who = z.infer<typeof WhoSchema>;
 export const ContextSchema = z.looseObject({
   tenant_id: z.string().min(1),
   workspace_id: z.string().min(1),
-  time: z.iso.datetime(),
+  /** 附录 E 示例带 +08:00 偏移，须允许 offset（A5 批次修复：原 z.iso.datetime() 只认 Z） */
+  time: z.iso.datetime({ offset: true }),
   channel: z.string().optional(),
   stage: z.string().optional(),
 });
@@ -58,7 +59,7 @@ export type RuleImpact = z.infer<typeof RuleImpactSchema>;
 export const ReceiptSchema = z.object({
   synced: z.boolean().optional(),
   snapshot_uri: z.string().optional(),
-  verified_at: z.iso.datetime().optional(),
+  verified_at: z.iso.datetime({ offset: true }).optional(),
 });
 export type Receipt = z.infer<typeof ReceiptSchema>;
 
@@ -85,7 +86,7 @@ export const BusinessEventSchema = z.looseObject({
   links: z.array(z.string()).optional(),
   /** 前序事件哈希链字段，防篡改（技术新增量 A1） */
   hash: z.string().optional(),
-  ts: z.iso.datetime().optional(),
+  ts: z.iso.datetime({ offset: true }).optional(),
 });
 export type BusinessEvent = z.infer<typeof BusinessEventSchema>;
 

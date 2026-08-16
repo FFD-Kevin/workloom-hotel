@@ -1,0 +1,54 @@
+/**
+ * 星盟战舰设计令牌（A6 基底；F1 将按设计规范 V1.0 §2/§4/§7 补全全量令牌）
+ * 数值事实源：高保真原型 V4.0 :root 变量（逐值对齐，禁止自由发挥——D5）
+ * Tailwind v4 令牌制：只写 @theme，无 tailwind.config.js（总纲 §1）
+ */
+@import "tailwindcss";
+
+@theme {
+  /* 底色（深空） */
+  --color-bg950: #04060f;
+  --color-bg900: #050a1a;
+  --color-bg800: #0a1230;
+  --color-bg700: #121e45;
+  --color-nebula: #241b4d;
+
+  /* 强调色 · 金（主）/ 全息蓝（副）—— 双强调色禁止混用（F1 走查项） */
+  --color-gold: #ffb545;
+  --color-gold2: #ff8a3d;
+  --color-goldhi: #ffe0a3;
+  --color-holo: #45e0ff;
+  --color-holo2: #2fa8ff;
+
+  /* 信号色 */
+  --color-go: #3dffb2;
+  --color-warn: #ffc24d;
+  --color-alert: #ff5470;
+
+  /* 墨色（文字三级） */
+  --color-ink: #eaf1ff;
+  --color-ink2: #9db2dc;
+  --color-ink3: #5e7099;
+
+  /* 卡片与描线 */
+  --color-card: rgb(13 22 52 / 0.72);
+  --color-line: rgb(96 140 255 / 0.22);
+  --color-gline: rgb(255 181 69 / 0.45);
+
+  /* 字体三级（设计规范 §4；orb=船名/编号，mono=数据，sans=正文） */
+  --font-sans: "PingFang SC", "Microsoft YaHei", "Source Han Sans SC", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --font-orb: "Orbitron", "JetBrains Mono", ui-monospace, monospace;
+
+  /* 舰桥框架尺寸（原型 V4.0 .frame） */
+  --spacing-bridge: 1180px;
+}
+
+@layer base {
+  body {
+    @apply bg-bg950 text-ink font-sans antialiased;
+  }
+  ::selection {
+    background: rgb(255 181 69 / 0.35);
+  }
+}

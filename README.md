@@ -24,12 +24,14 @@ WorkLoom 织元 · 企业 Agent IM —— 行业可装配 Agent 发行版的通�
 # 前置：Homebrew、Docker Desktop 或 OrbStack、Node 24 LTS（nvm）、pnpm、git
 git clone git@github.com:geniusdapeng-collab/workloom-im.git
 cd workloom-im
-cp .env.example .env
 bash scripts/doctor.sh       # 环境自检
-docker compose up -d         # 起 PG17 + pgvector
-pnpm install
-pnpm db:migrate              # 建 18 表 + RLS + append-only 触发器 + 双角色
+./scripts/start.sh           # 一键：起 PG → 迁移 → 种子 → server(8787)+web(5173)
+# 浏览器打开 http://localhost:5173 → P1 主甲板可见 tRPC 握手 200 / 数据库 up
+
+# 常用命令
 pnpm -C packages/shared test # 五元事件 Schema 测试（4 条）
+./scripts/reset.sh           # 重置演示数据（append-only 事件库只能整库重建）
+./scripts/stop.sh            # 停止 server/web（--pg 同时停 PG 容器）
 ```
 
 ## 目录结构
