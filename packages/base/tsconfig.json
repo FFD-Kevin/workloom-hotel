@@ -3,5 +3,5 @@
   "compilerOptions": {
     "noEmit": true
   },
-  "include": ["flydata-core", "fence-engine", "model-router", "review-console", "tenancy"]
+  "include": ["flydata-core", "fence-engine", "model-router", "night-shift", "review-console", "tenancy"]
 }

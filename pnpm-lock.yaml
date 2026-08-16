@@ -48,6 +48,9 @@ importers:
       '@workloom/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@workloom/runtime':
+        specifier: workspace:*
+        version: link:../../packages/runtime
       '@workloom/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -163,6 +166,34 @@ importers:
       typescript:
         specifier: ^5.9.0
         version: 5.9.3
+
+  packages/runtime:
+    dependencies:
+      '@workloom/base':
+        specifier: workspace:*
+        version: link:../base
+      '@workloom/db':
+        specifier: workspace:*
+        version: link:../db
+      '@workloom/shared':
+        specifier: workspace:*
+        version: link:../shared
+      pg:
+        specifier: 8.23.0
+        version: 8.23.0
+      zod:
+        specifier: ^4.0.0
+        version: 4.4.3
+    devDependencies:
+      '@types/pg':
+        specifier: ^8.11.0
+        version: 8.21.0
+      typescript:
+        specifier: ^5.9.0
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.0
+        version: 3.2.7(@types/node@24.13.3)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.12)(yaml@2.9.0)
 
   packages/shared:
     dependencies:
