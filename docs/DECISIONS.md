@@ -14,3 +14,4 @@
 | D8 | 仓库 `workloom-im` 私有；GitHub 不允许中文仓库名；令牌不进对话/记忆/文件 | `workloom` 已属小WorkLoom；安全纪律 |
 | D9 | 迁移采用手写 SQL + tsx 执行器（`scripts/migrate.ts`），drizzle schema 仅作类型源 | drizzle-kit 对 RLS/触发器/双角色表达弱；手写 SQL 入库可审计 |
 | D10 | 应用双角色连接池：`workloom_app`（biz_events 只读）+ `workloom_gateway`（唯一可 INSERT biz_events） | F1.2 旁路直写防控落到 DB 层；append-only 另有触发器双保险 |
+| D11 | dsh 接入路径确认（2026-08-16）：保持 D1，执行路径 A——薄自研运行时先行，**阶段二完成后做一次 dsh 对接评估**（通读官方 docs + 沙箱实测 + 适配报告），再定是否迁移 L1 层 | 用户明确无偏好，按推荐执行；评估时核验点：`@deepseek-ai/dsh` 是否已出稳定版、capability-seams 文档与六插件概念的映射成本、迁移工作量 |
