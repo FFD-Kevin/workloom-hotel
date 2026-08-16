@@ -9,6 +9,7 @@ import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { appRouter } from "./trpc/router.js";
+import { createContext } from "./trpc/context.js";
 
 const app = new Hono();
 
@@ -29,7 +30,7 @@ app.all("/trpc/*", async (c) => {
     endpoint: "/trpc",
     req: c.req.raw,
     router: appRouter,
-    createContext: () => ({}),
+    createContext: () => createContext(c.req.raw),
   });
   return res;
 });

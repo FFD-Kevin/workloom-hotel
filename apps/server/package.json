@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./router": "./src/trpc/router.ts"
+    "./router": "./src/trpc/router.ts",
+    "./context": "./src/trpc/context.ts"
   },
   "scripts": {
     "dev": "tsx watch --env-file=../../.env src/index.ts",
@@ -13,6 +14,7 @@
   "dependencies": {
     "@hono/node-server": "2.1.1",
     "@trpc/server": "11.18.0",
+    "@workloom/base": "workspace:*",
     "@workloom/db": "workspace:*",
     "@workloom/shared": "workspace:*",
     "hono": "4.13.2",

@@ -30,7 +30,7 @@
 - [x] B2 事件检索：结构化过滤（参数化白名单+防注入双保险）+ NL 入口薄自译（Mock/OpenAI 兼容双翻译器）+ 超时降级（E1.6，3s）— `packages/base/flydata-core/recall.ts`，27 测试全绿（含 PG 集成：计数/规则过滤/NL 端到端/越权返回空 L7.1）
 - [x] B3 组织记忆：三级作用域 + 归因 + pgvector 检索 + 使用记录（F1.4/F6.1）— `packages/base/flydata-core/memory.ts`，34 测试全绿（含集成：写入脱敏/结构化+语义检索/归因反查/生命周期幂等）
 - [x] B4 fence-engine：手写沙箱表达式求值器（L2.5 禁 eval）+ 纯函数判定器（deny 优先并集 E2.2/异常按 block E2.1/无命中走 default_level）+ 单调守卫（H-3 放宽基线被拒留痕）+ dry-run 回放 10 条（F2.5/L2.4 未确认禁激活）+ 对象写锁（pg advisory，超时转需介入 E2.5）+ 子调用同瀑布（H-4）— `packages/base/fence-engine/`，49 测试全绿
-- [ ] B5 tenancy + 鉴权：演示身份 JWT + 角色 + 版本能力矩阵 + 越权返回空（F5.6/F7.1/F7.2）
+- [x] B5 tenancy + 鉴权：版本能力矩阵（F7.2 原文口径）+ 演示身份 JWT（jose）+ 中间件栈（401/403+升级提示）+ members/threads router + dispatch 建档留痕 — 实测：登录签发→me 能力下发→dispatch T-104；H-10 社区版 403 ✅；H-9 跨工作区返回空 ✅；59 测试全绿
 - [ ] B6 review-console：统一队列 + 三手势回写 + 批量采纳 + 快照过期检测（F5.1–F5.7）
 - [ ] B7 model-router：OpenAI 兼容网关 + Mock provider + 分级/峰谷/降级链/计量/熔断（F6.1–F6.8）
 - [ ] B8 runtime + 三态派遣：意图路由 + preset 装配 + loop + 回执校验 + replay 断点续跑（F3.1–F3.9/E3.3）
@@ -39,7 +39,7 @@
 
 ## 最后游标
 
-- **下一步**：**B5 tenancy + 鉴权**：演示身份 JWT + 角色 + 版本能力矩阵 + 越权返回空（F5.6/F7.1/F7.2；验收 H-9 跨工作区返回空 / H-10 社区版 403+升级提示）。首个文件：`packages/base/tenancy/auth.ts`。
+- **下一步**：**B6 review-console**：统一审批队列 + 三手势回写（权重 1/2/3）+ 批量采纳 + 快照过期检测（F5.1–F5.7；验收 L5.2 驳回空理由被拒 / L5.3 重复回调只处理首次）。首个文件：`packages/base/review-console/approvals.ts`。
 - **此后顺序**：B3 记忆 → B4 围栏 → B5 鉴权/tenancy → B6 审批 → B7 model-router → B8 runtime 三态派遣（dsh 挂载）→ B9 夜班 → B10 巡检/技能。
 
 ## 实测记录（2026-08-16 · Linux 沙箱，Node 24.19 / pnpm 10.14 / PG 17.11 + pgvector 0.8.6）

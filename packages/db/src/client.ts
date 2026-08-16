@@ -13,6 +13,18 @@ export type Db = NodePgDatabase<typeof schema>;
 
 let appPool: Pool | null = null;
 let gatewayPool: Pool | null = null;
+let ownerPool: Pool | null = null;
+
+/**
+ * owner 池（postgres/迁移账号，绕过 RLS）——唯一合法用途：登录引导。
+ * 身份建立前无法 set_config 工作区上下文（鸡生蛋问题），登录时的 workspace 解析
+ * 只能走 owner；除此处外任何业务代码禁用本池（F7.1 例外点，代码走查项）。
+ */
+export function getOwnerPool(url = process.env.DATABASE_URL): Pool {
+  if (!url) throw new Error("缺少 DATABASE_URL（见 .env.example）");
+  if (!ownerPool) ownerPool = new Pool({ connectionString: url, max: 2 });
+  return ownerPool;
+}
 
 export function getAppPool(url = process.env.DATABASE_APP_URL): Pool {
   if (!url) throw new Error("缺少 DATABASE_APP_URL（见 .env.example）");
@@ -59,7 +71,8 @@ export async function withWorkspace<T>(
 
 /** 优雅关闭（stop.sh / 测试用） */
 export async function closeAllPools(): Promise<void> {
-  await Promise.all([appPool?.end(), gatewayPool?.end()]);
+  await Promise.all([appPool?.end(), gatewayPool?.end(), ownerPool?.end()]);
   appPool = null;
   gatewayPool = null;
+  ownerPool = null;
 }
