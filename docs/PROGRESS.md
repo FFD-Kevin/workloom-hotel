@@ -10,7 +10,7 @@
 |---|---|---|
 | 阶段一 环境初始化 | ✅ 完成（A1–A7，Linux 沙箱实测全绿；Mac 实测项见「待回填」） | `v0.1.0` |
 | 阶段二 后端 API | ✅ 完成（B0–B10 全绿，附录 H 可自动化条款回归通过） | `v0.2.0` |
-| 阶段三 前端页面 | 🚧 F1 完成（tokens 全令牌+舰桥壳+顶栏）；下一卡 F2 | —（F12 后打 `v0.3.0`） |
+| 阶段三 前端页面 | 🚧 F1–F2 完成（令牌/壳/顶栏 + HUD 组件库 18 件 + /dev 矩阵）；下一卡 F3 | —（F12 后打 `v0.3.0`） |
 | 阶段四 联调与启动脚本 | ⬜ 未开始 | — |
 
 ## 阶段一任务卡
@@ -39,12 +39,13 @@
 
 ## 阶段三任务卡
 
+- [x] F2 HUD 组件库 18 件（`apps/web/src/components/hud/`）：DispatchBar 航线设定台 / QuestCard（六态+重连）/ HandoffCard（空态禁显0）/ TriGestureBar（过期锁定 E5.3+权限隐藏 L5.1）/ FenceLight（四态+基线金锁）/ 消息族四件（回执三态徽标/子调用虚线/系统分隔线）/ KpiGauge（扫描线+截至时间+stale 置灰）/ RadarAlertCard（P0–P2+雷达扫动 4s+无异常态禁消失）/ NightStatusPill（四态）/ EmergencyBrake（二次确认）/ EmptyState / SkeletonBlock（1.4s 流光）/ BannerAlert 三级 / XpBar（斜纹流光 1.2s）/ LevelBadge / AchievementBadge / SquadRing / EquipSlot / EquipCard（金银铜稀有度）/ EventIdChip——动效令牌 sweep/xpflow/skflow 入 tokens.css 并登记降级；/dev 状态矩阵页逐格对账（§10 检查表），Bridge 顶栏改引库组件；无头截图三段走查 ✅ 双强调色分工无混用 ✅
 - [x] F1 tokens.css 全令牌 + 舰桥壳 + 顶栏（设计规范 §2/§3/§4/§7 逐项回引注释可查）：色板补齐星云晕染对/金底深棕/需介入紫、字号阶梯 Display→Micro、圆角/栏宽 236·264/间距、动效令牌 drift 90s·pulse 1.6s·2s·0.8s·sheen 2.6s（全部登记 prefers-reduced-motion 降级）；星野背景双层（公理Ⅰ 禁死黑）；HUD 四角刻度对齐原型 18px·2px·贴边；P1E5 夜班胶囊（999px+呼吸灯，含 paused 琥珀变体）+ P1E6 紧急制动杆（.brk 描边款）；Orbitron/JetBrains Mono 字体引入（§3）— `apps/web/src/styles/tokens.css` / `shell/Bridge.tsx` / `index.html`；走查：vite build ✅、无头截图双强调色分工无混用 ✅、vite dev 全链路 tRPC 握手 200 ✅
 
 ## 最后游标
 
 - **阶段二已收官**：附录 H 可自动化条款（1/2/3/4/5/7/9/10/14）全部有对应测试/验收且通过；B10 验收 L9.2（巡检失败必出事件）/ L8.3（卸载即撤销）已转测试锁定。tag `v0.2.0`。
-- **下一步**：**阶段三 F2 HUD 组件库 ≈18 个 + /dev 状态矩阵页**（每组件覆盖默认/加载/空/错误/权限五态，动效均有降级；组件命名 P{x}E{y}，组件库用语义英文名——设计规范 §10）。阶段三顺序：F2 组件库 → F3–F11 逐页（P1→P2→P9→P3→P4→P5→P8→P6→P7，25 屏状态变体）→ F12 全局收尾 → tag `v0.3.0`。
+- **下一步**：**阶段三 F3 = P1 主甲板**（逐页顺序首站；接线真实 API：threads/approvals/inspection.status/nightShift，覆盖 p1 / p1_loading / p1_empty / p1_community 状态变体；数据全来自真实 API，接线与原型 data-go 对账一致）。后续：P2→P9→P3→P4→P5→P8→P6→P7 → F12 → tag `v0.3.0`。
 - 集成测试纪律：DB 用例对同一数据库可重跑（B10 起全部用例带唯一后缀隔离；B3 memory 测试已顺手修同源污染）；回归前推荐 `./scripts/reset.sh` 整库重建后单轮全绿为准。
 
 ## 实测记录（2026-08-16 · Linux 沙箱，Node 24.19 / pnpm 10.14 / PG 17.11 + pgvector 0.8.6）

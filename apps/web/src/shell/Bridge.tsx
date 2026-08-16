@@ -7,6 +7,7 @@
  * 内部数据为占位；逐页接线真实 API 在 F3–F11。
  */
 import type { ReactNode } from "react";
+import { EmergencyBrake, NightStatusPill } from "../components/hud";
 
 /** 星野背景（氛围层；永不遮挡信息、不影响 G10 首屏口径——§7 动效纪律） */
 function StarField() {
@@ -56,49 +57,7 @@ function CornerTicks() {
   );
 }
 
-/**
- * P1E5 顶栏夜班状态胶囊（原型 .night-pill：999px 圆角 + 呼吸灯）
- * 变体：巡航（全息青 · pulse 1.6s）/ 已暂停（待定琥珀 · pulse 2s）——状态机投影位（F4.8）
- * 壳阶段静态占位「已就绪」；接线夜班 run 状态在 F11/P9 落地。
- */
-function NightStatusPill({ paused = false }: { paused?: boolean }) {
-  return (
-    <span
-      className={`inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-[11.5px] ${
-        paused ? "border-warn/45 bg-warn/7" : "border-holo/40 bg-holo/7"
-      }`}
-    >
-      <span
-        className={`inline-block h-2 w-2 rounded-full ${
-          paused
-            ? "bg-warn shadow-[0_0_10px_var(--color-warn)] animate-pulse-warn"
-            : "bg-holo shadow-[0_0_10px_var(--color-holo)] animate-pulse-hud"
-        }`}
-      />
-      {paused ? (
-        <b className="font-semibold text-warn">夜班 · 已暂停（制动生效）</b>
-      ) : (
-        <b className="font-semibold text-holo">夜班 · 已就绪 22:00 出征</b>
-      )}
-    </span>
-  );
-}
 
-/**
- * P1E6 紧急制动杆（原型 .brk 描边款：警报红描边/文字/7% 底）
- * 制动/驳回永远严肃可用（§9.3）；G5 一键暂停 ≤60s 的点击逻辑在 F3/P9 落地。
- */
-function EmergencyBrake() {
-  return (
-    <button
-      type="button"
-      className="cursor-pointer rounded-lg border border-alert/55 bg-alert/7 px-3.5 py-1.5 text-xs font-extrabold tracking-wider text-alert transition-colors hover:bg-alert/15"
-      title="紧急制动：一键暂停全部夜间 Agent（G5 · ≤60s）"
-    >
-      🛑 紧急制动
-    </button>
-  );
-}
 
 export function Bridge({ children }: { children: ReactNode }) {
   return (

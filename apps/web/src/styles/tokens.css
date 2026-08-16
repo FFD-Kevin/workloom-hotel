@@ -73,6 +73,21 @@
   --animate-pulse-warn: wl-pulse 2s ease-in-out infinite; /* 呼吸状态灯·待审 */
   --animate-pulse-alert: wl-pulse 0.8s ease-in-out infinite; /* 呼吸状态灯·熔断 */
   --animate-sheen: sheen 2.6s ease-in-out infinite; /* 金按钮流光（降级=静态渐变） */
+  --animate-sweep: sweep 4s linear infinite; /* 雷达扫描（5.8；降级=静态雷达图） */
+  --animate-xpflow: xpflow 1.2s linear infinite; /* XP 斜纹流光（§6；降级=静态渐变条） */
+  --animate-skflow: skflow 1.4s ease-in-out infinite; /* 骨架屏流光（5.10；降级=静态灰块） */
+
+  @keyframes sweep {
+    to { transform: rotate(360deg); }
+  }
+  @keyframes xpflow {
+    from { background-position: 0 0; }
+    to { background-position: 28px 0; }
+  }
+  @keyframes skflow {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(220%); }
+  }
 
   @keyframes drift {
     from { transform: translateY(0); }
