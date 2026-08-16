@@ -1,0 +1,1029 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WorkLoom 织元 · 企业 Agent IM 高保真交互原型 V4.0（星盟战舰 × 游戏化）</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+/* ============ 星盟战舰 STARLEAGUE · 设计令牌 ============ */
+:root{
+  --bg950:#04060F; --bg900:#050A1A; --bg800:#0A1230; --bg700:#121E45; --nebula:#241B4D;
+  --gold:#FFB545; --gold2:#FF8A3D; --goldHi:#FFE0A3;
+  --holo:#45E0FF; --holo2:#2FA8FF;
+  --go:#3DFFB2; --warn:#FFC24D; --alert:#FF5470;
+  --ink:#EAF1FF; --ink2:#9DB2DC; --ink3:#5E7099;
+  --card:rgba(13,22,52,.72); --line:rgba(96,140,255,.22); --gline:rgba(255,181,69,.45);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:"PingFang SC","Microsoft YaHei","Source Han Sans SC",sans-serif;background:var(--bg950);color:var(--ink);-webkit-font-smoothing:antialiased}
+.mono{font-family:"JetBrains Mono",monospace}
+.orb{font-family:"Orbitron","JetBrains Mono",monospace;letter-spacing:.05em}
+::selection{background:rgba(255,181,69,.35)}
+::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-thumb{background:var(--bg700);border-radius:8px}
+
+/* ============ Demo 外壳 chrome ============ */
+#chrome{position:sticky;top:0;z-index:100;display:flex;align-items:center;gap:14px;padding:10px 18px;background:rgba(4,6,15,.92);border-bottom:1px solid var(--line);backdrop-filter:blur(12px)}
+#chrome .logo{display:flex;align-items:center;gap:9px;font-weight:900;font-size:15px;letter-spacing:.06em}
+#chrome .logo .diam{width:16px;height:16px;transform:rotate(45deg);background:linear-gradient(135deg,var(--gold),var(--gold2));border-radius:4px;box-shadow:0 0 14px rgba(255,160,60,.6)}
+#chrome .logo em{font-style:normal;background:linear-gradient(115deg,#FFF6E3,var(--gold));-webkit-background-clip:text;background-clip:text;color:transparent}
+#chrome .crumb{font-size:12px;color:var(--ink3)} #chrome .crumb b{color:var(--ink2);font-weight:600}
+#chrome select{background:var(--bg800);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:12.5px;outline:none}
+#chrome .sp{flex:1}
+#mapBtn{background:linear-gradient(135deg,var(--gold),var(--gold2));border:none;color:#2A1500;font-weight:800;font-size:12.5px;padding:7px 14px;border-radius:9px;cursor:pointer;letter-spacing:.08em}
+#verTag{font-size:11px;color:var(--gold);border:1px solid var(--gline);border-radius:6px;padding:4px 9px;letter-spacing:.14em}
+#mapPanel{display:none;position:fixed;inset:0;z-index:200;background:rgba(4,6,15,.82);backdrop-filter:blur(8px)}
+#mapPanel .box{max-width:980px;margin:5vh auto;background:var(--bg900);border:1px solid var(--gline);border-radius:18px;padding:28px;max-height:88vh;overflow:auto}
+#mapPanel h3{font-size:16px;margin-bottom:4px}#mapPanel .sub{font-size:12px;color:var(--ink3);margin-bottom:18px}
+#mapPanel .grp{margin-bottom:16px}#mapPanel .grp b{display:block;font-size:12px;color:var(--holo);letter-spacing:.2em;margin-bottom:8px}
+#mapPanel .pbtn{display:inline-block;margin:0 8px 8px 0;padding:8px 13px;border:1px solid var(--line);border-radius:9px;font-size:12.5px;color:var(--ink2);cursor:pointer;background:var(--card)}
+#mapPanel .pbtn:hover{border-color:var(--gold);color:var(--goldHi)}
+#mapPanel .pbtn .eid{color:var(--ink3);font-size:10.5px;margin-left:6px}
+#tooltip{position:fixed;z-index:300;pointer-events:none;display:none;background:#0A1230;border:1px solid var(--gold);color:var(--goldHi);font-size:11.5px;padding:6px 11px;border-radius:8px;box-shadow:0 6px 24px rgba(0,0,0,.6);white-space:nowrap}
+[data-go]{cursor:pointer;transition:box-shadow .18s,border-color .18s}
+[data-go]:hover{box-shadow:0 0 0 1.5px var(--gold),0 0 22px rgba(255,160,60,.28)!important}
+#toast{position:fixed;left:50%;bottom:34px;transform:translateX(-50%);z-index:300;display:none;background:linear-gradient(135deg,var(--gold),var(--gold2));color:#2A1500;font-weight:800;font-size:13.5px;padding:11px 22px;border-radius:12px;box-shadow:0 8px 34px rgba(255,138,61,.5)}
+#stage{padding:26px 20px 60px;display:flex;flex-direction:column;align-items:center}
+#stageBg{position:fixed;inset:0;z-index:-1;background:
+  radial-gradient(1100px 620px at 85% -5%, rgba(58,42,110,.5), transparent 60%),
+  radial-gradient(900px 700px at -10% 30%, rgba(18,30,69,.65), transparent 60%),
+  radial-gradient(760px 520px at 60% 112%, rgba(255,138,61,.07), transparent 60%), var(--bg950)}
+#stageBg::after{content:"";position:absolute;inset:0;background-image:
+  radial-gradient(1.5px 1.5px at 22% 18%, #fff, transparent),radial-gradient(1.1px 1.1px at 68% 8%, #cfe4ff, transparent),
+  radial-gradient(1.7px 1.7px at 84% 32%, #ffe9c4, transparent),radial-gradient(1px 1px at 40% 46%, #fff, transparent),
+  radial-gradient(1.4px 1.4px at 12% 62%, #cfe4ff, transparent),radial-gradient(1.2px 1.2px at 56% 72%, #fff, transparent),
+  radial-gradient(1.8px 1.8px at 90% 78%, #ffe9c4, transparent),radial-gradient(1px 1px at 30% 88%, #fff, transparent);
+  animation:drift 90s linear infinite alternate}
+@keyframes drift{from{transform:translateY(0)}to{transform:translateY(-50px)}}
+
+/* ============ 应用框架（舰桥窗口） ============ */
+.frame{width:1180px;background:linear-gradient(170deg,rgba(10,18,48,.92),rgba(5,10,26,.96));border:1px solid var(--line);border-radius:20px;overflow:hidden;position:relative;box-shadow:0 30px 80px rgba(0,0,0,.55)}
+.frame::before,.frame::after{content:"";position:absolute;width:18px;height:18px;border:2px solid var(--gold);z-index:5;pointer-events:none}
+.frame::before{top:-1px;left:-1px;border-right:none;border-bottom:none;border-radius:20px 0 0 0}
+.frame::after{top:-1px;right:-1px;border-left:none;border-bottom:none;border-radius:0 20px 0 0}
+.frame .bc{position:absolute;bottom:-1px;width:18px;height:18px;border:2px solid var(--gold);z-index:5;pointer-events:none}
+.frame .bc.l{left:-1px;border-right:none;border-top:none;border-radius:0 0 0 20px}
+.frame .bc.r{right:-1px;border-left:none;border-top:none;border-radius:0 0 20px 0}
+
+/* 应用内顶栏 */
+.abar{display:flex;align-items:center;gap:14px;padding:11px 18px;border-bottom:1px solid var(--line);background:rgba(5,10,26,.7)}
+.ws-sw{display:flex;align-items:center;gap:10px;font-size:13.5px;font-weight:700}
+.ws-sw .ship{width:30px;height:30px;border-radius:9px;background:linear-gradient(150deg,var(--bg700),var(--nebula));border:1px solid var(--gline);display:flex;align-items:center;justify-content:center;font-size:15px}
+.ws-sw .st{font-size:10.5px;color:var(--go);border:1px solid rgba(61,255,178,.4);padding:2px 7px;border-radius:5px;font-weight:600}
+.ws-sw .node{font-size:10.5px;color:var(--ink3)}
+.ws-sw .node i{color:var(--go);font-style:normal}
+.abar .sp{flex:1}
+.captain{display:flex;align-items:center;gap:9px}
+.captain .avt{width:30px;height:30px;border-radius:50%;background:linear-gradient(150deg,#3A2A6E,#121E45);border:1.5px solid var(--gold);display:flex;align-items:center;justify-content:center;font-size:14px}
+.captain .nm{font-size:12px;font-weight:700}
+.captain .lv{font-family:"Orbitron";font-size:11px;color:var(--goldHi);font-weight:700}
+.captain .xp{width:74px;height:5px;border-radius:5px;background:rgba(96,140,255,.16);overflow:hidden;margin-top:3px}
+.captain .xp i{display:block;height:100%;width:89%;background:linear-gradient(90deg,var(--gold2),var(--gold))}
+.night-pill{display:flex;align-items:center;gap:8px;border:1px solid rgba(69,224,255,.4);background:rgba(69,224,255,.07);border-radius:999px;padding:6px 13px;font-size:11.5px}
+.night-pill .dot{width:8px;height:8px;border-radius:50%;background:var(--holo);box-shadow:0 0 10px var(--holo);animation:pulse 1.6s infinite}
+.night-pill b{color:var(--holo)}
+.night-pill.paused{border-color:rgba(255,194,77,.45);background:rgba(255,194,77,.07)}
+.night-pill.paused .dot{background:var(--warn);box-shadow:0 0 10px var(--warn);animation:pulse 2.4s infinite}
+.night-pill.paused b{color:var(--warn)}
+@keyframes pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.3);opacity:.7}}
+
+/* 三栏 IM 布局 */
+.im3{display:grid;grid-template-columns:236px 1fr 264px;min-height:640px}
+.side{border-right:1px solid var(--line);padding:12px 10px;display:flex;flex-direction:column;gap:4px;background:rgba(5,10,26,.45)}
+.side .grp-t{font-size:10.5px;color:var(--ink3);letter-spacing:.2em;padding:10px 10px 5px}
+.conv{display:flex;gap:9px;align-items:center;padding:8px 10px;border-radius:10px;border:1px solid transparent}
+.conv:hover{background:rgba(96,140,255,.06)}
+.conv.act{background:rgba(255,181,69,.08);border-color:var(--gline)}
+.conv .cav{width:32px;height:32px;border-radius:9px;flex:none;display:flex;align-items:center;justify-content:center;font-size:15px;background:linear-gradient(150deg,var(--bg700),var(--nebula));border:1px solid var(--line);position:relative}
+.conv .nm{font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.conv .pv{font-size:10.5px;color:var(--ink3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px}
+.conv .bdg{margin-left:auto;background:var(--alert);color:#fff;font-size:10px;font-weight:800;min-width:17px;height:17px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px}
+.sdot{position:absolute;right:-2px;bottom:-2px;width:9px;height:9px;border-radius:50%;border:2px solid var(--bg900)}
+.sdot.run{background:var(--holo);box-shadow:0 0 8px var(--holo);animation:pulse 1.6s infinite}
+.sdot.wait{background:var(--warn)} .sdot.done{background:var(--go)} .sdot.err{background:var(--alert)} .sdot.off{background:var(--ink3)}
+.flow{padding:16px 20px;display:flex;flex-direction:column;gap:12px;background:radial-gradient(600px 300px at 50% -60px, rgba(58,42,110,.28), transparent 70%)}
+.ctx{border-left:1px solid var(--line);padding:14px 14px;display:flex;flex-direction:column;gap:12px;background:rgba(5,10,26,.45)}
+.ctx .ct{font-size:10.5px;color:var(--ink3);letter-spacing:.2em}
+
+/* 派遣栏 = 航线设定台 */
+.dispatch{margin:0 16px 16px;display:flex;gap:11px;align-items:center;background:rgba(8,14,34,.92);border:1px solid var(--gline);border-radius:15px;padding:9px 9px 9px 16px;box-shadow:0 0 30px rgba(255,160,60,.1)}
+.dispatch .rico{width:32px;height:32px;border-radius:10px;background:radial-gradient(circle at 35% 30%,var(--goldHi),var(--gold2));display:flex;align-items:center;justify-content:center;font-size:15px;box-shadow:0 0 16px rgba(255,160,60,.5);flex:none}
+.dispatch .in{flex:1;min-width:0}
+.dispatch .in .txt{font-size:13.5px;color:var(--ink2)}
+.dispatch .in .chips{display:flex;gap:6px;margin-top:5px;flex-wrap:wrap}
+.cchip{font-size:10.5px;color:var(--holo);border:1px solid rgba(69,224,255,.35);border-radius:6px;padding:2px 8px;background:rgba(69,224,255,.06)}
+.mpills{display:flex;gap:5px;flex:none}
+.mpills span{font-size:11px;padding:5px 11px;border-radius:999px;border:1px solid var(--line);color:var(--ink2)}
+.mpills span.on{border-color:var(--gold);color:var(--goldHi);background:rgba(255,181,69,.12);box-shadow:0 0 12px rgba(255,181,69,.22)}
+.btn-launch{background:linear-gradient(135deg,var(--gold),var(--gold2));color:#2A1500;font-weight:800;font-size:13.5px;border:none;border-radius:11px;padding:11px 22px;letter-spacing:.08em;box-shadow:0 4px 20px rgba(255,138,61,.42);position:relative;overflow:hidden;flex:none}
+.btn-launch::after{content:"";position:absolute;top:0;left:-70%;width:45%;height:100%;background:linear-gradient(105deg,transparent,rgba(255,255,255,.5),transparent);animation:sheen 2.6s ease-in-out infinite}
+@keyframes sheen{0%{left:-70%}55%{left:130%}100%{left:130%}}
+.btn-dis{background:var(--bg700)!important;color:var(--ink3)!important;box-shadow:none!important}
+
+/* ============ 消息流卡片 ============ */
+.msg{display:flex;gap:11px}
+.msg .mav{width:34px;height:34px;border-radius:10px;flex:none;display:flex;align-items:center;justify-content:center;font-size:16px;background:linear-gradient(150deg,var(--bg700),var(--nebula));border:1px solid var(--line)}
+.msg .mbd{flex:1;min-width:0}
+.msg .mhd{display:flex;align-items:baseline;gap:8px;margin-bottom:4px;flex-wrap:wrap}
+.msg .mhd b{font-size:12.5px}
+.msg .mhd .tm{font-size:10.5px;color:var(--ink3)}
+.msg .mhd .ver{font-family:"JetBrains Mono";font-size:10px;color:var(--holo)}
+.bubble{background:var(--card);border:1px solid var(--line);border-radius:4px 14px 14px 14px;padding:11px 14px;font-size:12.8px;line-height:1.85;color:var(--ink2)}
+.bubble b,.bubble strong{color:var(--ink)}
+.bubble.gold{border-color:var(--gline);background:linear-gradient(150deg,rgba(255,181,69,.07),rgba(13,22,52,.7))}
+.bubble.red{border-color:rgba(255,84,112,.5);background:linear-gradient(150deg,rgba(255,84,112,.07),rgba(13,22,52,.7))}
+.eid{font-family:"JetBrains Mono";font-size:10.5px;color:var(--holo);white-space:nowrap}
+.rcp{font-size:10px;padding:2px 8px;border-radius:5px;margin-left:6px;white-space:nowrap}
+.rcp.ok{color:var(--go);background:rgba(61,255,178,.1);border:1px solid rgba(61,255,178,.3)}
+.rcp.wait{color:var(--warn);background:rgba(255,194,77,.1);border:1px solid rgba(255,194,77,.3)}
+.rcp.err{color:var(--alert);background:rgba(255,84,112,.1);border:1px solid rgba(255,84,112,.35)}
+.sysline{display:flex;align-items:center;gap:12px;margin:4px 0}
+.sysline::before,.sysline::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,transparent,var(--line),transparent)}
+.sysline span{font-size:10.5px;color:var(--ink3);letter-spacing:.1em;white-space:nowrap}
+.tagline{font-size:10.5px;color:var(--ink3);margin-top:6px;line-height:1.7}
+.tagline .eid{color:var(--holo)}
+
+/* 战报卡（交接班） */
+.report{border:1px solid var(--gline);border-radius:16px;overflow:hidden;background:linear-gradient(160deg,rgba(36,27,77,.5),rgba(10,18,48,.9));box-shadow:0 0 34px rgba(255,160,60,.08)}
+.report .rh{padding:13px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.report .rh b{font-size:14px}
+.report .rh .orb{font-size:10px;color:var(--holo)}
+.report .rh .mete{font-size:10.5px;color:var(--ink3)}
+.rcols{display:grid;grid-template-columns:repeat(3,1fr)}
+.rcol{padding:15px 10px;text-align:center}
+.rcol+.rcol{border-left:1px solid rgba(96,140,255,.12)}
+.rcol .n{font-family:"Orbitron";font-size:30px;font-weight:900}
+.rcol:nth-child(1) .n{color:var(--go);text-shadow:0 0 22px rgba(61,255,178,.5)}
+.rcol:nth-child(2) .n{color:var(--warn);text-shadow:0 0 22px rgba(255,194,77,.5)}
+.rcol:nth-child(3) .n{color:var(--alert);text-shadow:0 0 22px rgba(255,84,112,.5)}
+.rcol .l{font-size:11px;color:var(--ink2);margin-top:3px;letter-spacing:.1em}
+.rfoot{padding:10px 16px;border-top:1px solid var(--line);font-size:10.8px;color:var(--ink3);display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.btn-ghost{border:1px solid var(--gline);color:var(--goldHi);background:rgba(255,181,69,.08);font-size:11.5px;padding:6px 13px;border-radius:9px;font-weight:700}
+
+/* KPI 全息仪表 */
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.kpi{background:linear-gradient(160deg,rgba(10,18,48,.85),rgba(8,14,34,.9));border:1px solid rgba(69,224,255,.28);border-radius:13px;padding:12px 14px;position:relative;overflow:hidden}
+.kpi::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent 0 3px,rgba(69,224,255,.03) 3px 4px);pointer-events:none}
+.kpi .kl{font-size:10.5px;color:var(--ink2);letter-spacing:.12em}
+.kpi .kv{font-family:"Orbitron";font-size:22px;font-weight:700;margin:5px 0 3px}
+.kpi .kd{font-size:11px;font-weight:700}
+.up{color:var(--go)} .dn{color:var(--alert)}
+.kpi.grey{opacity:.55;filter:grayscale(.6)}
+
+/* 巡检雷达推送 */
+.radar-card{border:1px solid rgba(255,84,112,.4);border-radius:14px;background:linear-gradient(150deg,rgba(255,84,112,.06),rgba(13,22,52,.7));padding:13px 16px;position:relative;overflow:hidden}
+.radar-card .sweep{position:absolute;right:-30px;top:-30px;width:150px;height:150px;border-radius:50%;background:conic-gradient(from 0deg,rgba(69,224,255,.16),transparent 60deg);animation:sweep 4s linear infinite}
+@keyframes sweep{to{transform:rotate(360deg)}}
+.sev{font-size:10px;font-weight:800;padding:2px 8px;border-radius:5px;letter-spacing:.1em}
+.sev.p0{background:rgba(255,84,112,.18);color:var(--alert);border:1px solid rgba(255,84,112,.5)}
+.sev.p1{background:rgba(255,194,77,.14);color:var(--warn);border:1px solid rgba(255,194,77,.45)}
+.sev.p2{background:rgba(69,224,255,.12);color:var(--holo);border:1px solid rgba(69,224,255,.4)}
+
+/* 任务卡 / XP */
+.pill-main{font-size:10px;font-weight:800;letter-spacing:.12em;background:linear-gradient(135deg,var(--gold),var(--gold2));color:#2A1500;padding:3px 9px;border-radius:5px}
+.pill-mode{font-size:10px;border:1px solid var(--holo);color:var(--holo);padding:3px 9px;border-radius:5px;letter-spacing:.08em}
+.pill-review{font-size:10px;border:1px solid var(--warn);color:var(--warn);padding:3px 9px;border-radius:5px}
+.pill-done{font-size:10px;border:1px solid var(--go);color:var(--go);padding:3px 9px;border-radius:5px}
+.pill-err{font-size:10px;border:1px solid var(--alert);color:var(--alert);padding:3px 9px;border-radius:5px}
+.xpbar{height:9px;border-radius:99px;background:rgba(96,140,255,.14);overflow:hidden;position:relative;flex:1}
+.xpbar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--gold2),var(--gold),var(--goldHi));box-shadow:0 0 12px rgba(255,181,69,.55);position:relative}
+.xpbar i::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(115deg,transparent 0 8px,rgba(255,255,255,.16) 8px 10px);animation:flow 1.2s linear infinite}
+@keyframes flow{to{transform:translateX(20px)}}
+.mile{display:flex;gap:5px}
+.mile span{flex:1;height:4px;border-radius:4px;background:rgba(96,140,255,.16)}
+.mile span.done{background:var(--gold);box-shadow:0 0 7px rgba(255,181,69,.7)}
+
+/* 审批卡（原生消息） */
+.appr{border:1px solid var(--gline);border-radius:15px;background:linear-gradient(160deg,rgba(18,30,69,.9),rgba(10,18,48,.88));overflow:hidden}
+.appr .ah{padding:11px 15px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.appr .ah b{font-size:13px}
+.appr .bd{padding:13px 15px}
+.diff{width:100%;border-collapse:collapse;font-size:12px}
+.diff td{padding:7px 10px;border-bottom:1px solid rgba(96,140,255,.1);color:var(--ink2)}
+.diff td:first-child{color:var(--ink3);white-space:nowrap}
+.diff .old{text-decoration:line-through;color:var(--ink3)}
+.diff .new{color:var(--goldHi);font-weight:700}
+.levers{display:flex;gap:9px;padding:12px 15px;border-top:1px solid var(--line)}
+.lev{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;padding:10px 8px;border-radius:11px;border:1px solid;font-size:12.5px;font-weight:800}
+.lev small{display:block;font-size:9.5px;font-weight:400;opacity:.8}
+.lev.go{border-color:rgba(61,255,178,.55);color:var(--go);background:rgba(61,255,178,.08)}
+.lev.cal{border-color:rgba(69,224,255,.5);color:var(--holo);background:rgba(69,224,255,.06)}
+.lev.brk{border-color:rgba(255,84,112,.55);color:var(--alert);background:rgba(255,84,112,.07)}
+
+/* 需介入卡 */
+.need{border:1px solid rgba(255,84,112,.5);border-radius:14px;background:linear-gradient(150deg,rgba(255,84,112,.08),rgba(13,22,52,.75));padding:12px 15px}
+
+/* ctx 面板小卡 */
+.xcard{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:12px 13px}
+.xcard .xt{font-size:11px;color:var(--ink2);font-weight:700;letter-spacing:.08em;margin-bottom:9px}
+.memrow{display:flex;align-items:center;gap:8px;padding:5px 0;font-size:11.5px}
+.memrow .avt{width:24px;height:24px;border-radius:7px;flex:none;display:flex;align-items:center;justify-content:center;font-size:11px;background:linear-gradient(150deg,var(--bg700),var(--nebula));border:1px solid var(--line)}
+.memrow .rl{margin-left:auto;font-size:9.5px;color:var(--ink3)}
+.memrow .st-dot{width:7px;height:7px;border-radius:50%;flex:none}
+</style>
+</head>
+<body>
+<style>
+/* ============ 组件库（二）============ */
+/* 手机真机框 */
+.phone{width:375px;flex:none;border-radius:44px;border:2px solid #2A3A66;background:var(--bg950);box-shadow:0 0 0 8px #0A0F1E,0 0 0 9px rgba(255,181,69,.35),0 34px 80px rgba(0,0,0,.6);overflow:hidden;position:relative}
+.phone .notch{height:30px;display:flex;align-items:center;justify-content:center;position:relative}
+.phone .notch::after{content:"";width:110px;height:22px;background:#0A0F1E;border-radius:0 0 14px 14px;position:absolute;top:0}
+.phone .scr{height:830px;overflow:hidden;display:flex;flex-direction:column;background:linear-gradient(180deg,rgba(36,27,77,.35),rgba(5,10,26,.9) 30%)}
+.phone .ptitle{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line);font-size:13.5px;font-weight:700}
+.phone .pmsg{padding:12px 12px;flex:1;overflow:hidden;display:flex;flex-direction:column;gap:10px}
+.phone .pbot{border-top:1px solid var(--line);padding:10px 12px;display:flex;gap:8px}
+.mbtn{flex:1;text-align:center;font-size:12px;font-weight:800;padding:10px 6px;border-radius:11px;border:1px solid}
+.duo{display:flex;gap:30px;align-items:flex-start}
+.anno{width:300px;flex:none;display:flex;flex-direction:column;gap:12px}
+.anno .acard{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:13px 15px;font-size:12px;color:var(--ink2);line-height:1.9}
+.anno .acard b{color:var(--ink)}
+.anno .acard .eid{color:var(--holo)}
+
+/* 围栏/规则 */
+.vtl{position:relative;padding-left:16px}
+.vtl::before{content:"";position:absolute;left:5px;top:6px;bottom:6px;width:1.5px;background:linear-gradient(180deg,var(--gold),var(--line))}
+.vtl .v{position:relative;padding:0 0 13px}
+.vtl .v::before{content:"";position:absolute;left:-14px;top:4px;width:9px;height:9px;border-radius:50%;background:var(--bg700);border:2px solid var(--ink3)}
+.vtl .v.act::before{background:var(--gold);border-color:var(--goldHi);box-shadow:0 0 10px var(--gold)}
+.vtl .v .vn{font-family:"JetBrains Mono";font-size:12px;font-weight:700}
+.vtl .v.act .vn{color:var(--gold)}
+.vtl .v .vs{font-size:10.5px;color:var(--ink3)}
+.gatelamp{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:1px}
+.gatelamp.auto{background:var(--go);box-shadow:0 0 8px var(--go)}
+.gatelamp.review{background:var(--warn);box-shadow:0 0 8px var(--warn);animation:pulse 2s infinite}
+.gatelamp.block{background:var(--alert);box-shadow:0 0 8px var(--alert);animation:pulse .9s infinite}
+.gatelamp.need{background:#B45CFF;box-shadow:0 0 8px #B45CFF}
+table.rules{width:100%;border-collapse:collapse;font-size:12px}
+table.rules th{text-align:left;font-size:10.5px;color:var(--ink3);letter-spacing:.12em;padding:8px 10px;border-bottom:1px solid var(--line)}
+table.rules td{padding:10px;border-bottom:1px solid rgba(96,140,255,.1);color:var(--ink2);vertical-align:top;line-height:1.7}
+table.rules td b{color:var(--ink)}
+.lock{color:var(--gold);font-size:10px;border:1px solid var(--gline);padding:1px 6px;border-radius:4px}
+
+/* 船员卡 */
+.crewgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.crewcard{background:linear-gradient(155deg,rgba(18,30,69,.88),rgba(10,18,48,.85));border:1px solid var(--line);border-radius:15px;padding:15px;position:relative}
+.crewcard.goldline{border-color:var(--gline)}
+.crewcard .top{display:flex;gap:11px;align-items:center}
+.crewcard .av{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;background:linear-gradient(150deg,var(--bg700),var(--nebula));border:1px solid var(--gline)}
+.crewcard .nm{font-size:13.5px;font-weight:800}
+.crewcard .ver{font-family:"JetBrains Mono";font-size:10px;color:var(--holo)}
+.crewcard .rl{font-size:10.5px;color:var(--ink2);margin-top:2px}
+.crewcard .lv{position:absolute;top:13px;right:14px;text-align:right}
+.crewcard .lv .l{font-family:"Orbitron";font-size:14px;font-weight:700;color:var(--goldHi)}
+.crewcard .lv .s{font-size:9px;color:var(--holo);letter-spacing:.08em}
+.crewcard .tags{display:flex;gap:5px;flex-wrap:wrap;margin:10px 0 8px}
+.crewcard .stat{display:flex;justify-content:space-between;font-size:10.5px;color:var(--ink3);border-top:1px dashed rgba(96,140,255,.18);padding-top:8px}
+.crewcard .stat b{color:var(--ink2);font-family:"Orbitron";font-weight:500}
+.mxp{height:5px;border-radius:5px;background:rgba(96,140,255,.15);overflow:hidden;margin-top:8px}
+.mxp i{display:block;height:100%;background:linear-gradient(90deg,var(--gold2),var(--gold))}
+
+/* 技能装备卡 */
+.skillcard{background:linear-gradient(155deg,rgba(18,30,69,.88),rgba(10,18,48,.85));border:1px solid var(--line);border-radius:15px;padding:15px;position:relative}
+.skillcard.r-gold{border-color:var(--gline);box-shadow:0 0 22px rgba(255,160,60,.08)}
+.skillcard.r-silver{border-color:rgba(159,178,220,.4)}
+.skillcard.r-bronze{border-color:rgba(255,138,61,.3)}
+.rar{position:absolute;top:12px;right:13px;font-size:9px;letter-spacing:.15em;padding:2px 8px;border-radius:5px;font-weight:800}
+.rar.gold{background:rgba(255,181,69,.14);color:var(--gold);border:1px solid var(--gline)}
+.rar.silver{background:rgba(159,178,220,.12);color:#B9C8E8;border:1px solid rgba(159,178,220,.4)}
+.rar.bronze{background:rgba(255,138,61,.1);color:var(--gold2);border:1px solid rgba(255,138,61,.35)}
+
+/* 装配槽 */
+.slots{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.slot{background:var(--card);border:1px solid var(--line);border-radius:15px;padding:15px;position:relative}
+.slot.ok{border-color:rgba(61,255,178,.4)}
+.slot.fail{border-color:rgba(255,84,112,.55);background:linear-gradient(150deg,rgba(255,84,112,.07),rgba(13,22,52,.7))}
+.slot .hex{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:17px;background:linear-gradient(150deg,var(--bg700),var(--nebula));border:1px solid var(--gline);margin-bottom:10px}
+.slot h4{font-size:13px;margin-bottom:5px}
+.slot p{font-size:11px;color:var(--ink2);line-height:1.75}
+.slot .oktag{position:absolute;top:13px;right:13px;font-size:10px;color:var(--go)}
+.slot .failtag{position:absolute;top:13px;right:13px;font-size:10px;color:var(--alert);font-weight:800}
+
+/* 骨架屏 */
+.sk{position:relative;overflow:hidden;background:rgba(96,140,255,.09);border-radius:9px}
+.sk::after{content:"";position:absolute;inset:0;background:linear-gradient(100deg,transparent 30%,rgba(159,178,220,.13) 50%,transparent 70%);animation:skm 1.4s infinite}
+@keyframes skm{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+
+/* 横幅/空态 */
+.empty{border:1px dashed rgba(96,140,255,.35);border-radius:16px;padding:34px 24px;text-align:center;background:radial-gradient(300px 140px at 50% 0%,rgba(58,42,110,.35),transparent 70%)}
+.empty .ic{font-size:34px;margin-bottom:10px}
+.empty h4{font-size:15px;margin-bottom:7px}
+.empty p{font-size:12px;color:var(--ink2);line-height:1.9}
+.alertbar{border:1px solid rgba(255,84,112,.55);background:linear-gradient(90deg,rgba(255,84,112,.14),rgba(255,84,112,.04));border-radius:12px;padding:11px 15px;font-size:12.5px;color:#FFB9C6;display:flex;gap:10px;align-items:center}
+.warnbar{border:1px solid rgba(255,194,77,.5);background:linear-gradient(90deg,rgba(255,194,77,.12),rgba(255,194,77,.03));border-radius:12px;padding:11px 15px;font-size:12.5px;color:#FFE3AE;display:flex;gap:10px;align-items:center}
+.infobar{border:1px solid rgba(69,224,255,.4);background:linear-gradient(90deg,rgba(69,224,255,.1),rgba(69,224,255,.02));border-radius:12px;padding:11px 15px;font-size:12.5px;color:#C9F3FF;display:flex;gap:10px;align-items:center}
+
+/* P4 队列 */
+.qitem{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--card);margin-bottom:8px}
+.qitem.act{border-color:var(--gold);box-shadow:0 0 16px rgba(255,160,60,.14)}
+.qitem .t{font-size:12px;font-weight:700;line-height:1.5}
+.qitem .m{font-size:10px;color:var(--ink3);margin-top:4px;display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+
+/* 标题区 */
+.ptitle-line{display:flex;align-items:baseline;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+.ptitle-line h2{font-size:17px;font-weight:900}
+.ptitle-line .alias{font-size:11px;color:var(--gold);letter-spacing:.16em}
+.ptitle-line .anchors{font-size:10.5px;color:var(--ink3);font-family:"JetBrains Mono"}
+.section-t{font-size:11px;color:var(--holo);letter-spacing:.22em;margin:2px 0 8px}
+.section-t::before{content:"▸ ";color:var(--gold)}
+.stat-orb{font-family:"Orbitron";color:var(--goldHi);font-weight:700}
+.mini{font-size:10.5px;color:var(--ink3);line-height:1.7}
+.banner-off{border:1px solid var(--line);background:var(--card);border-radius:12px;padding:11px 15px;font-size:12px;color:var(--ink2)}
+.timeline{position:relative;padding-left:16px}
+.timeline::before{content:"";position:absolute;left:4.5px;top:5px;bottom:5px;width:1.5px;background:var(--line)}
+.timeline .ti{position:relative;padding:0 0 11px;font-size:11.5px;color:var(--ink2);line-height:1.6}
+.timeline .ti::before{content:"";position:absolute;left:-14.5px;top:4px;width:8px;height:8px;border-radius:50%;background:var(--bg700);border:2px solid var(--holo)}
+.timeline .ti.g::before{border-color:var(--gold);background:rgba(255,181,69,.4)}
+.timeline .ti b{color:var(--ink)}
+.modal-mask{position:absolute;inset:0;background:rgba(4,6,15,.72);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:20;border-radius:20px}
+.modal{width:420px;background:var(--bg800);border:1px solid var(--gline);border-radius:16px;padding:22px;box-shadow:0 30px 80px rgba(0,0,0,.6)}
+.modal h4{font-size:15px;margin-bottom:8px}
+.modal p{font-size:12px;color:var(--ink2);line-height:1.9;margin-bottom:16px}
+.modal .mrow{display:flex;gap:10px;justify-content:flex-end}
+.mbtn2{font-size:12.5px;font-weight:800;padding:9px 18px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink2)}
+.mbtn2.danger{background:linear-gradient(135deg,#FF5470,#E83A5C);border:none;color:#fff}
+.mbtn2.goldb{background:linear-gradient(135deg,var(--gold),var(--gold2));border:none;color:#2A1500}
+</style>
+<div id="stageBg"></div>
+<div id="chrome">
+  <div class="logo"><span class="diam"></span><em>WorkLoom 织元</em></div>
+  <span id="verTag">星盟战舰 · 高保真原型 V4.0</span>
+  <span class="crumb" id="crumb"></span>
+  <div class="sp"></div>
+  <select id="pageSel"></select>
+  <select id="stateSel"></select>
+  <button id="mapBtn">🗺 页面地图</button>
+</div>
+<div id="mapPanel"><div class="box"><h3>🗺 页面地图 · 25 屏全状态</h3><div class="sub">按业务域分组 · 点击任意屏直达 · 状态变体与 PRD 状态规格表一一对应</div><div id="mapBody"></div></div></div>
+<div id="tooltip"></div>
+<div id="toast"></div>
+<div id="stage"></div>
+<script>
+/* ================= 星盟战舰 V4.0 · Demo 内核 ================= */
+const META = {
+  p1:['P1 主甲板 · 舰桥','IM 主界面 WorkSpace · 默认态','消息中枢'],
+  p1_loading:['P1 主甲板 · 舰桥','加载态 · G10 降级','消息中枢'],
+  p1_empty:['P1 主甲板 · 舰桥','空态 · F4.8/F9.2','消息中枢'],
+  p1_community:['P1 主甲板 · 舰桥','权限态 · 社区版 F7.2','消息中枢'],
+  p2:['P2 任务舱 · 主线执行','任务线程会话 · 执行中 F3.4','消息中枢'],
+  p2_review:['P2 任务舱 · 主线执行','待审查态 · F3.3/F5.5','消息中枢'],
+  p2_done:['P2 任务舱 · 主线执行','完成后态 · F3.7/E3.7','消息中枢'],
+  p2_error:['P2 任务舱 · 主线执行','错误态 · E3.1/L3.3','消息中枢'],
+  p9:['P9 守夜战队频道','夜班班组群 · 巡航中 F4.2','夜班在线'],
+  p9_paused:['P9 守夜战队频道','紧急制动后 · G5/E4.1','夜班在线'],
+  p3:['P3 掌上战报（移动端）','交接班消息 · 默认 F4.4/G6','夜班在线'],
+  p3_empty:['P3 掌上战报（移动端）','空态 · F4.8','夜班在线'],
+  p3_expired:['P3 掌上战报（移动端）','超时态 · F5.7/L5.4','夜班在线'],
+  p4:['P4 决断队列','待办收件箱 · 默认 F5.2/F5.4','审批消息'],
+  p4_empty:['P4 决断队列','空态 · F5.5','审批消息'],
+  p4_conflict:['P4 决断队列','异常态 · E5.3/F2.7','审批消息'],
+  p5:['P5 航道管制台','群权限管理 · 默认 F2.4/F2.5','行动权限'],
+  p5_block:['P5 航道管制台','错误态 · E2.1','行动权限'],
+  p5_readonly:['P5 航道管制台','权限态 · E2.6/L5.1','行动权限'],
+  p8:['P8 船员名册','通讯录人机混编 · 默认 IM.3','成员网络'],
+  p8_agent:['P8 船员名册','船员档案 · F2.10/F1.7','成员网络'],
+  p6:['P6 装备库','Agent 能力商店 · 默认 F8.2/F8.4','能力资产'],
+  p6_create:['P6 装备库','打造装备 · F8.3','能力资产'],
+  p7:['P7 舰船换装坞','行业装配台 · 默认 F2.10','行业装配'],
+  p7_fail:['P7 舰船换装坞','校验失败 · F2.10/L1.6','行业装配'],
+};
+const GROUPS=['消息中枢','夜班在线','审批消息','行动权限','成员网络','能力资产','行业装配'];
+const SCREENS={};
+const ORDER=Object.keys(META);
+
+/* ---------- 公共件 ---------- */
+function abar(night='run'){
+  const pill = night==='run'
+    ? `<div class="night-pill" data-go="p9" data-tip="守夜战队频道 · P9"><span class="dot"></span><b>守夜战队 · 巡航中</b><span class="mini">22:00–08:00 · 5 任务并行</span></div>`
+    : night==='paused'
+    ? `<div class="night-pill paused" data-go="p9_paused" data-tip="守夜战队频道 · 已制动"><span class="dot"></span><b>守夜战队 · 已制动</b><span class="mini">03:12 王店长发起 · 38s 生效</span></div>`
+    : night==='ready'
+    ? `<div class="night-pill" style="border-color:rgba(61,255,178,.4);background:rgba(61,255,178,.06)"><span class="dot" style="background:var(--go);box-shadow:0 0 10px var(--go)"></span><b style="color:var(--go)">守夜战队 · 已就绪</b><span class="mini">今晚 22:00 出征 · 候选 9 项</span></div>`
+    : `<div class="night-pill" style="border-color:var(--line);background:var(--card)"><span class="dot" style="background:var(--ink3);box-shadow:none;animation:none"></span><b style="color:var(--ink2)">守夜战队 · 未配置</b><span class="mini">去配置 →</span></div>`;
+  return `<div class="abar">
+    <div class="ws-sw"><div class="ship">🚀</div><div>云栖酒店<div class="mini">杭州 · 西湖店</div></div><span class="st">稳定期</span><span class="node">边缘节点 <i>●</i> 在线</span></div>
+    <div class="sp"></div>${pill}
+    <div class="captain"><div class="avt">👨‍✈️</div><div><div class="nm">王店长 <span class="lv">LV.12</span></div><div class="xp"><i></i></div></div></div>
+  </div>`;
+}
+function sideList(act){
+  const conv=(id,ico,nm,pv,dot,badge,go,tip)=>`<div class="conv ${act===id?'act':''}" ${go?`data-go="${go}" data-tip="${tip||nm}"`:''}>
+    <div class="cav">${ico}<span class="sdot ${dot}"></span></div>
+    <div style="min-width:0"><div class="nm">${nm}</div><div class="pv">${pv}</div></div>${badge?`<span class="bdg">${badge}</span>`:''}</div>`;
+  return `<div class="side">
+    <div class="grp-t">📌 置顶</div>
+    ${conv('p9','🌙','守夜战队频道','7 名船员 · 巡航中','run',0,'p9','P9 守夜战队频道')}
+    ${conv('p3','⚡','昨夜战报','战果 12 · 待决断 5 · 求援 2','wait',5,'p3','P3 掌上战报')}
+    <div class="grp-t">待办消息</div>
+    ${conv('p4','🕹','决断队列','审批请求 · 统一审查','wait',7,'p4','P4 决断队列')}
+    <div class="grp-t">任务线程 · ≤10 并发</div>
+    ${conv('p2','🛰','主线：周末调价方案','执行中 3/7 · 调价Agent','run',0,'p2','P2 任务舱')}
+    ${conv('t2','📡','支线：差评危机处理','待审查 · 评价Agent','wait',0,'p2_review','P2 待审查态')}
+    ${conv('t3','🧾','对账与日报','已完成 · 对账Agent','done',0,'p2_done','P2 完成后态')}
+    <div class="grp-t">速答 Ask</div>
+    ${conv('a1','💬','上周哪家店 OCC 掉了？','已回答 · 附引用事件','done')}
+  </div>`;
+}
+function ctxPanel(){
+  return `<div class="ctx">
+    <div><div class="ctx" style="border:none;padding:0 0 6px;letter-spacing:.2em;font-size:10.5px;color:var(--ink3)">档案 · 一店一档</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap"><span class="cchip">稳定期策略</span><span class="cchip">竞对数据</span><span class="cchip">保底价 ¥380</span></div></div>
+    <div class="xcard"><div class="xt">🌙 守夜战队</div>
+      <div class="memrow"><span class="st-dot" style="background:var(--holo);box-shadow:0 0 8px var(--holo)"></span><span>巡航中 · 已耗 <b class="stat-orb">186</b>/320 能量币</span></div>
+      <div class="memrow"><span class="mini">谷时费率 20% · 围栏快照 v3</span><span class="rl" data-go="p9" data-tip="进战队频道">进入 →</span></div></div>
+    <div class="xcard"><div class="xt">船员在线 · 人机混编</div>
+      <div class="memrow" data-go="p8" data-tip="船员名册 · P8"><div class="avt">👨‍✈️</div>王店长<span class="rl">经营者</span><span class="st-dot" style="background:var(--go)"></span></div>
+      <div class="memrow" data-go="p8" data-tip="船员名册 · P8"><div class="avt">🧑‍💼</div>陈经理<span class="rl">集团 Teams</span><span class="st-dot" style="background:var(--go)"></span></div>
+      <div class="memrow" data-go="p8_agent" data-tip="调价Agent 档案"><div class="avt">🛰</div>调价Agent <span class="ver mono" style="font-size:9px;color:var(--holo)">v2.3</span><span class="rl">夜班在线</span><span class="st-dot" style="background:var(--holo)"></span></div>
+      <div class="memrow" data-go="p8" data-tip="船员名册 · P8"><div class="avt">📡</div>巡检Agent <span class="ver mono" style="font-size:9px;color:var(--holo)">v1.2</span><span class="rl">只读</span><span class="st-dot" style="background:var(--holo)"></span></div>
+      <div class="memrow" data-go="p8" data-tip="船员名册 · P8"><div class="avt">💬</div>评价Agent <span class="ver mono" style="font-size:9px;color:var(--holo)">v1.8</span><span class="rl">夜班在线</span><span class="st-dot" style="background:var(--holo)"></span></div></div>
+    <div class="xcard"><div class="xt">雷达 · 渠道巡检</div>
+      <div class="memrow"><span class="st-dot" style="background:var(--go)"></span><span>正常 6/7 渠道</span></div>
+      <div class="memrow"><span class="st-dot" style="background:var(--alert)"></span><span style="color:#FFB9C6">携程 · 房价晚同步 40min</span></div>
+      <div class="mini" style="margin-top:4px">最近巡检 06:42 · 每日 07:00 定时</div></div>
+  </div>`;
+}
+function dispatchBar(placeholder){
+  return `<div class="dispatch">
+    <div class="rico">✦</div>
+    <div class="in"><div class="txt">${placeholder||'设定航线：说出一个经营目标，舰队即刻启航…'}</div>
+      <div class="chips"><span class="cchip">📋 一店一档</span><span class="cchip">🎯 稳定期策略</span><span class="cchip">📊 竞对数据</span></div></div>
+    <div class="mpills"><span class="on">主线 Quest</span><span>协作 Agent</span><span>速答 Ask</span></div>
+    <button class="btn-launch" data-go="p2" data-tip="派遣 → 生成任务线程（F3.1 · ≤3s）">启航 ▶</button>
+  </div>`;
+}
+function frame(inner,night){return `<div class="frame"><span class="bc l"></span><span class="bc r"></span>${abar(night)}${inner}</div>`;}
+function im3(center,act,night){return frame(`<div class="im3">${sideList(act)}<div class="flow">${center}</div>${ctxPanel()}</div>${dispatchBar()}`,night);}
+</script>
+<script>
+/* ================= P1 主甲板 · 舰桥 ================= */
+SCREENS.p1=()=>im3(`
+  <div class="ptitle-line"><h2>主甲板 · 舰桥</h2><span class="alias">IM 主界面 WORKSPACE</span><span class="anchors">G10 · F9.2 · F4.4</span></div>
+  <div class="sysline"><span>系统消息 · 08:30 · 昨夜战报已送达</span></div>
+  <div class="report" data-go="p3" data-tip="打开昨夜战报 → P3（F4.4）">
+    <div class="rh"><b>✦ 昨夜战报 · 守夜战队</b><span class="mete">运行 7.5h · 峰谷费率 20% · 围栏快照 v3</span><span class="orb">08:30 送达</span></div>
+    <div class="rcols">
+      <div class="rcol"><div class="n">12</div><div class="l">战果 · 已完成</div></div>
+      <div class="rcol"><div class="n">5</div><div class="l">待决断 · 待审批</div></div>
+      <div class="rcol"><div class="n">2</div><div class="l">求援 · 需介入</div></div>
+    </div>
+    <div class="rfoot"><span>能量消耗 186 币（谷时）</span><span style="color:var(--goldHi)">打开战报 · 逐条决断 →</span></div>
+  </div>
+  <div>
+    <div class="section-t">经营仪表 · 全息投影（截至 07:30 · 日志投影 G1≤3s）</div>
+    <div class="kpis">
+      <div class="kpi"><div class="kl">夜间新订单 · 间夜</div><div class="kv">47</div><div class="kd up">▲ +12%</div></div>
+      <div class="kpi"><div class="kl">OCC 入住率</div><div class="kv">82.4%</div><div class="kd up">▲ +3.1pt</div></div>
+      <div class="kpi"><div class="kl">ADR 均价</div><div class="kv">¥426</div><div class="kd dn">▼ -2.3%</div></div>
+      <div class="kpi"><div class="kl">REVPAR</div><div class="kv">¥351</div><div class="kd up">▲ +1.6%</div></div>
+    </div>
+  </div>
+  <div>
+    <div class="section-t">雷达锁定 · 需要关注（最多 5 条按严重度 · F9.2）</div>
+    <div class="radar-card"><div class="sweep"></div>
+      <div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap"><span class="sev p0">P0</span><b style="font-size:13px">携程渠道房价晚同步 40 分钟</b><span class="eid">#E-8821</span></div>
+      <div class="mini" style="margin:6px 0 10px">巡检Agent v1.2 · 06:42 雷达锁定 · 已推送（高优 ≤5min G3）· 同事件幂等去重</div>
+      <div style="display:flex;gap:9px"><button class="btn-launch" style="padding:8px 16px;font-size:12px" data-go="p2" data-tip="一键派单 → 建任务线程（F9.3）">⚡ 一键派单</button><button class="btn-ghost" data-go="p4" data-tip="去决断队列定位该事件">去处理 →</button></div>
+    </div>
+  </div>
+  <div>
+    <div class="section-t">快捷目标 · 行业 Bundle 预置（F3.5）</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <span class="cchip" style="padding:7px 12px;font-size:11.5px" data-go="p2" data-tip="建任务并带入本店上下文">🛰 调价建议</span>
+      <span class="cchip" style="padding:7px 12px;font-size:11.5px" data-go="p2_review" data-tip="差评审批">💬 差评审批</span>
+      <span class="cchip" style="padding:7px 12px;font-size:11.5px">📈 经营复盘</span>
+      <span class="cchip" style="padding:7px 12px;font-size:11.5px">🧾 对账说明</span>
+      <span class="cchip" style="padding:7px 12px;font-size:11.5px">🖼 更新首图</span>
+      <span class="cchip" style="padding:7px 12px;font-size:11.5px">💬 回复评价</span>
+    </div>
+  </div>`,'p1','run');
+
+SCREENS.p1_loading=()=>frame(`<div class="im3">${sideList('p1')}<div class="flow">
+  <div class="ptitle-line"><h2>主甲板 · 舰桥</h2><span class="alias">加载态 · G10 降级路径</span></div>
+  <div class="infobar">⏳ 三投影并行预取中（战报 / KPI / 雷达），骨架屏分块渲染，不白屏…</div>
+  <div class="sk" style="height:130px"></div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px"><div class="sk" style="height:82px"></div><div class="sk" style="height:82px"></div><div class="sk" style="height:82px"></div><div class="sk" style="height:82px"></div></div>
+  <div class="sk" style="height:96px"></div><div class="sk" style="height:60px"></div>
+  </div>${ctxPanel()}</div>${dispatchBar()}`,'run');
+
+SCREENS.p1_empty=()=>im3(`
+  <div class="ptitle-line"><h2>主甲板 · 舰桥</h2><span class="alias">空态 · F4.8 / F9.2</span></div>
+  <div class="empty"><div class="ic">🌌</div><h4>舷窗外一片平静</h4><p>守夜战队尚未组建（夜班未启用）· 雷达无异常 · 还没有会话<br>「@ 一位船员，或说出第一句话，点亮第一条航线」</p>
+    <div style="margin-top:14px;display:flex;gap:9px;justify-content:center"><button class="btn-launch" style="padding:9px 18px;font-size:12px" data-go="p5" data-tip="去航道管制台配置夜班（F4.8）">🌙 去配置夜班</button><button class="btn-ghost" data-go="p8" data-tip="船员名册">看看船员 →</button></div></div>
+  <div class="report"><div class="rh"><b>✦ 昨夜战报 · 守夜战队</b><span class="orb">未启用</span></div>
+    <div class="rcols"><div class="rcol"><div class="n" style="color:var(--ink3);text-shadow:none">–</div><div class="l">战果</div></div><div class="rcol"><div class="n" style="color:var(--ink3);text-shadow:none">–</div><div class="l">待决断</div></div><div class="rcol"><div class="n" style="color:var(--ink3);text-shadow:none">–</div><div class="l">求援</div></div></div>
+    <div class="rfoot"><span>夜班未启用时战报为空态（F4.8）</span><span>去配置 →</span></div></div>
+  <div class="banner-off">📡 雷达回报：昨夜一切正常，无需关注（F9.2 空态）</div>`,'p1','none');
+
+SCREENS.p1_community=()=>frame(`<div class="im3">${sideList('p1').replace('守夜战队频道','守夜战队（Pro 解锁）').replace('data-go="p9"','').replace('<span class="bdg">5</span>','')}<div class="flow">
+  <div class="ptitle-line"><h2>主甲板 · 舰桥</h2><span class="alias">权限态 · 社区版 F7.2/L2.2</span></div>
+  <div class="warnbar">🔒 当前为<b style="margin:0 4px">社区版</b>星舰配置：守夜战队频道与「主线 Quest 类快捷目标」已隐藏（隐藏非置灰，越权调用服务端 403 并留痕）—— 升级 Pro 即可组建夜班战队。</div>
+  <div>
+    <div class="section-t">经营仪表 · 全息投影</div>
+    <div class="kpis">
+      <div class="kpi"><div class="kl">夜间新订单 · 间夜</div><div class="kv">47</div><div class="kd up">▲ +12%</div></div>
+      <div class="kpi"><div class="kl">OCC 入住率</div><div class="kv">82.4%</div><div class="kd up">▲ +3.1pt</div></div>
+      <div class="kpi"><div class="kl">ADR 均价</div><div class="kv">¥426</div><div class="kd dn">▼ -2.3%</div></div>
+      <div class="kpi"><div class="kl">REVPAR</div><div class="kv">¥351</div><div class="kd up">▲ +1.6%</div></div>
+    </div>
+  </div>
+  <div>
+    <div class="section-t">快捷目标（社区版权限裁剪后）</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><span class="cchip" style="padding:7px 12px;font-size:11.5px">💬 回复评价</span><span class="cchip" style="padding:7px 12px;font-size:11.5px">📈 经营复盘</span></div>
+    <div class="mini" style="margin-top:8px">巡检中心与夜班为 Pro 能力（F7.2 矩阵唯一口径，禁超卖）</div>
+  </div></div>${ctxPanel()}</div>${dispatchBar()}`,'none');
+</script>
+<script>
+/* ================= P2 任务舱 · 主线执行 ================= */
+const threadHead=(mode,pill,conf)=>`<div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap;padding-bottom:4px;border-bottom:1px solid var(--line)">
+  ${pill}<b style="font-size:14px">主线任务：美团大床房周末调价方案</b><span class="mini">路由置信度 ${conf} · 可见可改（F3.2）</span></div>`;
+const threadInfo=(prog,eta,fence)=>`<div class="ctx">
+  <div><div class="ctx" style="border:none;padding:0 0 6px;font-size:10.5px;color:var(--ink3);letter-spacing:.2em">任务简报</div>
+    <div class="xcard"><div class="xt">进度 <span class="stat-orb">${prog}</span> · 预计剩余 ${eta}</div>
+      <div class="xpbar" style="margin-bottom:8px"><i style="width:43%"></i></div>
+      <div class="mile"><span class="done"></span><span class="done"></span><span class="done"></span><span></span><span></span><span></span><span></span></div>
+      <div class="mini" style="margin-top:8px">每 ≤5s 轮询刷新（F3.4）· 断线显「重连中」不伪造进度</div></div></div>
+  <div class="xcard"><div class="xt">参与船员 · 人机混编</div>
+    <div class="memrow"><div class="avt">👨‍✈️</div>王店长<span class="rl">派遣人</span></div>
+    <div class="memrow" data-go="p8_agent" data-tip="调价Agent 档案"><div class="avt">🛰</div>调价Agent <span class="ver mono" style="font-size:9px;color:var(--holo)">v2.3</span><span class="rl">主执行</span></div>
+    <div class="memrow" data-go="p8" data-tip="船员名册"><div class="avt">🔭</div>竞对Agent <span class="ver mono" style="font-size:9px;color:var(--holo)">v1.1</span><span class="rl">子调用 · 只读</span></div></div>
+  <div class="xcard"><div class="xt">能量计量 · model_trace</div>
+    <div class="memrow"><span>模型档</span><span class="rl" style="color:var(--ink2)">标准档</span></div>
+    <div class="memrow"><span>窗口</span><span class="rl" style="color:var(--ink2)">峰时</span></div>
+    <div class="memrow"><span>已耗能量</span><span class="rl stat-orb">12.4 币</span></div>
+    <div class="mini" style="margin-top:5px">切换/降级必写事件（L6.1）</div></div>
+  <div class="xcard"><div class="xt">本步围栏判定</div>${fence}</div>
+</div>`;
+const fencePass=`<div class="memrow"><span class="gatelamp auto"></span><span>R1 涨幅≤8% · auto 放行</span></div><div class="mini" style="margin-top:5px">围栏 v12 · 判定=纯函数 · 子调用同瀑布（F2.1）</div>`;
+SCREENS.p2=()=>frame(`<div class="im3">${sideList('p2')}<div class="flow">
+  ${threadHead('quest','<span class="pill-main">主线 MAIN QUEST</span><span class="pill-mode">执行中 3/7</span>','96%')}
+  <div class="msg"><div class="mav">👨‍✈️</div><div class="mbd"><div class="mhd"><b>王店长</b><span class="tm">21:38 · 语音转写已确认（F3.8）</span></div>
+    <div class="bubble" style="border-radius:14px 4px 14px 14px;border-color:var(--gline)">把美团大床房这周末的价格方案做一下，<b>别低于保底价</b>。📎 附：竞对截图 ×1</div></div></div>
+  <div class="msg"><div class="mav">🛰</div><div class="mbd"><div class="mhd"><b>调价Agent</b><span class="ver">v2.3</span><span class="tm">21:39</span></div>
+    <div class="bubble">收到，舰长。开始执行：<b>读取一店一档 + 稳定期策略 + 竞对数据</b>（三要素校验通过 F3.6）<span class="eid">#E-8841</span><span class="rcp ok">✓ 已回执</span>
+    <div class="tagline">命中规则：无（只读）· 引用记忆 <span class="eid">M-1024</span> · 能量 1.2 币</div></div></div></div>
+  <div class="msg"><div class="mav">🛰</div><div class="mbd"><div class="mhd"><b>调价Agent</b><span class="ver">v2.3</span><span class="tm">21:40</span></div>
+    <div class="bubble" style="border-style:dashed">请求数据支援 → <b style="color:var(--holo)">@竞对Agent v1.1</b> 拉取美团商圈 3 公里竞对周末房价<span class="eid">#E-8842</span><span class="rcp wait">⏳ 子调用 · 同过围栏瀑布 F2.1</span></div></div></div>
+  <div class="msg"><div class="mav">🔭</div><div class="mbd"><div class="mhd"><b>竞对Agent</b><span class="ver">v1.1</span><span class="tm">21:41 · 子调用回复</span></div>
+    <div class="bubble">📊 数据卡：竞对周末均价 <b>¥415</b>；3 家已满房；云端智选 ¥399→¥440<span class="eid">#E-8843</span><span class="rcp ok">✓ 已回执 · 快照 21:41:03</span>
+    <div class="tagline">只读 preset · 无写工具（L9.1）· 频次自律 ≥3s（L3.3）</div></div></div></div>
+  <div class="msg"><div class="mav">🛰</div><div class="mbd"><div class="mhd"><b>调价Agent</b><span class="ver">v2.3</span><span class="tm">21:42</span></div>
+    <div class="bubble gold">已生成 <b>2 套候选方案</b>（F3.7 多方案对比），请舰长定夺：
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">
+      <div style="border:1px solid var(--gline);border-radius:12px;padding:11px;background:rgba(255,181,69,.06)"><b style="font-size:12.5px">方案 A · 稳健推进</b><div class="mini" style="margin:6px 0">周五 ¥398→<b class="mono" style="color:var(--goldHi)">¥428</b>（+7.5%）· 周六 →<b class="mono" style="color:var(--goldHi)">¥430</b>（+8.0%）</div><div class="mini">影响面：1 渠道×1 房型×2 晚 · RevPAR 预估 <span class="up">+3.4%</span><br>命中围栏：R1 v12 · <span class="up">auto 航道内</span> · 预估 6 能量币</div></div>
+      <div style="border:1px solid rgba(255,194,77,.4);border-radius:12px;padding:11px"><b style="font-size:12.5px">方案 B · 激进冲刺</b><div class="mini" style="margin:6px 0">两晚 →<b class="mono" style="color:var(--warn)">¥446</b>（+12.0%）</div><div class="mini">影响面：同上 · RevPAR 预估 <span class="up">+5.1%</span><br>命中围栏：<span style="color:var(--warn)">越 R1 · 转决断队列双人确认</span> · 预估 6 能量币</div></div>
+    </div>
+    <div class="tagline">采用动作写事件（F3.7）；越围栏方案强制双人确认 → <span class="eid">P4</span></div></div></div></div>
+  </div>${threadInfo('3/7','≈6 分钟',fencePass)}</div>
+  <div class="dispatch"><div class="rico">💬</div><div class="in"><div class="txt">追问沿用本线程上下文（档案 / 策略 / 竞对 / 事件链）…</div></div><div class="mpills"><span class="on">主线 Quest</span></div><button class="btn-launch btn-dis" style="box-shadow:none">发送</button></div>`,'run');
+
+SCREENS.p2_review=()=>frame(`<div class="im3">${sideList('t2')}<div class="flow">
+  <div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap;padding-bottom:4px;border-bottom:1px solid var(--line)"><span class="pill-review">协作 CO-OP · 逐步审</span><b style="font-size:14px">支线任务：本周差评回复（3 条）</b><span class="mini">Agent 态：每步操作前暂停待审查（F3.3）</span></div>
+  <div class="msg"><div class="mav">👨‍✈️</div><div class="mbd"><div class="mhd"><b>王店长</b><span class="tm">14:20</span></div><div class="bubble" style="border-radius:14px 4px 14px 14px;border-color:var(--gline)">这周的三条差评，帮我逐条起草回复，<b>每条我看过再发</b>。</div></div></div>
+  <div class="msg"><div class="mav">💬</div><div class="mbd"><div class="mhd"><b>评价Agent</b><span class="ver">v1.8</span><span class="tm">14:22</span></div>
+    <div class="bubble">第 1/3 步 · 携程 2.8 分差评（房间隔音）回复草稿已起草，按约定<b>挂起待审</b>：<span class="eid">#E-8819</span><span class="rcp wait">⚠ 未生效 · 待审批</span></div></div></div>
+  <div class="appr">
+    <div class="ah"><span class="pill-review">待决断</span><b>携程差评回复 · 2.8 分</b><span class="eid">#E-8819</span><span class="mini">命中规则：R6 差评≤3分必审 v1</span></div>
+    <div class="bd"><table class="diff">
+      <tr><td>客人评价</td><td colspan="2">「房间临街太吵，一夜没睡好」（2.8 分 · 携程 · 08-14）</td></tr>
+      <tr><td>回复草稿</td><td colspan="2" style="color:var(--ink)">抱歉影响了您的休息。我们已把临街房列为优先换房项，并为下订单备了耳塞与安静楼层。期待下次给您一夜好眠。—— 云栖酒店</td></tr>
+      <tr><td>影响面</td><td colspan="2">1 条评价 · 公开页可见 · 品牌口径：致歉+改进行动（一店一档 §品牌规范）</td></tr>
+    </table></div>
+    <div class="levers"><div class="lev go" data-go="p4_empty" data-tip="推进 ✓ 采纳（F5.2）">✓ 推进<small>采纳</small></div><div class="lev cal">✎ 校准<small>编辑后采纳</small></div><div class="lev brk">✗ 制动<small>驳回 · 必填原因 ≤200字</small></div></div>
+  </div>
+  <div class="mini">手势写回事件库并触发记忆校准（F5.5/F1.7）· 驳回原因枚举进偏好模式 · 权重 1/2/3</div>
+  </div>${threadInfo('1/3','≈4 分钟',`<div class="memrow"><span class="gatelamp review"></span><span>R6 差评必审 · review 挂起</span></div><div class="mini" style="margin-top:5px">挂起即转审批队列（M5）· 无超时自动放行（L5.4）</div>`)}</div>${dispatchBar('追问本线程…（上下文延续）')}`,'run');
+
+SCREENS.p2_done=()=>frame(`<div class="im3">${sideList('t3')}<div class="flow">
+  <div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap;padding-bottom:4px;border-bottom:1px solid var(--line)"><span class="pill-main">主线 MAIN QUEST</span><span class="pill-done">✓ 已完成</span><b style="font-size:14px">主线任务：美团大床房周末调价方案</b></div>
+  <div class="msg"><div class="mav">🛰</div><div class="mbd"><div class="mhd"><b>调价Agent</b><span class="ver">v2.3</span><span class="tm">21:58 · 交付消息</span></div>
+    <div class="bubble gold">🏆 <b>任务交付 · 变更报告</b>（交付=变更报告+决策链路，非对话 F3.3）<span class="eid">#E-8847</span><span class="rcp ok">✓ 已生效 · OTA 回执 21:42:07</span>
+      <table class="diff" style="margin-top:8px"><tr><td>周五 08-15</td><td><span class="old">¥398</span> → <span class="new">¥428（+7.5%）</span></td><td class="up">已生效</td></tr>
+      <tr><td>周六 08-16</td><td><span class="old">¥398</span> → <span class="new">¥430（+8.0%）</span></td><td class="up">已生效</td></tr>
+      <tr><td>预估影响</td><td colspan="2">RevPAR <span class="up">+3.4%</span> · 1 渠道 × 1 房型 × 2 晚</td></tr></table>
+      <div class="tagline">决策链路：依据 <span class="eid">#E-8755</span> · 引用记忆 <span class="eid">MEM-041 / MEM-112</span> · 命中围栏 v12 · 标准档峰时 · 共耗 18.6 能量币 · <b>+120 XP</b> 已计入舰长等级</div></div></div></div>
+  <div class="xcard"><div class="xt">决策链路时间轴（日志投影 · F1.12 秒级回溯）</div><div class="timeline">
+    <div class="ti"><b>21:38</b> 王店长语音派遣（转写确认）</div>
+    <div class="ti"><b>21:39</b> 三要素校验通过 · 读档案 <span class="eid">#E-8841</span></div>
+    <div class="ti"><b>21:41</b> @竞对Agent 子调用回数据卡 <span class="eid">#E-8843</span></div>
+    <div class="ti g"><b>21:42</b> 方案 A 采纳 · 写入 OTA · 回执 21:42:07 <span class="eid">#E-8847</span></div>
+    <div class="ti g"><b>21:58</b> 交付 · 手势权重 1 · 记忆校准完成</div></div></div>
+  <div class="infobar">✦ 全程留痕 100%（G8）· 可一键回滚（逆向补偿事件，原事件永不修改 F1.6）· 无回执不宣称完成（E3.7）</div>
+  </div>${threadInfo('7/7','已完成',fencePass)}</div>${dispatchBar('开启下一条航线…')}`,'run');
+
+SCREENS.p2_error=()=>frame(`<div class="im3">${sideList('p2')}<div class="flow">
+  <div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap;padding-bottom:4px;border-bottom:1px solid var(--line)"><span class="pill-main">主线 MAIN QUEST</span><span class="pill-err">⚠ 错误 · 已停点击</span><b style="font-size:14px">主线任务：飞猪首图批量更新</b></div>
+  <div class="alertbar">🚨 <b>渠道适配失效</b>（E3.1/L3.3）：飞猪后台改版，页面特征探针未命中。已<b>停止一切点击</b>，禁止盲目操作。事件已留痕。</div>
+  <div class="msg"><div class="mav">🖥</div><div class="mbd"><div class="mhd"><b>桌面Agent</b><span class="ver">v0.9</span><span class="tm">15:03</span></div>
+    <div class="bubble red">执行「上传新首图 ×6」时探针失效：选择器 <span class="mono" style="font-size:10.5px">.img-upload-btn</span> 未命中<span class="eid">#E-8852</span><span class="rcp err">✗ 已中止 · 未产生任何写入</span>
+    <div class="tagline">剧本 L3 → 可降级 L4 自主探索 / 或转人工接管（L5）</div></div></div></div>
+  <div class="xcard"><div class="xt">处置选项（三入口 · E3.1）</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn-launch" style="padding:9px 16px;font-size:12px">🧑‍🔧 转人工接管</button><button class="btn-ghost">↻ 降级重试（L4 探索）</button><button class="btn-ghost">⏪ 回滚至 #E-8850</button></div>
+    <div class="mini" style="margin-top:9px">回滚=逆向补偿事件序列，原事件永不修改（F1.6）· 人接管即让出虚拟输入控制并留痕（L3.5）</div></div>
+  </div>${threadInfo('2/6','已挂起',`<div class="memrow"><span class="gatelamp block"></span><span>探针失效 · 按 block 处理</span></div><div class="mini" style="margin-top:5px">判定缺失 → 宁可错杀（E2.1）</div>`)}</div>${dispatchBar()}`,'run');
+</script>
+<script>
+/* ================= P9 守夜战队频道 ================= */
+const squadRight=(paused)=>`<div class="ctx">
+  <div class="xcard"><div class="xt">战队状态</div>
+    ${paused?`<div class="memrow"><span class="gatelamp review"></span><b style="color:var(--warn)">已制动 · 断点挂起</b></div><div class="mini" style="margin-top:5px">03:12 王店长（移动端）发起 · 38s 全端生效 · 浏览器动作安全中止 · 可断点续跑（E4.2）</div>`
+    :`<div class="memrow"><span class="gatelamp auto" style="background:var(--holo);box-shadow:0 0 8px var(--holo)"></span><b style="color:var(--holo)">巡航中 · 06:50</b></div><div class="mini" style="margin-top:5px">每动作 100% 过围栏（L4.1）· 常规询盘首响 ≤30s（G2）</div>`}</div>
+  <div class="xcard"><div class="xt">能量计量 · 谷时 20%</div>
+    <div class="memrow"><span>已耗</span><span class="rl stat-orb">186 币</span></div>
+    <div class="memrow"><span>预计整晚</span><span class="rl stat-orb">320 币</span></div>
+    <div class="mini" style="margin-top:5px">账单=事件投影（L6.3）· 排队优先于升档（L6.5）</div></div>
+  <div class="xcard"><div class="xt">战队成员 · 7 船员在线</div>
+    ${[['🛰','调价Agent','v2.3'],['💬','评价Agent','v1.8'],['🧾','对账Agent','v2.0'],['📡','巡检Agent','v1.2'],['✍️','内容Agent','v1.5'],['🔭','竞对Agent','v1.1'],['🖥','桌面Agent','v0.9']].map(m=>`<div class="memrow" data-go="p8" data-tip="船员名册 · P8"><div class="avt">${m[0]}</div>${m[1]} <span class="ver mono" style="font-size:9px;color:var(--holo)">${m[2]}</span><span class="st-dot" style="background:${paused?'var(--warn)':'var(--holo)'};${paused?'':'box-shadow:0 0 7px var(--holo)'}"></span></div>`).join('')}
+    <div class="mini" style="margin-top:5px">夜班窗口内全员自动上线 · 未声明围栏禁写（F2.10）</div></div>
+  <div class="xcard"><div class="xt">本班围栏快照</div><div class="mini">v3 · 22:00 写入事件（F2.6）· 决策包可回溯当晚版本</div></div>
+</div>`;
+SCREENS.p9=()=>frame(`<div class="im3">${sideList('p9')}<div class="flow">
+  <div class="ptitle-line"><h2>守夜战队频道</h2><span class="alias">夜班班组群 · AI–AI 协作现场</span><span class="anchors">F4.2 · G2 · G3</span></div>
+  <div class="sysline"><span>🚀 22:00 · 战队出征 · 围栏快照 v3 写入事件 · 候选清单 9 项已由王店长 18:22 确认</span></div>
+  <div class="msg"><div class="mav">🎧</div><div class="mbd"><div class="mhd"><b>询盘Agent</b><span class="ver">v1.4</span><span class="tm">22:14</span></div>
+    <div class="bubble">承接夜间询盘 <b>6 条</b>，全部首响 ≤30s；A 级高优询盘 1 条已 ≤30s 通知王店长（G4）<span class="eid">#E-8790</span><span class="rcp ok">✓ 已生效</span></div></div></div>
+  <div class="msg"><div class="mav">💬</div><div class="mbd"><div class="mhd"><b>评价Agent</b><span class="ver">v1.8</span><span class="tm">23:40</span></div>
+    <div class="bubble">回复评论 <b>14 条</b>；其中差评 1 条（携程 2.8 分）按 R6 挂起转待办<span class="eid">#E-8819</span><span class="rcp wait">⚠ 未生效 · 待审批</span>
+    <div class="tagline">命中规则：R6 差评≤3分必审 v1 · 能量 4.1 币</div></div></div></div>
+  <div class="msg"><div class="mav">🧾</div><div class="mbd"><div class="mhd"><b>对账Agent</b><span class="ver">v2.0</span><span class="tm">03:02</span></div>
+    <div class="bubble red">对账 1 轮完成；发现<b>担保订单异常</b>（#8123 重复扣款 ¥680）——不确定，只写「需介入」，夜间未执行任何动作（L4.2）<span class="eid">#E-8821</span> <b style="color:var(--alert)">@王店长</b></div></div></div>
+  <div class="msg"><div class="mav">🛰</div><div class="mbd"><div class="mhd"><b>调价Agent</b><span class="ver">v2.3</span><span class="tm">04:10</span></div>
+    <div class="bubble gold">调价准备完成：美团大床房周末 +8%，命中 <b>R1 v3</b> 挂起待审<span class="eid">#E-8806</span><span class="rcp wait">⚠ 未生效 · 待审批</span>
+    <div class="tagline">越围栏挂起 → 决断队列（M5）· 引证竞对快照 <span class="eid">#E-8843</span></div></div></div></div>
+  <div class="msg"><div class="mav">📡</div><div class="mbd"><div class="mhd"><b>巡检Agent</b><span class="ver">v1.2</span><span class="tm">06:42</span></div>
+    <div class="bubble red"><b>P0 雷达锁定</b>：携程渠道房价晚同步 40 分钟，已推送（≤5min G3）<span class="eid">#E-8821</span><span class="rcp wait">⚠ 未核实 · 待回执</span>
+    <div style="margin-top:8px"><button class="btn-launch" style="padding:7px 14px;font-size:11.5px" data-go="p2" data-tip="一键派单（F9.3）">⚡ 一键派单</button></div></div></div></div>
+  <div class="sysline"><span>⚡ 08:30 预告 · 战报将自动投递至人类收件箱 → P3（F4.4 三栏投影）</span></div>
+  </div>${squadRight(false)}</div>
+  <div class="dispatch"><div class="rico">✉️</div><div class="in"><div class="txt">给战队留言（作为五元事件留痕，触发动作照常过围栏 L4.1/L4.4）…</div></div>
+  <button class="btn-launch" style="background:linear-gradient(135deg,#FF5470,#E83A5C);color:#fff" data-go="p9_paused" data-tip="紧急制动：一键暂停全部夜间 Agent（G5 · ≤60s）">🛑 紧急制动</button></div>`,'run');
+
+SCREENS.p9_paused=()=>frame(`<div class="im3">${sideList('p9')}<div class="flow">
+  <div class="ptitle-line"><h2>守夜战队频道</h2><span class="alias">紧急制动后 · G5/E4.1/E4.2</span></div>
+  <div class="warnbar">🛑 <b>紧急制动已生效</b>：03:12 王店长（移动端）发起 → <b>38s 全端生效</b>（端到端 ≤60s G5，含浏览器动作安全中止）。全部任务断点挂起，可随时恢复续跑（事件流重放 · 幂等 E4.2）。</div>
+  <div class="sysline"><span>03:12 · 系统公告 · 战队进入待命</span></div>
+  <div class="msg"><div class="mav">🧾</div><div class="mbd"><div class="mhd"><b>对账Agent</b><span class="ver">v2.0</span><span class="tm">03:02</span></div>
+    <div class="bubble red">担保订单异常（#8123 重复扣款 ¥680）——只写「需介入」，未执行任何动作（L4.2）<span class="eid">#E-8821</span> <b style="color:var(--alert)">@王店长</b></div></div></div>
+  <div class="msg" style="opacity:.55"><div class="mav">🛰</div><div class="mbd"><div class="mhd"><b>调价Agent</b><span class="ver">v2.3</span><span class="tm">03:12 · 挂起</span></div>
+    <div class="bubble">⏸ 任务「夜间调价准备」已于断点挂起，工具调用链安全中止<span class="eid">#E-8805</span><span class="rcp wait">⏸ 已暂停 · 可续跑</span></div></div></div>
+  <div class="xcard"><div class="xt">制动记录（留痕 · L1.1）</div>
+    <div class="timeline"><div class="ti g"><b>03:12:04</b> 移动端发起一键暂停</div><div class="ti g"><b>03:12:42</b> 全端生效（38s）· 浏览器动作安全中止</div><div class="ti"><b>恢复时</b> 事件流重放断点续跑 · 幂等不重复</div></div></div>
+  </div>${squadRight(true)}</div>
+  <div class="dispatch"><div class="rico">✉️</div><div class="in"><div class="txt">战队待命中 · 留言仍留痕…</div></div>
+  <button class="btn-launch" data-go="p9" data-tip="恢复巡航（事件流重放续跑 E4.2）">▶ 恢复巡航</button></div>`,'paused');
+</script>
+<script>
+/* ================= P3 掌上战报（移动端） ================= */
+const phoneWrap=(inner,annos)=>`<div class="duo">
+  <div class="phone"><div class="notch"></div><div class="scr">
+    <div class="ptitle">🌙 守夜战队 · 云栖酒店<span class="mini" style="margin-left:auto">22:00–08:00</span></div>
+    <div class="pmsg">${inner}</div>
+  </div></div>
+  <div class="anno">${annos}</div></div>`;
+SCREENS.p3=()=>frame(`<div style="padding:26px 30px;display:flex;justify-content:center">${phoneWrap(`
+  <div class="report"><div class="rh" style="padding:10px 13px"><b style="font-size:12.5px">✦ 昨夜战报</b><span class="orb" style="font-size:9px">08:30 · v3</span></div>
+    <div class="rcols"><div class="rcol" style="padding:10px 4px"><div class="n" style="font-size:22px">12</div><div class="l" style="font-size:9.5px">战果</div></div><div class="rcol" style="padding:10px 4px"><div class="n" style="font-size:22px">5</div><div class="l" style="font-size:9.5px">待决断</div></div><div class="rcol" style="padding:10px 4px"><div class="n" style="font-size:22px">2</div><div class="l" style="font-size:9.5px">求援</div></div></div>
+    <div class="rfoot" style="font-size:9.5px"><span>运行 7.5h · 谷时费率 20%</span><span>计数点按可筛选</span></div></div>
+  <div class="appr"><div class="ah" style="padding:9px 12px"><span class="pill-review">待决断</span><b style="font-size:12px">美团大床房周末调价</b><span class="eid" style="font-size:9.5px">#E-8806</span></div>
+    <div class="bd" style="padding:10px 12px"><table class="diff" style="font-size:11px"><tr><td>周五</td><td><span class="old">¥398</span>→<span class="new">¥428（+7.5%）</span></td></tr><tr><td>周六</td><td><span class="old">¥398</span>→<span class="new">¥430（+8.0%）</span></td></tr><tr><td>规则</td><td style="font-size:10.5px">R1 v3 · 影响面 1渠道×1房型×2晚 · RevPAR +3.4%</td></tr></table></div>
+    <div class="levers" style="padding:9px 12px"><div class="lev go" style="padding:8px 4px;font-size:11px" data-go="p4" data-tip="查看决策链路 → P4（F1.12）">✓ 推进</div><div class="lev cal" style="padding:8px 4px;font-size:11px">✎ 校准</div><div class="lev brk" style="padding:8px 4px;font-size:11px">✗ 制动</div></div></div>
+  <div class="appr"><div class="ah" style="padding:9px 12px"><span class="pill-review">待决断</span><b style="font-size:12px">携程差评回复 · 2.8分</b><span class="eid" style="font-size:9.5px">#E-8819</span></div>
+    <div class="bd" style="padding:10px 12px;font-size:11px;color:var(--ink2);line-height:1.7">「抱歉影响了您的休息。我们已把临街房列为优先换房项…」<div class="mini" style="margin-top:5px">R6 差评必审 v1</div></div>
+    <div class="levers" style="padding:9px 12px"><div class="lev go" style="padding:8px 4px;font-size:11px">✓ 推进</div><div class="lev cal" style="padding:8px 4px;font-size:11px">✎ 校准</div><div class="lev brk" style="padding:8px 4px;font-size:11px">✗ 制动</div></div></div>
+  <div class="need" style="padding:10px 12px"><b style="font-size:12px;color:#FFB9C6">▲ 求援 · 担保订单异常</b> <span class="eid" style="font-size:9.5px">#E-8821</span><div class="mini" style="margin-top:4px">#8123 重复扣款 ¥680 · 夜间未执行任何动作（L4.2 不确定不猜测）</div></div>
+  <div style="display:flex;gap:8px"><div class="mbtn" style="border-color:rgba(61,255,178,.5);color:var(--go);background:rgba(61,255,178,.07)" data-go="p4_empty" data-tip="批量采纳低风险 3 项（仅 auto 级 · 二次确认 G6）">⚡ 批量推进 3 项</div><div class="mbtn" style="border-color:rgba(255,84,112,.55);color:var(--alert);background:rgba(255,84,112,.07)" data-go="p9_paused" data-tip="紧急制动（G5）">🛑 制动</div></div>
+  <div class="mini" style="text-align:center">单条 ≤2 步 · 整包 ≤20 条 P95 ≤5min（G6）· 手势写回权重 1/2/3（F5.5）</div>
+`,`
+  <div class="acard"><b>P3 掌上战报 · 默认态</b><br>交接班消息 = 08:30 对夜间事件流的三段只读投影（<span class="eid">F4.4</span>，非报表）；审批卡为原生消息类型，逐条三手势（<span class="eid">F5.2</span>）。</div>
+  <div class="acard">移动端定位 = <b>监督者视角</b>：只读 + 审批 + 一键制动（P.5）；「查看决策链路」跳 <span class="eid">P4</span> 定位完整链路（F1.12）。</div>
+  <div class="acard">需介入项夜间<b>未执行任何动作</b>——不确定性只写事件（L4.2）；高危项无超时自动放行（L5.4）。</div>`)}</div>`,'run');
+
+SCREENS.p3_empty=()=>frame(`<div style="padding:26px 30px;display:flex;justify-content:center">${phoneWrap(`
+  <div class="empty" style="margin-top:30px"><div class="ic">🌙</div><h4>守夜战队尚未组建</h4><p>配置夜班后，每天 08:30 战报准时送达这里。<br>今夜候选任务 9 项 · 预估 320 能量币（谷时）</p>
+  <div style="margin-top:14px"><span class="mbtn" style="display:block;border:none;background:linear-gradient(135deg,var(--gold),var(--gold2));color:#2A1500" data-go="p5" data-tip="去航道管制台配置（F4.8）">去配置战队 →</span></div></div>
+  <div class="mini" style="text-align:center">夜班状态机：未配置 → 已就绪 → 巡航中（F4.8）</div>
+`,`<div class="acard"><b>P3 空态</b>（F4.8）：夜班未启用 → 战报空态 + 去配置引导。无异常时显「昨夜一切正常」。</div>`)}</div>`,'none');
+
+SCREENS.p3_expired=()=>frame(`<div style="padding:26px 30px;display:flex;justify-content:center">${phoneWrap(`
+  <div class="report" style="opacity:.85"><div class="rh" style="padding:10px 13px"><b style="font-size:12.5px">✦ 昨日战报</b><span class="orb" style="font-size:9px">08-14 08:30</span></div>
+    <div class="rcols"><div class="rcol" style="padding:10px 4px"><div class="n" style="font-size:22px">12</div><div class="l" style="font-size:9.5px">战果</div></div><div class="rcol" style="padding:10px 4px"><div class="n" style="font-size:22px">2</div><div class="l" style="font-size:9.5px">待决断</div></div><div class="rcol" style="padding:10px 4px"><div class="n" style="font-size:22px">0</div><div class="l" style="font-size:9.5px">求援</div></div></div></div>
+  <div class="appr" style="border-style:dashed;opacity:.75"><div class="ah" style="padding:9px 12px"><span class="pill-err">EXPIRED</span><b style="font-size:12px">美团大床房周末调价</b><span class="eid" style="font-size:9.5px">#E-8760</span></div>
+    <div class="bd" style="padding:10px 12px;font-size:11px;color:var(--ink3)">待审超 24h 未处理，已标 expired（F5.7）· 高危项不存在超时自动放行（L5.4）· 请至决断队列处理</div></div>
+  <div class="warnbar" style="font-size:11px;padding:9px 12px">⏰ 2 条待决断已超时，已提醒；高危项仍安全挂起</div>
+`,`<div class="acard"><b>P3 超时态</b>（F5.7/L5.4）：待审超 24h（可配）标 expired 虚框并提醒；<b>block 级永无超时自动放行</b>。</div>`)}</div>`,'run');
+</script>
+<script>
+/* ================= P4 决断队列 ================= */
+const q4Right=(sel)=>`<div class="ctx">
+  <div><div class="section-t">决断队列 · 7 条</div>
+    <div class="mini" style="margin-bottom:8px">按 必审 / 逐步审 / 双人 分级 · 新待办经 IM 卡片同步推送（G4/G6）</div>
+    ${[
+      ['美团大床房周末调价','必审 · 昨夜战报 08:30 · #E-8806','wait',true],
+      ['携程差评回复 · 2.8分','必审 · R6 · #E-8819','wait',false],
+      ['担保订单退款 ¥680','必审 · R4 · #E-8795','wait',false],
+      ['小红书笔记 ×3 起草','逐步审 · 内容Agent · #E-8789','run',false],
+      ['美团差评回复 · 3.1分','必审 · R6 · #E-8812','wait',false],
+      ['批量改价 51 对象','双人 · 越批量阈值 · #E-8801','err',false],
+      ['触发器：每周一经营复盘','必审 · 意识系统建议 · #E-8770','wait',false],
+    ].map(q=>`<div class="qitem ${q[3]?'act':''}"><div class="t">${q[0]}</div><div class="m"><span class="gatelamp ${q[2]==='err'?'block':q[2]==='run'?'auto':'review'}"></span>${q[1]}</div></div>`).join('')}</div>
+  <div class="xcard"><div class="xt">今日战绩 · 已审 <span class="stat-orb">23</span></div>
+    <div class="memrow"><span>✓ 推进（采纳）</span><span class="rl stat-orb" style="color:var(--go)">18</span></div>
+    <div class="memrow"><span>✎ 校准（编辑后采纳）</span><span class="rl stat-orb" style="color:var(--holo)">4</span></div>
+    <div class="memrow"><span>✗ 制动（驳回）</span><span class="rl stat-orb" style="color:var(--alert)">1</span></div>
+    <div class="mini" style="margin-top:5px">驳回原因 Top：价格偏保守 · 进偏好模式（F1.7）</div></div>
+</div>`;
+SCREENS.p4=()=>frame(`<div class="im3">${sideList('p4')}<div class="flow">
+  <div class="ptitle-line"><h2>决断队列</h2><span class="alias">待办收件箱 · 统一审查面板</span><span class="anchors">F5.2 · F5.4</span></div>
+  <div class="appr">
+    <div class="ah"><span class="pill-review">待决断 · 必审</span><b>美团大床房周末调价</b><span class="eid">#E-8806</span><span class="mini">来源：昨夜战报 08:30 · 调价Agent v2.3</span></div>
+    <div class="bd">
+      <table class="diff">
+        <tr><td>周五 08-15</td><td><span class="old">¥398</span> → <span class="new">¥428（+7.5%）</span></td><td class="mini">R1 v3 通过</td></tr>
+        <tr><td>周六 08-16</td><td><span class="old">¥398</span> → <span class="new">¥430（+8.0%）</span></td><td class="mini">R1 v3 通过 · R2 v1 通过</td></tr>
+        <tr><td>影响面</td><td colspan="2">1 渠道 × 1 房型 × 2 晚 · RevPAR 预估 <span class="up">+3.4%</span></td></tr>
+        <tr><td>执行回执</td><td colspan="2" class="mini">采纳后回填发布 · 外部生效写回执位（无回执不宣称完成 L3.6/E3.7）</td></tr>
+      </table>
+      <div class="xcard" style="margin-top:10px"><div class="xt">为什么这样改 · 决策链路（F1.12 秒级回溯）</div>
+        <div class="mini">依据事件 <span class="eid">#E-8755</span>（竞对周末均价 ¥415 · 3 家满房）· 引用记忆 <span class="eid">MEM-041 / MEM-112</span><br>模型：旗舰档 · 谷时 · 32 能量币 · 命中围栏 v3（夜班快照）</div></div>
+      <div class="mini" style="margin-top:9px">📨 IM 卡片同步：钉钉 · 王店长 · 已推送（同事件同渠道幂等 L5.3 · 审批后原地更新）</div>
+    </div>
+    <div class="levers"><div class="lev go" data-go="p4_empty" data-tip="推进 ✓（采纳后执行并写回执）">✓ 推进<small>采纳 · ≤2 步</small></div><div class="lev cal">✎ 校准<small>编辑后采纳</small></div><div class="lev brk">✗ 制动<small>驳回 · 必填原因 ≤200字 L5.2</small></div></div>
+  </div>
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn-ghost" data-go="p4_empty" data-tip="批量采纳低风险（仅 auto 级 · 二次确认 · 逐条留痕 G6）">⚡ 批量推进低风险 3 项</button><span class="mini">review/block 不进批量 · 越批量阈值（&gt;50 对象）强制双人（F5.4/L2.6）</span></div>
+  </div>${q4Right()}</div>${dispatchBar('给舰队下达新指令…')}`,'run');
+
+SCREENS.p4_empty=()=>frame(`<div class="im3">${sideList('p4')}<div class="flow">
+  <div class="ptitle-line"><h2>决断队列</h2><span class="alias">空态 · F5.5</span></div>
+  <div class="empty"><div class="ic">🏆</div><h4>航道清爽 · 今日待决断已全部清空</h4><p>手势已写回事件库并校准组织记忆（F5.5/F1.7）<br>舰队又变聪明了一点 ✦</p></div>
+  <div class="kpis" style="grid-template-columns:repeat(3,1fr)">
+    <div class="kpi"><div class="kl">✓ 推进</div><div class="kv" style="color:var(--go)">18</div><div class="kd up">权重 1</div></div>
+    <div class="kpi"><div class="kl">✎ 校准</div><div class="kv" style="color:var(--holo)">4</div><div class="kd">权重 2</div></div>
+    <div class="kpi"><div class="kl">✗ 制动</div><div class="kv" style="color:var(--alert)">1</div><div class="kd">权重 3</div></div>
+  </div>
+  <div class="infobar">✦ <b>+260 XP</b> · 连续 6 天清晨批完战报 —— 再坚持 1 天解锁成就「勤勉舰长」</div>
+  </div><div class="ctx"><div><div class="section-t">决断队列 · 0 条</div><div class="empty" style="padding:22px 16px"><div class="ic" style="font-size:24px">🛰</div><p style="font-size:11.5px">无待决断事项</p></div></div>
+  <div class="xcard"><div class="xt">今日战绩 · 已审 <span class="stat-orb">23</span></div>
+    <div class="memrow"><span>✓ 推进（采纳）</span><span class="rl stat-orb" style="color:var(--go)">18</span></div>
+    <div class="memrow"><span>✎ 校准（编辑后采纳）</span><span class="rl stat-orb" style="color:var(--holo)">4</span></div>
+    <div class="memrow"><span>✗ 制动（驳回）</span><span class="rl stat-orb" style="color:var(--alert)">1</span></div>
+    <div class="mini" style="margin-top:5px">驳回原因 Top：价格偏保守 · 进偏好模式（F1.7）</div></div></div></div>${dispatchBar()}`,'run');
+
+SCREENS.p4_conflict=()=>frame(`<div class="im3">${sideList('p4')}<div class="flow">
+  <div class="ptitle-line"><h2>决断队列</h2><span class="alias">异常态 · E5.3/F2.7</span></div>
+  <div class="alertbar">⚠ <b>审批快照已过期</b>（E5.3）：该对象已被后续动作修改（对象级写锁 F2.7 保护中）。<b>禁止基于旧快照审批</b>，请刷新最新 before/after 再审。</div>
+  <div class="appr" style="opacity:.72">
+    <div class="ah"><span class="pill-err">快照过期</span><b>美团大床房周末调价</b><span class="eid">#E-8806</span></div>
+    <div class="bd"><table class="diff">
+      <tr><td>周五 08-15</td><td><span class="old">¥398</span> → <span class="new">¥428（+7.5%）</span></td><td class="mini" style="color:var(--alert)">旧快照 08:30</td></tr>
+      <tr><td>最新状态</td><td colspan="2" style="color:var(--ink)">周五已被 #E-8810 调整为 ¥418（+5.0% · auto）</td></tr>
+    </table></div>
+    <div class="levers"><div class="lev" style="border-color:var(--line);color:var(--ink3)">✓ 推进<small>禁用</small></div><div class="lev" style="border-color:var(--line);color:var(--ink3)">✎ 校准<small>禁用</small></div><div class="lev" style="border-color:var(--line);color:var(--ink3)">✗ 制动<small>禁用</small></div></div>
+  </div>
+  <div style="display:flex;gap:10px"><button class="btn-launch" style="padding:9px 18px;font-size:12px" data-go="p4" data-tip="刷新最新快照再审">↻ 刷新最新快照</button></div>
+  </div>${q4Right()}</div>${dispatchBar()}`,'run');
+</script>
+<script>
+/* ================= P5 航道管制台 ================= */
+const p5Left=()=>`<div class="side" style="width:236px">
+  <div class="grp-t">航路变更记录 · 版本</div>
+  <div class="vtl" style="margin-top:6px">
+    <div class="v act"><div class="vn">v3 · active</div><div class="vs">R3 新渠道首改必审 · 王店长 · 08-12</div></div>
+    <div class="v"><div class="vn">v2 · rolled_back</div><div class="vs">08-05 · 已回滚</div></div>
+    <div class="v"><div class="vn">v1 · 出厂基线</div><div class="vs"><span class="lock">🔒 集团强制</span> 只可加严</div></div>
+  </div>
+  <div class="grp-t">生效范围</div>
+  <div class="mini" style="padding:0 10px">本店规则 <b class="stat-orb">3</b> 条 + 基线 <b class="stat-orb">6</b> 条 <span class="lock">🔒 集团强制</span><br>单调守卫：deny 不可逆收敛（F2.3）</div>
+</div>`;
+const p5Ctx=()=>`<div class="ctx">
+  <div class="xcard"><div class="xt">@副官 · 自然语言新增护栏（F2.8）</div>
+    <div class="dispatch" style="margin:0;padding:8px 8px 8px 12px"><div class="rico" style="width:28px;height:28px;font-size:13px">✦</div><div class="in"><div class="txt" style="font-size:12px">「飞猪大床房周末不能低于 420」</div></div></div>
+    <div class="mini" style="margin-top:7px">转写 DSL 草稿 → 结构化预览 → dry-run → 变更审批；未确认不生效（L2.4）</div></div>
+  <div class="xcard" style="border-color:var(--gline)"><div class="xt">🧪 模拟航行 · dry-run 报告（F2.5）</div>
+    <div class="mini">回放最近 <b class="stat-orb">10</b> 条历史动作：若新规当时生效——</div>
+    <div class="memrow" style="margin-top:6px"><span class="gatelamp block"></span><span style="font-size:11px">将拦截 1 条：<span class="eid">#E-8702</span>（飞猪改价 ¥408）</span></div>
+    <div class="mini" style="margin-top:5px">影响面：低频低风险 ✓ · 人确认后才激活</div>
+    <div style="display:flex;gap:8px;margin-top:10px"><button class="btn-launch" style="padding:7px 14px;font-size:11.5px">确认并提交审批</button><button class="btn-ghost">查看回放明细</button></div></div>
+  <div class="xcard"><div class="xt">航道图例</div>
+    <div class="memrow"><span class="gatelamp auto"></span><span>AUTO 绿灯航道 · 自动放行</span></div>
+    <div class="memrow"><span class="gatelamp review"></span><span>REVIEW 黄灯 · 挂起待审</span></div>
+    <div class="memrow"><span class="gatelamp block"></span><span>BLOCK 禁飞区 · 熔断+告警</span></div>
+    <div class="memrow"><span class="gatelamp need"></span><span>需介入 · 只写事件不执行</span></div></div>
+</div>`;
+const ruleRows=(dim)=>`
+  <tr><td><b>R1</b> 房价涨幅 ≤8%</td><td><span class="gatelamp auto"></span>AUTO</td><td>基线 <span class="lock">🔒</span></td><td class="stat-orb">41</td><td class="mini">最近 <span class="eid">#E-8847</span></td></tr>
+  <tr><td><b>R2</b> 保底价 ¥380</td><td><span class="gatelamp block"></span>BLOCK</td><td>基线 <span class="lock">🔒</span></td><td class="stat-orb">2</td><td class="mini">均已熔断+告警</td></tr>
+  <tr><td><b>R3</b> 新渠道首次改价必审</td><td><span class="gatelamp review"></span>REVIEW</td><td>本店 v3</td><td class="stat-orb">5</td><td class="mini">—</td></tr>
+  <tr><td><b>R4</b> 退款 ≥¥500 必审</td><td><span class="gatelamp review"></span>REVIEW</td><td>基线 <span class="lock">🔒</span></td><td class="stat-orb">3</td><td class="mini">最近 <span class="eid">#E-8795</span></td></tr>
+  <tr><td><b>R5</b> 担保订单异常</td><td><span class="gatelamp need"></span>需介入</td><td>基线 <span class="lock">🔒</span></td><td class="stat-orb">1</td><td class="mini">最近 <span class="eid">#E-8821</span></td></tr>
+  <tr><td><b>R6</b> 差评 ≤3 分必审</td><td><span class="gatelamp review"></span>REVIEW</td><td>基线 <span class="lock">🔒</span></td><td class="stat-orb">6</td><td class="mini">最近 <span class="eid">#E-8819</span></td></tr>`;
+SCREENS.p5=()=>frame(`<div class="im3">${p5Left()}<div class="flow">
+  <div class="ptitle-line"><h2>航道管制台</h2><span class="alias">群权限管理 · 规则围栏（群规=可执行规则包）</span><span class="anchors">F2.4 · F2.5</span></div>
+  <div class="infobar">🛡 当前生效 <b>v3</b> · 基线 6 条 <span class="lock">🔒 只可加严</span> · 任何试图放宽基线的配置加载即拒绝并留痕（L2.1）</div>
+  <div class="xcard" style="padding:6px 8px"><table class="rules"><tr><th>航道规则</th><th>级别</th><th>来源</th><th>30天触发</th><th>最近命中</th></tr>${ruleRows()}</table></div>
+  <div class="mini">判定为纯函数（输入=对象+动作+参数）· 子调用与自动化触发同瀑布（F2.1/L2.2）· 边缘本地缓存，断网照常拦截（F2.9）</div>
+  </div>${p5Ctx()}</div>${dispatchBar('@副官，加一条护栏…')}`,'run');
+
+SCREENS.p5_block=()=>frame(`<div class="im3">${p5Left()}<div class="flow">
+  <div class="ptitle-line"><h2>航道管制台</h2><span class="alias">错误态 · E2.1</span></div>
+  <div class="alertbar">🚨 <b>规则表达式求值异常</b>：R7 草稿「周末 AND 大床房 OR」语法错误。按安全策略该规则<b>按 BLOCK 处理（宁可错杀）</b>，已告警 · 禁止异常时默认放行（E2.1）。</div>
+  <div class="xcard" style="padding:6px 8px"><table class="rules"><tr><th>航道规则</th><th>级别</th><th>来源</th><th>30天触发</th><th>最近命中</th></tr>
+  <tr style="background:rgba(255,84,112,.07)"><td><b>R7</b> 周末大床房限涨（草稿）</td><td><span class="gatelamp block"></span>BLOCK</td><td>本店 草稿</td><td class="stat-orb" style="color:var(--alert)">异常</td><td class="mini">求值失败 → 熔断</td></tr>
+  ${ruleRows()}</table></div>
+  </div>${p5Ctx()}</div>${dispatchBar()}`,'run');
+
+SCREENS.p5_readonly=()=>frame(`<div class="im3">${p5Left()}<div class="flow">
+  <div class="ptitle-line"><h2>航道管制台</h2><span class="alias">权限态 · E2.6/L5.1</span></div>
+  <div class="banner-off">🔒 您为<b>只读成员</b>（李前台）：群规仅可查看，无编辑/新增入口（前端隐藏非置灰，越权调用服务端 403 + 留痕 E2.6）。</div>
+  <div class="xcard" style="padding:6px 8px"><table class="rules"><tr><th>航道规则</th><th>级别</th><th>来源</th><th>30天触发</th><th>最近命中</th></tr>${ruleRows()}</table></div>
+  </div><div class="ctx"><div class="xcard"><div class="xt">@副官 · 新增护栏</div><div class="mini">🔒 无群规管理权，入口已隐藏（演示显影）</div></div>
+  <div class="xcard"><div class="xt">航道图例</div>
+    <div class="memrow"><span class="gatelamp auto"></span><span>AUTO 绿灯航道 · 自动放行</span></div>
+    <div class="memrow"><span class="gatelamp review"></span><span>REVIEW 黄灯 · 挂起待审</span></div>
+    <div class="memrow"><span class="gatelamp block"></span><span>BLOCK 禁飞区 · 熔断+告警</span></div>
+    <div class="memrow"><span class="gatelamp need"></span><span>需介入 · 只写事件不执行</span></div></div></div></div>${dispatchBar()}`,'run');
+</script>
+<script>
+/* ================= P8 船员名册 ================= */
+SCREENS.p8=()=>frame(`<div style="padding:20px 24px 24px">
+  <div class="ptitle-line"><h2>船员名册</h2><span class="alias">通讯录 · 人机混编（Agent 是一等公民）</span><span class="anchors">IM.3 · §2.2⑤</span></div>
+  <div class="section-t">人类船员 · 3</div>
+  <div class="crewgrid" style="margin-bottom:20px">
+    ${[
+      ['👨‍✈️','王店长','经营者 · 审批人 · 90% 审批在手机完成','LV.12','黄金 I','在线','var(--go)'],
+      ['🧑‍💼','陈经理','集团 Teams · 跨店继承与审计','LV.15','铂金 II','在线','var(--go)'],
+      ['👩‍💼','李前台','只读成员 · 前台接待','LV.3','青铜 III','离线','var(--ink3)'],
+    ].map(h=>`<div class="crewcard"><div class="top"><div class="av" style="border-radius:50%">${h[0]}</div><div><div class="nm">${h[1]}</div><div class="rl">${h[2]}</div></div></div>
+      <div class="lv"><div class="l">${h[3]}</div><div class="s">${h[4]}</div></div>
+      <div class="tags"><span class="cchip">${h[5]==='在线'?'● 在线':'○ 离线'}</span></div>
+      <div class="stat"><span>三端权限一致（F5.6）</span><b>${h[5]}</b></div></div>`).join('')}
+  </div>
+  <div class="section-t">Agent 船员 · 7 preset（workloom-hotel 装配）· 夜班窗口 22:00–08:00 自动上线</div>
+  <div class="crewgrid">
+    ${[
+      ['🛰','调价Agent','v2.3','航道：价格 · 绑 R1/R2','LV.8','黄金 III',72,'214 动作','91% 采纳','1,840 币',true],
+      ['💬','评价Agent','v1.8','R6 差评必审','LV.6','白银 I',55,'186 动作','88% 采纳','1,204 币',true],
+      ['🧾','对账Agent','v2.0','R4/R5','LV.7','黄金 II',63,'158 动作','95% 采纳','986 币',true],
+      ['📡','巡检Agent','v1.2','只读 preset · 无写工具','LV.5','白银 II',48,'每日 07:00','100% 出勤','342 币',false],
+      ['✍️','内容Agent','v1.5','R3','LV.4','白银 III',40,'92 动作','89% 采纳','1,560 币',false],
+      ['🔭','竞对Agent','v1.1','只读 · 频次自律','LV.3','青铜 I',30,'312 采集','—','410 币',false],
+      ['🖥','桌面Agent','v0.9','高危逐次授权','LV.2','青铜 II',18,'37 动作','92% 采纳','288 币',false],
+    ].map(a=>`<div class="crewcard ${a[10]?'goldline':''}" ${a[1]==='调价Agent'?'data-go="p8_agent" data-tip="打开船员档案"':''}><div class="top"><div class="av">${a[0]}</div><div><div class="nm">${a[1]} <span class="ver">${a[2]}</span></div><div class="rl">${a[3]}</div></div></div>
+      <div class="lv"><div class="l">${a[4]}</div><div class="s">${a[5]}</div></div>
+      <div class="mxp"><i style="width:${a[6]}%"></i></div>
+      <div class="stat" style="margin-top:8px"><span>${a[7]}</span><b>${a[8]}</b><b>${a[9]}</b></div></div>`).join('')}
+  </div>
+  <div style="margin-top:16px;display:flex;gap:10px"><button class="btn-launch" style="padding:9px 18px;font-size:12px" data-go="p7" data-tip="从行业 Bundle 加装 preset → P7 舰船换装坞">＋ 加装船员 preset</button><span class="mini" style="align-self:center">未声明 fence_bindings 的 Agent 系统级禁写（F2.10）</span></div>
+</div>`,'run');
+
+SCREENS.p8_agent=()=>frame(`<div style="padding:20px 24px 24px">
+  <div class="ptitle-line"><h2>船员档案 · 调价Agent <span class="mono" style="font-size:13px;color:var(--holo)">v2.3</span></h2><span class="alias">F2.10 · F1.7</span></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">
+    <div class="xcard"><div class="xt">身份与归属</div>
+      <div class="memrow"><span>Agent ID</span><span class="rl mono" style="color:var(--holo)">agt_pricing</span></div>
+      <div class="memrow"><span>版本（归因 who.version）</span><span class="rl">v2.3</span></div>
+      <div class="memrow"><span>工作区</span><span class="rl">云栖酒店</span></div>
+      <div class="memrow"><span>来源 Bundle</span><span class="rl">workloom-hotel</span></div>
+      <div class="memrow"><span>战队</span><span class="rl">守夜战队 · 夜班窗口自动上线</span></div></div>
+    <div class="xcard"><div class="xt">航道许可 · 围栏授权（F2.10）</div>
+      <div class="memrow"><span class="gatelamp auto"></span><span>R1 v3 涨幅≤8% auto</span><span class="rl" style="color:var(--go)">已声明</span></div>
+      <div class="memrow"><span class="gatelamp block"></span><span>R2 v1 保底价 ¥380</span><span class="rl" style="color:var(--go)">已声明</span></div>
+      <div class="mini" style="margin-top:7px">写回声明：价格写回 OTA · 未声明围栏禁写（系统级）</div></div>
+    <div class="xcard"><div class="xt">装备 · 技能包</div>
+      <div class="memrow" data-go="p6" data-tip="装备库 · P6"><span>🎒 收益管理专家</span><span class="rl">官方套件 · 绑 R1/R2</span></div>
+      <div class="mini" style="margin-top:7px">运行约束：夜班窗口 · 对象写锁（F2.7）· 高危逐次授权</div></div>
+  </div>
+  <div style="display:grid;grid-template-columns:1.2fr 1fr;gap:14px;margin-top:14px">
+    <div class="xcard"><div class="xt">30 天战绩（事件投影 · L6.3）</div>
+      <div class="kpis" style="grid-template-columns:repeat(4,1fr)">
+        <div class="kpi"><div class="kl">动作</div><div class="kv">214</div></div>
+        <div class="kpi"><div class="kl">采纳率</div><div class="kv">91%</div></div>
+        <div class="kpi"><div class="kl">被驳回</div><div class="kv">3</div></div>
+        <div class="kpi"><div class="kl">能量</div><div class="kv">1,840</div><div class="kd">峰谷 68%</div></div>
+      </div>
+      <div class="mini" style="margin-top:9px">驳回原因进偏好模式（F1.7）· 同一驳回模式 3 次校准内不再重复</div>
+      <div style="margin-top:12px"><button class="btn-launch" style="padding:9px 18px;font-size:12px" data-go="p2" data-tip="发消息 · 派遣 → 建任务线程（F3.1）">💬 发消息 · 派遣任务</button></div></div>
+    <div class="xcard"><div class="xt">最近动作事件流（点击进线程 → P2）</div>
+      <div class="timeline">
+        <div class="ti g" data-go="p2_done" data-tip="P2 完成后态"><b>#E-8847</b> 美团周末调价已生效 · 回执 21:42</div>
+        <div class="ti" data-go="p4" data-tip="P4 决断队列"><b>#E-8806</b> +8% 命中 R1 v3 · 挂起待审</div>
+        <div class="ti" data-go="p2" data-tip="P2 执行中"><b>#E-8841</b> 读档案+竞对 · 三要素通过</div>
+        <div class="ti"><b>#E-8755</b> 竞对周报依据 · 被 P4 链路引用</div>
+      </div></div>
+  </div>
+</div>`,'run');
+</script>
+<script>
+/* ================= P6 装备库 ================= */
+SCREENS.p6=()=>frame(`<div style="padding:20px 24px 24px">
+  <div class="ptitle-line"><h2>装备库</h2><span class="alias">Agent 能力商店 · 技能广场</span><span class="anchors">F8.2 · F8.4</span></div>
+  <div class="appr" style="margin-bottom:18px"><div class="ah" style="border:none;padding:13px 16px"><span style="font-size:18px">🤖</span>
+    <div style="flex:1"><b>舰桥副官建议</b><div class="mini" style="margin-top:3px">检测到高频任务：「每周一经营复盘报告」近 4 周 × 4 次（≥3 次/周 触发建议 F8.4）</div></div>
+    <div style="display:flex;gap:8px"><button class="btn-launch" style="padding:7px 14px;font-size:11.5px">⚡ 一键固化为定时任务</button><button class="btn-ghost" data-go="p6_create" data-tip="生成技能草稿 → 打造装备">🛠 生成装备草稿</button><button class="btn-ghost" style="border-color:var(--line);color:var(--ink3)">驳回（降权 E8.3）</button></div></div></div>
+  <div class="section-t">官方套件 · 随行业 Bundle 分发（金边传说）</div>
+  <div class="crewgrid" style="margin-bottom:18px">
+    ${[
+      ['📈','收益管理专家','绑 R1/R2 · 132 次调用 · 采纳率 91%','已装给 调价Agent',true],
+      ['🚒','差评危机公关','绑 R6 · 47 次调用 · 采纳率 88%','可安装',false],
+      ['🧾','渠道对账师','只读 · 89 次调用 · 采纳率 95%','可安装',false],
+    ].map(s=>`<div class="skillcard r-gold"><span class="rar gold">传说 · 官方</span><div style="font-size:22px">${s[0]}</div><h4 style="font-size:13.5px;margin:8px 0 4px">${s[1]}</h4><div class="mini">${s[2]}</div>
+      <div style="margin-top:11px">${s[4]?`<span class="cchip" style="color:var(--go);border-color:rgba(61,255,178,.4)">✓ 已装备 · ${s[3]}</span>`:`<button class="btn-ghost" data-go="p8" data-tip="查看已装给谁 → P8">⚙ 装备到船员</button>`}</div></div>`).join('')}
+  </div>
+  <div class="section-t">团队技能（银边）与行业共享（铜边 · 已脱敏）</div>
+  <div class="crewgrid" style="grid-template-columns:repeat(2,1fr)">
+    <div class="skillcard r-silver"><span class="rar silver">精良 · 团队 v2</span><div style="font-size:22px">📊</div><h4 style="font-size:13.5px;margin:8px 0 4px">周一经营复盘</h4><div class="mini">本店自建 · 采纳率 100% · 零代码三要素创建</div><div style="margin-top:11px"><span class="cchip" style="color:var(--go);border-color:rgba(61,255,178,.4)">✓ 已装备 · 对账Agent</span></div></div>
+    <div class="skillcard r-bronze"><span class="rar bronze">共享 · 行业</span><div style="font-size:22px">🏔</div><h4 style="font-size:13.5px;margin:8px 0 4px">旺季满房冲刺包</h4><div class="mini">已脱敏 ✓ · 华东酒店联盟 · 326 店在用</div><div style="margin-top:11px"><button class="btn-ghost">⚙ 装备到船员</button></div></div>
+  </div>
+  <div style="margin-top:16px"><button class="btn-launch" style="padding:9px 18px;font-size:12px" data-go="p6_create" data-tip="零代码新建技能（F8.3）">🛠 打造新装备（零代码）</button></div>
+</div>`,'run');
+
+SCREENS.p6_create=()=>frame(`<div style="padding:20px 24px 24px">
+  <div class="ptitle-line"><h2>打造新装备</h2><span class="alias">零代码自定义技能 · F8.3</span></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="xcard"><div class="xt">① 何时触发</div><div class="dispatch" style="margin:0;padding:8px 8px 8px 12px"><div class="in"><div class="txt" style="font-size:12px">每周一 08:00，或 RevPAR 连续 3 天下滑时</div></div></div></div>
+      <div class="xcard"><div class="xt">② 做什么</div><div class="dispatch" style="margin:0;padding:8px 8px 8px 12px"><div class="in"><div class="txt" style="font-size:12px">汇总上周 OCC/ADR/RevPAR，对比竞对，给出 3 条本周动作建议</div></div></div></div>
+      <div class="xcard"><div class="xt">③ 不能做什么 → 自动转围栏声明</div><div class="dispatch" style="margin:0;padding:8px 8px 8px 12px"><div class="in"><div class="txt" style="font-size:12px">只读分析，不得直接改价；建议涨幅超 5% 必审</div></div></div>
+        <div class="mini" style="margin-top:7px"><span class="gatelamp review"></span>已生成围栏声明草稿：建议涨幅 &gt;5% → review</div></div>
+      <div style="display:flex;gap:10px"><button class="btn-launch" style="padding:9px 18px;font-size:12px">🧪 dry-run 预览</button><button class="btn-ghost">存草稿</button></div>
+    </div>
+    <div class="xcard"><div class="xt">装备草稿预览 · SKILL.md</div>
+      <div class="mono" style="font-size:11px;color:var(--ink2);line-height:1.9;background:var(--bg900);border:1px solid var(--line);border-radius:10px;padding:13px">name: weekly-ops-review<br>trigger: cron(0 8 * * MON) | revpar_down_3d<br>steps: aggregate_kpi → compare_comp → propose(3)<br>fence_bindings: [review_if_delta&gt;5%]<br>readonly: true · 生效前 dry-run</div>
+      <div class="mini" style="margin-top:9px">确认创建 → 装备 v1 进版本管理 · 绑定围栏随安装生效、卸载即撤销（F8.2/L8.3）· 生产环境仅签名白名单（L8.2）</div></div>
+  </div>
+</div>`,'run');
+
+/* ================= P7 舰船换装坞 ================= */
+const slots=(fail)=>`
+  <div class="slot ok"><span class="oktag">✓ 已装配</span><div class="hex">📁</div><h4>① 档案 Schema</h4><p>一店一档 7 字段组 · forbidden 硬约束 3 条</p></div>
+  <div class="slot ok"><span class="oktag">✓ 已装配</span><div class="hex">🧭</div><h4>② 对象与阶段枚举</h4><p>8 对象 × 经营五阶段</p></div>
+  <div class="slot ok"><span class="oktag">✓ 已装配</span><div class="hex">🔧</div><h4>③ 工具集</h4><p>pms-cli · atlas-browser · iot-adapter · desktop-gui · competitor-crawler</p></div>
+  <div class="slot ok" data-go="p5" data-tip="围栏包 → P5 航道管制台"><span class="oktag">✓ 已装配</span><div class="hex">🛡</div><h4>④ 围栏包 / 群规</h4><p>hotel-baseline.yml · 基线 6 条 🔒 单调守卫</p></div>
+  <div class="slot ${fail?'fail':'ok'}" data-go="p8" data-tip="船员名册 → P8"><span class="${fail?'failtag':'oktag'}">${fail?'✗ 校验失败':'✓ 已装配'}</span><div class="hex">👥</div><h4>⑤ Agent 班组 / 通讯录</h4><p>7 preset · 围栏绑定校验 ${fail?'<b style="color:var(--alert)">1 项失败</b>':'✓'}</p></div>
+  <div class="slot ok"><span class="oktag">✓ 已装配</span><div class="hex">🎨</div><h4>⑥ 工作台 UI / 皮肤</h4><p>6 页 · 状态用例 42 条同步</p></div>`;
+SCREENS.p7=()=>frame(`<div style="padding:20px 24px 24px">
+  <div class="ptitle-line"><h2>舰船换装坞</h2><span class="alias">行业装配台 · 换行业=换成员/群规/皮肤</span><span class="anchors">§2.2 · F2.10</span></div>
+  <div class="infobar" style="margin-bottom:16px">🚀 当前 profile：<b class="mono">workloom-hotel</b> · 装配 <b>6/6</b> · 底座代码零改动（Bundle = npm 包 §2.3）</div>
+  <div class="slots">${slots(false)}</div>
+  <div class="xcard" style="margin-top:16px"><div class="xt">起飞前检查单 · 装配校验（bundle 变更自动运行 · 任一失败拒绝激活）</div>
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:4px">
+      ${['档案 forbidden 校验','枚举冲突检测','工具探针健康','围栏绑定完整','UI 用例同步'].map(c=>`<div style="text-align:center;padding:10px 6px;border:1px solid rgba(61,255,178,.35);border-radius:11px;font-size:11px;color:var(--go)">✓<br>${c}</div>`).join('')}
+    </div></div>
+  <div style="margin-top:16px"><button class="btn-ghost" data-go="p7_fail" data-tip="新建行业 Bundle · 五要素向导（§2.3）">＋ 新建行业 Bundle（五要素向导）</button></div>
+</div>`,'run');
+
+SCREENS.p7_fail=()=>frame(`<div style="padding:20px 24px 24px">
+  <div class="ptitle-line"><h2>舰船换装坞</h2><span class="alias">校验失败 · F2.10/L1.6</span></div>
+  <div class="alertbar" style="margin-bottom:16px">🚫 <b>装配校验未通过，已拒绝激活</b>（不静默失败 L9.2）：⑤ Agent 班组 1 项失败 · 修复后自动重跑</div>
+  <div class="slots">${slots(true)}</div>
+  <div class="xcard" style="margin-top:16px;border-color:rgba(255,84,112,.5)"><div class="xt" style="color:#FFB9C6">修复清单</div>
+    <div class="memrow"><span class="gatelamp block"></span><span><b>桌面Agent v0.9</b> 未声明 fence_bindings → 系统级禁写（F2.10），请在 preset 中补齐围栏声明</span></div>
+    <div class="memrow"><span class="gatelamp block"></span><span>档案 forbidden「不承诺免费升级」与新技能草稿冲突（L1.6 硬约束优先）→ 冲突项进审批</span></div>
+    <div style="margin-top:12px"><button class="btn-launch" style="padding:9px 18px;font-size:12px" data-go="p7" data-tip="修复后重跑校验">↻ 修复并重跑校验</button></div></div>
+</div>`,'run');
+</script>
+<script>
+/* ================= 路由 / 接线 / 地图 ================= */
+const stage=document.getElementById('stage');
+const pageSel=document.getElementById('pageSel'), stateSel=document.getElementById('stateSel');
+const pageOf=id=>id.split('_')[0];
+function fillSels(cur){
+  const pages=[...new Set(ORDER.map(pageOf))];
+  pageSel.innerHTML=pages.map(p=>`<option value="${p}" ${p===pageOf(cur)?'selected':''}>${META[p][0]}</option>`).join('');
+  const sts=ORDER.filter(id=>pageOf(id)===pageOf(cur));
+  stateSel.innerHTML=sts.map(id=>`<option value="${id}" ${id===cur?'selected':''}>${META[id][1]}</option>`).join('');
+}
+function render(){
+  let id=(location.hash||'#p1').slice(1);
+  if(!SCREENS[id]) id='p1';
+  stage.innerHTML=SCREENS[id]();
+  document.getElementById('crumb').innerHTML=`<b>${META[id][0]}</b> · ${META[id][1]} · ${META[id][2]}`;
+  fillSels(id);
+  stage.scrollIntoView();
+}
+window.addEventListener('hashchange',render);
+pageSel.onchange=e=>location.hash=e.target.value;
+stateSel.onchange=e=>location.hash=e.target.value;
+/* data-go 委托 + tooltip */
+const tip=document.getElementById('tooltip');
+document.addEventListener('click',e=>{
+  const g=e.target.closest('[data-go]');
+  if(g){location.hash=g.dataset.go;toast('跃迁 → '+META[g.dataset.go][0]);return;}
+  const b=e.target.closest('button,.lev,.mbtn,.cchip');
+  if(b&&!b.closest('#chrome')&&!b.id){toast('演示接线：该动作在 PRD 中有明确定义（见元素交互说明）');}
+});
+document.addEventListener('mouseover',e=>{
+  const g=e.target.closest('[data-go]');
+  if(g&&g.dataset.tip){tip.style.display='block';tip.textContent='⇢ '+g.dataset.tip;}
+  else tip.style.display='none';
+});
+document.addEventListener('mousemove',e=>{tip.style.left=(e.clientX+16)+'px';tip.style.top=(e.clientY+14)+'px';});
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.style.display='block';clearTimeout(t._h);t._h=setTimeout(()=>t.style.display='none',1800);}
+/* 页面地图 */
+const mapPanel=document.getElementById('mapPanel');
+document.getElementById('mapBtn').onclick=()=>{mapPanel.style.display='block';
+  document.getElementById('mapBody').innerHTML=GROUPS.map(g=>`<div class="grp"><b>${g}</b>${ORDER.filter(id=>META[id][2]===g).map(id=>`<span class="pbtn" data-go="${id}">${META[id][0].split('·')[0]}<span class="eid">${id}</span></span>`).join('')}</div>`).join('');};
+mapPanel.onclick=e=>{if(e.target===mapPanel||e.target.closest('[data-go]'))mapPanel.style.display='none';};
+render();
+</script>
+</body>
+</html>
