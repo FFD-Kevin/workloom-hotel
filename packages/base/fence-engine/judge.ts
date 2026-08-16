@@ -9,6 +9,7 @@
  *  - 判定器是纯函数：输入=对象+动作+参数+上下文+规则集；子调用与普通调用同一瀑布（F2.1/H-4）
  */
 import { evalCondition, FenceEvalError, type EvalScope } from "./expr.js";
+import { isWriteAction } from "../flydata-core/gateway.js";
 
 export type FenceLevel = "auto" | "review" | "block";
 export type RuleResult = "pass" | "review" | "blocked" | "conflict";
@@ -98,10 +99,12 @@ export function judge(input: JudgeInput, rules: RuntimeRule[], defaultLevel: Fen
     if (maxLevel === null || LEVEL_RANK[rule.level] > LEVEL_RANK[maxLevel]) maxLevel = rule.level;
   }
 
-  // 无命中：读类动作恒 auto；写类动作按 default_level（L2.6 行业包口径）
-  const level: FenceLevel = maxLevel ?? defaultLevel;
-  if (maxLevel === null && defaultLevel !== "auto") {
-    triggeredBy.push(`无规则命中 → default_level=${defaultLevel}`);
+  // 无命中：读类动作恒 auto；写类动作才按 default_level（围栏包头部口径逐字：「写类动作
+  // 无任何规则命中 → 按 default_level 处理」。读类不进入 default，否则巡检/采集被误挂起）
+  const write = isWriteAction(input.action);
+  const level: FenceLevel = maxLevel ?? (write ? defaultLevel : "auto");
+  if (maxLevel === null && write && defaultLevel !== "auto") {
+    triggeredBy.push(`写类动作无规则命中 → default_level=${defaultLevel}`);
   }
   return { level, impacts, triggeredBy, evalErrors };
 }

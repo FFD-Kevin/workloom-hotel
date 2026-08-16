@@ -16,6 +16,7 @@
     "@trpc/server": "11.18.0",
     "@workloom/base": "workspace:*",
     "@workloom/db": "workspace:*",
+    "@workloom/runtime": "workspace:*",
     "@workloom/shared": "workspace:*",
     "hono": "4.13.2",
     "zod": "^4.0.0"

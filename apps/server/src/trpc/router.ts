@@ -24,6 +24,8 @@ import {
   expireSweep,
   listQueue,
 } from "@workloom/base/review-console";
+import { routeIntent, runQuest } from "@workloom/runtime";
+import { MAX_CONCURRENT_THREADS } from "@workloom/shared";
 
 /** system router：健康检查（公开） */
 const systemRouter = router({
@@ -109,17 +111,35 @@ const threadsRouter = router({
     }
   }),
 
-  /** Quest 派遣入口（B8 完整实现意图路由/装配/loop；本卡落版本门禁 + 线程建档 + 留痕） */
+  /** Quest 派遣入口（B8：意图路由→含糊反问/建档；L3.1 并发上限；G8 留痕） */
   dispatch: capabilityProcedure("quest")
     .input(
       z.object({
-        title: z.string().min(1),
-        mode: z.enum(["ask", "agent", "quest"]).default("quest"),
+        title: z.string().min(1).max(500), // F3.1：≤500 字
+        presetKey: z.string().default("pricing-agent"),
+        runImmediately: z.boolean().default(false),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       const scope = scopeOf(ctx.identity);
+      // F3.2 意图路由（规则兜底；LLM 分类器在 B8 后续接 model-router）
+      const intent = await routeIntent(input.title);
+      if (intent.kind === "clarify") {
+        // 含糊指令：反问澄清，不盲目建任务
+        return { kind: "clarify" as const, question: intent.clarifyQuestion, via: intent.via };
+      }
       const app = getAppPool();
+      // L3.1：单工作区并发 ≤10，超出排队且可见
+      const conc = await app.query<{ c: string }>(
+        `SELECT count(*) AS c FROM threads WHERE workspace_id=$1 AND status IN ('queued','running')`,
+        [scope.workspaceId],
+      );
+      if (Number(conc.rows[0]?.c ?? 0) >= MAX_CONCURRENT_THREADS) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: `并发上限 ${MAX_CONCURRENT_THREADS}/工作区（L3.1/G11），已超出请稍后或排队`,
+        });
+      }
       const client = await app.connect();
       let threadId: string;
       try {
@@ -134,7 +154,7 @@ const threadsRouter = router({
         await client.query(
           `INSERT INTO threads (id, tenant_id, workspace_id, title, mode, status, created_by)
            VALUES ($1,$2,$3,$4,$5,'queued',$6)`,
-          [threadId, scope.tenantId, scope.workspaceId, input.title, input.mode, ctx.identity.memberNo],
+          [threadId, scope.tenantId, scope.workspaceId, input.title, intent.mode, ctx.identity.memberNo],
         );
       } finally {
         client.release();
@@ -148,10 +168,27 @@ const threadsRouter = router({
         who: { type: "human", id: ctx.identity.memberNo },
         context: { tenant_id: scope.tenantId, workspace_id: scope.workspaceId, time: new Date().toISOString(), channel: "inapp" },
         object: { type: "store", id: scope.workspaceId },
-        decision: { action: "thread.dispatch", after: { threadId, title: input.title, mode: input.mode } },
+        decision: { action: "thread.dispatch", after: { threadId, title: input.title, mode: intent.mode, via: intent.via } },
         rule_impact: [],
       });
-      return { threadId, status: "queued" as const };
+      // 演示驱动：立即执行 Quest 循环（生产由调度器拉取，B9）
+      if (input.runImmediately && intent.mode === "quest") {
+        const r = await runQuest(app, getGatewayPool(), scope, {
+          threadId, goal: input.title, presetKey: input.presetKey,
+        });
+        return { kind: "routed" as const, mode: intent.mode, via: intent.via, threadId, status: r.status, stepsDone: r.stepsDone, stepsTotal: r.stepsTotal };
+      }
+      return { kind: "routed" as const, mode: intent.mode, via: intent.via, threadId, status: "queued" as const };
+    }),
+
+  /** 运行/续跑线程（replay 断点续跑幂等，E3.3/H-5；手动触发演示驱动） */
+  run: capabilityProcedure("quest")
+    .input(z.object({ threadId: z.string(), goal: z.string(), presetKey: z.string().default("pricing-agent") }))
+    .mutation(async ({ ctx, input }) => {
+      const scope = scopeOf(ctx.identity);
+      return runQuest(getAppPool(), getGatewayPool(), scope, {
+        threadId: input.threadId, goal: input.goal, presetKey: input.presetKey,
+      });
     }),
 });
 

@@ -1,0 +1,129 @@
+/**
+ * B8 测试：意图路由（F3.2 含糊反问/规则兜底/超时降级）+ 装配三要素（L3.7）+
+ * Quest 循环（围栏瀑布/回执）+ replay 断点续跑幂等（H-5）
+ * PG 集成仅 RUN_DB_TESTS=1 启用。
+ */
+import { describe, expect, it } from "vitest";
+import { routeIntent, ruleBasedRoute, LlmIntentClassifier, type IntentClassifier } from "./intent.js";
+import { planQuest } from "./loop.js";
+
+describe("意图路由（F3.2）", () => {
+  it("含糊指令反问澄清，不建任务", () => {
+    expect(ruleBasedRoute("帮我看看").kind).toBe("clarify");
+    expect(ruleBasedRoute("在吗？").kind).toBe("clarify");
+  });
+
+  it("三态规则兜底：问句→ask / 逐步→agent / 默认 quest", () => {
+    expect(ruleBasedRoute("请问上周 OCC 多少？")).toMatchObject({ kind: "routed", mode: "ask" });
+    expect(ruleBasedRoute("逐步生成三版文案，每一步给我审").mode).toBe("agent");
+    expect(ruleBasedRoute("把周五雅致大床房调价 5%").mode).toBe("quest");
+  });
+
+  it("LLM 分类器输出受白名单约束；垃圾输出回落规则", async () => {
+    const good: IntentClassifier = { classify: async () => ({ kind: "routed", mode: "ask", rationale: "x", via: "llm" }) };
+    expect((await routeIntent("随便问问", good)).via).toBe("llm");
+    const garbage = new LlmIntentClassifier(async () => "not json at all");
+    const r = await routeIntent("把周五雅致大床房调价 5%", garbage);
+    expect(r.via).toBe("rule");
+    expect(r.kind).toBe("routed");
+  });
+
+  it("意图路由 3s 超时降级（可取消口径）", async () => {
+    const slow: IntentClassifier = { classify: () => new Promise(() => setTimeout(() => undefined, 10_000)) };
+    const r = await routeIntent("查一下昨天差评", slow, 50);
+    expect(r.via).toBe("timeout_fallback");
+    expect(r.kind).toBe("routed");
+  });
+});
+
+describe("计划模板（演示剧本）", () => {
+  const fakePreset = { fenceBindings: [], tools: [], essentials: { archive: {}, stage: "stable", goal: "g" }, agentId: "a", presetKey: "pricing-agent", version: "v2.3", prompt: null };
+  it("调价目标 → 3 步（采集/读取/调价）", () => {
+    const steps = planQuest("周五调价 5%", fakePreset);
+    expect(steps.map((s) => s.action)).toEqual(["competitor.fetch", "pms.price.read", "price.adjust"]);
+  });
+});
+
+/* ================= PG 集成（RUN_DB_TESTS=1） ================= */
+
+const RUN_DB = process.env.RUN_DB_TESTS === "1" && !!process.env.DATABASE_APP_URL;
+const d = RUN_DB ? describe : describe.skip;
+
+d("PG 集成 Quest 循环（种子库）", async () => {
+  const pg = (await import("pg")).default;
+  const { runQuest } = await import("./loop.js");
+  const { assemblePreset, AssemblyReject } = await import("./assembly.js");
+  const app = new pg.Pool({ connectionString: process.env.DATABASE_APP_URL });
+  const gw = new pg.Pool({ connectionString: process.env.DATABASE_GATEWAY_URL });
+  const scope = { tenantId: "tenant-demo", workspaceId: "ws-yunqi" };
+
+  const newThread = async (title: string) => {
+    const id = `T-${Date.now().toString(36)}-${Math.floor(Math.random() * 999)}`;
+    const c = await app.connect();
+    try {
+      await c.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
+      await c.query("SELECT set_config('app.tenant_id', $1, false)", [scope.tenantId]);
+      await c.query(
+        `INSERT INTO threads (id, tenant_id, workspace_id, title, mode, status, created_by)
+         VALUES ($1,$2,$3,$4,'quest','queued','MEM-001')`,
+        [id, scope.tenantId, scope.workspaceId, title],
+      );
+    } finally { c.release(); }
+    return id;
+  };
+
+  const threadEvents = async (threadId: string) => {
+    const c = await gw.connect();
+    try {
+      await c.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
+      const r = await c.query<{ payload: import('@workloom/shared').BusinessEvent }>(
+        `SELECT payload FROM biz_events WHERE tenant_id=$1 AND session_id=$2 ORDER BY seq`,
+        [scope.tenantId, threadId],
+      );
+      return r.rows.map((x) => x.payload);
+    } finally { c.release(); }
+  };
+
+  it("L3.7 三要素缺一拒绝（目标缺失）", async () => {
+    await expect(
+      assemblePreset(app, scope, { workspaceId: scope.workspaceId, presetKey: "pricing-agent", goal: "" }),
+    ).rejects.toThrow(AssemblyReject);
+  });
+
+  it("调价 Quest 全流程：3 步自动执行 → completed，事件带 step_id+回执", async () => {
+    const tid = await newThread("周五雅致大床房调价");
+    const r = await runQuest(app, gw, scope, { threadId: tid, goal: "周五调价 2%", presetKey: "pricing-agent" });
+    expect(r.status).toBe("completed");
+    expect(r.stepsDone).toBe(3);
+    const evs = await threadEvents(tid);
+    expect(evs.map((e) => e.decision.step_id)).toEqual(["s1", "s2", "s3"]);
+    const adjust = evs.find((e) => e.decision.action === "price.adjust")!;
+    expect((adjust.rule_impact as Array<{ rule_id: string }>)[0]!.rule_id).toBe("R1"); // 涨幅≤8% auto
+    expect(adjust.receipt).toBeDefined(); // 回执位（L3.6）
+  });
+
+  it("差评 Quest：R6 越围栏挂起 → pending_review + 审批行", async () => {
+    const tid = await newThread("回复携程差评");
+    const r = await runQuest(app, gw, scope, { threadId: tid, goal: "回复差评", presetKey: "review-agent" });
+    expect(r.status).toBe("pending_review");
+    expect(r.pendingApprovalId).toBeDefined();
+    const c = await app.connect();
+    try {
+      await c.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
+      const a = await c.query(`SELECT status FROM approvals WHERE approval_id=$1`, [r.pendingApprovalId]);
+      expect(a.rows[0].status).toBe("pending");
+    } finally { c.release(); }
+  });
+
+  it("H-5 replay 断点续跑幂等：重复运行不产生重复事件", async () => {
+    const tid = await newThread("对账任务");
+    const r1 = await runQuest(app, gw, scope, { threadId: tid, goal: "夜间对账", presetKey: "reconcile-agent" });
+    expect(r1.status).toBe("completed");
+    const n1 = (await threadEvents(tid)).length;
+    // 模拟 kill -9 后重放：再跑一次同一线程
+    const r2 = await runQuest(app, gw, scope, { threadId: tid, goal: "夜间对账", presetKey: "reconcile-agent" });
+    const n2 = (await threadEvents(tid)).length;
+    expect(n2).toBe(n1); // 幂等：零新增事件
+    expect(r2.stepsDone).toBe(r1.stepsDone);
+  });
+});

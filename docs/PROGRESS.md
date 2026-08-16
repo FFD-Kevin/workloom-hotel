@@ -33,13 +33,13 @@
 - [x] B5 tenancy + 鉴权：版本能力矩阵（F7.2 原文口径）+ 演示身份 JWT（jose）+ 中间件栈（401/403+升级提示）+ members/threads router + dispatch 建档留痕 — 实测：登录签发→me 能力下发→dispatch T-104；H-10 社区版 403 ✅；H-9 跨工作区返回空 ✅；59 测试全绿
 - [x] B6 review-console：统一队列（F5.1 含 diff/规则版本投影）+ 三手势回写（权重 1/2/3，驳回空理由被拒 L5.2，编辑必带新值）+ 幂等（重复回调只处理首次 L5.3）+ 快照过期（E5.3）+ 超时升级扫描（高危不自动放行 L5.4）+ 批量采纳（高危跳过）+ readonly 403（L5.1）+ 驳回原因枚举回流偏好记忆（F1.7）+ approvals tRPC router — `packages/base/review-console/`，73 测试全绿（可重跑）
 - [x] B7 model-router：记忆优先复用（F6.1 零消耗留痕）+ 确定性分级（F6.2 规则表）+ 峰谷窗口（F6.3，G9 谷时旗舰 ≤20% 实测）+ 降级链逐次留痕（F6.4/L6.1 禁静默）+ 逐事件计量+账单=事件投影（F6.5/L6.3）+ 单任务熔断（L6.4）+ 出站脱敏强制（F6.6/L6.2）+ 全链不可用排队/转需介入（E6.1）— `packages/base/model-router/`，84 测试全绿（含 PG 集成：计量/降级事件落库可检索）
-- [ ] B8 runtime + 三态派遣：意图路由 + preset 装配 + loop + 回执校验 + replay 断点续跑（F3.1–F3.9/E3.3）
+- [x] B8 runtime + 三态派遣：意图路由（含糊反问不建任务/LLM 白名单约束/3s 超时降级 F3.2）+ preset 装配三要素缺一拒绝（L3.7）+ Quest 循环（每步围栏瀑布 auto/review/block + 回执校验 E3.7 + step_id 幂等）+ replay 断点续跑零重复事件（H-5）+ L3.1 并发上限 + dsh 挂载点（plugins/workloom-fence 挂 tools/pre-execute）— `packages/runtime/`，端到端实测：含糊反问 ✅ / 调价 Quest T-104 全 3 步 completed ✅；judge 修复读类动作误吃 default_level；9+84 测试绿
 - [ ] B9 night-shift：候选清单 + 状态机 + 一键暂停 + 决策包三段投影 + 触发器引擎（F4.1–F4.8）
 - [ ] B10 巡检 + 技能/意识：定时只读巡检 + 异常分级推送 + 一键派单 + 技能安装/绑定 + 高频检测建议（M9/F8.1–F8.4）
 
 ## 最后游标
 
-- **下一步**：**B8 runtime + 三态派遣**（dsh 挂载首卡）：意图路由（含糊反问）+ preset 装配三要素校验 + agent loop + 回执校验 + replay 断点续跑（F3.1–F3.9/E3.3；验收 H-5 kill -9 重放续跑且幂等 / E3.7 无回执标未核实）。首个文件：`packages/runtime/plugins/flydata-core.ts`（dsh 插件挂载点，Cordis 生命周期）。
+- **下一步**：**B9 night-shift**：候选清单（18:00）+ 状态机（unconfigured→ready→running⇄paused→package_generated）+ 一键暂停 ≤60s 取消链（G5）+ 08:30 决策包三段投影（F4.4/H-7 纯日志投影）+ 触发器引擎（F4.7）。首个文件：`packages/base/night-shift/scheduler.ts`。
 - **此后顺序**：B3 记忆 → B4 围栏 → B5 鉴权/tenancy → B6 审批 → B7 model-router → B8 runtime 三态派遣（dsh 挂载）→ B9 夜班 → B10 巡检/技能。
 
 ## 实测记录（2026-08-16 · Linux 沙箱，Node 24.19 / pnpm 10.14 / PG 17.11 + pgvector 0.8.6）
