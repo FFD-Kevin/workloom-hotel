@@ -17,6 +17,13 @@ import {
 import { gatewayAppend } from "@workloom/base/flydata-core";
 import { makeReadableId } from "@workloom/shared";
 import { capabilityProcedure, protectedProcedure, publicProcedure, router, scopeOf } from "./context.js";
+import {
+  ApprovalError,
+  batchApprove,
+  decide,
+  expireSweep,
+  listQueue,
+} from "@workloom/base/review-console";
 
 /** system router：健康检查（公开） */
 const systemRouter = router({
@@ -148,11 +155,76 @@ const threadsRouter = router({
     }),
 });
 
+/** approvals router（B6：统一队列/三手势/批量/超时扫描；L5.1 服务端强制鉴权） */
+const approvalsRouter = router({
+  list: protectedProcedure
+    .input(z.object({ status: z.enum(["pending", "approved", "edited", "rejected", "expired"]).optional() }).optional())
+    .query(async ({ ctx, input }) => {
+      return listQueue(getAppPool(), scopeOf(ctx.identity), { status: input?.status });
+    }),
+
+  decide: protectedProcedure
+    .input(
+      z.object({
+        approvalId: z.string(),
+        gesture: z.enum(["approve", "edit", "reject"]),
+        reasonEnum: z.string().optional(),
+        reasonText: z.string().max(200).optional(),
+        editedAfter: z.unknown().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      try {
+        return await decide(
+          getAppPool(),
+          getGatewayPool(),
+          scopeOf(ctx.identity),
+          { memberNo: ctx.identity.memberNo, role: ctx.identity.role },
+          input.approvalId,
+          { type: input.gesture, reasonEnum: input.reasonEnum, reasonText: input.reasonText, editedAfter: input.editedAfter },
+        );
+      } catch (err) {
+        if (err instanceof ApprovalError) {
+          throw new TRPCError({
+            code: err.code === "FORBIDDEN_ROLE" ? "FORBIDDEN" : "BAD_REQUEST",
+            message: err.message,
+          });
+        }
+        throw err;
+      }
+    }),
+
+  batchApprove: protectedProcedure
+    .input(z.object({ approvalIds: z.array(z.string()).min(1).max(50) }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        return await batchApprove(
+          getAppPool(),
+          getGatewayPool(),
+          scopeOf(ctx.identity),
+          { memberNo: ctx.identity.memberNo, role: ctx.identity.role },
+          input.approvalIds,
+        );
+      } catch (err) {
+        if (err instanceof ApprovalError) {
+          throw new TRPCError({ code: "FORBIDDEN", message: err.message });
+        }
+        throw err;
+      }
+    }),
+
+  /** 超时升级扫描（F5.7；高危项不自动放行 L5.4）——由触发器/巡检调度调用 */
+  sweep: protectedProcedure.mutation(async ({ ctx }) => {
+    return expireSweep(getAppPool(), scopeOf(ctx.identity));
+  }),
+});
+
 export const appRouter = router({
   system: systemRouter,
   auth: authRouter,
   members: membersRouter,
   threads: threadsRouter,
+  approvals: approvalsRouter,
 });
 
 export type AppRouter = typeof appRouter;
