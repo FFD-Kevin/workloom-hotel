@@ -1,7 +1,7 @@
 /**
  * tRPC 根路由（B10 状态：system / auth / members / threads / approvals / inspection / skills 挂载；
- * 其余 router（events / fence / nightShift / bundle）后续按需要挂载——见 MASTERPLAN §2.2）
- * B10 已挂载：inspection（巡检 M9）/ skills（技能+意识 M8）
+ * 其余 router（events / fence / bundle）后续按需要挂载——见 MASTERPLAN §2.2）
+ * 已挂载：B10 inspection（巡检 M9）/ skills（技能+意识 M8）；F3 workspace（档案/成员）/ nightShift（夜班投影）
  * 本文件同时是前端类型源：apps/web 经 `@workloom/server/router` 导入 AppRouter 类型。
  */
 import { z } from "zod";
@@ -410,6 +410,83 @@ const skillsRouter = router({
   }),
 });
 
+/** workspace router（F3 起 P1 右栏数据源：一店一档投影 + 人机混编在线成员） */
+const workspaceRouter = router({
+  /** 一店一档投影（档案 chips：property/audience/history_curve 等；L7.1 越权空） */
+  profile: protectedProcedure.query(async ({ ctx }) => {
+    const scope = scopeOf(ctx.identity);
+    const app = getAppPool();
+    const client = await app.connect();
+    try {
+      await client.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
+      await client.query("SELECT set_config('app.tenant_id', $1, false)", [scope.tenantId]);
+      const p = await client.query<{ archive: Record<string, unknown> }>(
+        `SELECT archive FROM profiles WHERE workspace_id=$1`, [scope.workspaceId],
+      );
+      const w = await client.query<{ stage: string | null; name: string }>(
+        `SELECT stage, name FROM workspaces WHERE id=$1`, [scope.workspaceId],
+      );
+      return { archive: p.rows[0]?.archive ?? {}, stage: w.rows[0]?.stage ?? null, name: w.rows[0]?.name ?? "" };
+    } finally {
+      client.release();
+    }
+  }),
+  /** 人机混编在线成员（P1E6：Agent 夜班窗口内自动上线 M4；状态来自 agents.status） */
+  agents: protectedProcedure.query(async ({ ctx }) => {
+    const scope = scopeOf(ctx.identity);
+    const app = getAppPool();
+    const client = await app.connect();
+    try {
+      await client.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
+      const r = await client.query<{
+        id: string; preset_key: string; name: string; version: string; kind: string;
+        readonly: boolean; status: string; meta: { night_shift?: boolean };
+      }>(
+        `SELECT id, preset_key, name, version, kind, readonly, status, meta
+         FROM agents WHERE workspace_id=$1 ORDER BY preset_key`,
+        [scope.workspaceId],
+      );
+      return r.rows;
+    } finally {
+      client.release();
+    }
+  }),
+});
+
+/** nightShift router（F3 起 P1 数据源：夜班状态胶囊 + 昨夜战报卡投影） */
+const nightShiftRouter = router({
+  /** 最近班次 + 状态机投影（F4.8）+ 决策包统计（F4.4，deliverPackage 回写的 stats） */
+  current: protectedProcedure.query(async ({ ctx }) => {
+    const scope = scopeOf(ctx.identity);
+    const app = getAppPool();
+    const client = await app.connect();
+    try {
+      await client.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
+      const r = await client.query<{
+        id: string; status: string; run_date: string; fence_snapshot_version: string | null;
+        candidate_count: number; started_at: Date | null;
+        stats: { done: number; pending: number; need_human: number; credits_used: number } | null;
+      }>(
+        `SELECT id, status, run_date, fence_snapshot_version, candidate_count, started_at, stats
+         FROM night_runs WHERE workspace_id=$1 ORDER BY run_date DESC LIMIT 1`,
+        [scope.workspaceId],
+      );
+      const row = r.rows[0];
+      if (!row) return { configured: false as const };
+      return {
+        configured: true as const,
+        run: {
+          id: row.id, status: row.status, runDate: row.run_date,
+          fenceSnapshot: row.fence_snapshot_version, candidateCount: row.candidate_count,
+          startedAt: row.started_at?.toISOString() ?? null, stats: row.stats,
+        },
+      };
+    } finally {
+      client.release();
+    }
+  }),
+});
+
 export const appRouter = router({
   system: systemRouter,
   auth: authRouter,
@@ -418,6 +495,8 @@ export const appRouter = router({
   approvals: approvalsRouter,
   inspection: inspectionRouter,
   skills: skillsRouter,
+  workspace: workspaceRouter,
+  nightShift: nightShiftRouter,
 });
 
 export type AppRouter = typeof appRouter;

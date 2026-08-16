@@ -12,30 +12,45 @@ export function DispatchBar({
   value = "",
   chips = ["云栖酒店 · 当前阶段：旺季"],
   onCancelRoute,
+  onChange,
+  onSubmit,
 }: {
   state?: DispatchBarState;
   value?: string;
   chips?: string[];
   onCancelRoute?: () => void;
+  /** 受控输入（P1 接线；缺省为纯展示态） */
+  onChange?: (v: string) => void;
+  /** Enter 或「启航」提交（空文本不可点——§5.1） */
+  onSubmit?: () => void;
 }) {
   return (
     <div className="rounded-msg border border-gline bg-card p-3 shadow-[0_0_30px_rgba(255,160,60,.10)]">
       <div className="flex flex-wrap items-center gap-3">
         {/* 航线图标（金色径向渐变方块） */}
         <span className="inline-block h-8 w-8 shrink-0 rounded-lg gold-grad shadow-[0_0_16px_rgba(255,160,60,.5)]" />
-        {/* 输入区 */}
+        {/* 输入区（受控；≤500 字 F3.1） */}
         <div
           className={`min-w-40 flex-1 rounded-lg border px-3 py-2 text-body transition-colors ${
             state === "empty" ? "border-line bg-bg700 text-ink3" : "border-gline bg-bg800 text-ink"
           }`}
         >
-          {state === "empty" && "设定航线…（一句话派遣，≤500 字 · F3.1）"}
-          {state === "typing" && value}
-          {state === "routing" && (
+          {state === "routing" ? (
             <span className="inline-flex items-center gap-2 text-holo">
               识别中…
               <span className="inline-block h-3 w-3 animate-spin rounded-full border border-holo border-t-transparent" />
             </span>
+          ) : onChange ? (
+            <input
+              value={value}
+              maxLength={500}
+              onChange={(e) => onChange(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && value.trim()) onSubmit?.(); }}
+              placeholder="设定航线…（一句话派遣，≤500 字 · F3.1）"
+              className="w-full bg-transparent text-ink outline-none placeholder:text-ink3"
+            />
+          ) : (
+            (state === "empty" ? "设定航线…（一句话派遣，≤500 字 · F3.1）" : value)
           )}
         </div>
         {/* 三态 pill（主线 Quest 默认选中·金边发光） */}
@@ -58,7 +73,9 @@ export function DispatchBar({
         ) : (
           <button
             type="button"
-            className="relative cursor-pointer overflow-hidden rounded-lg gold-grad px-4 py-2 text-body font-black text-ongold shadow-[0_0_18px_rgba(255,160,60,.45)]"
+            disabled={!value.trim()}
+            onClick={onSubmit}
+            className="relative cursor-pointer overflow-hidden rounded-lg gold-grad px-4 py-2 text-body font-black text-ongold shadow-[0_0_18px_rgba(255,160,60,.45)] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
           >
             <span className="relative z-10">启航 ▶</span>
             <span

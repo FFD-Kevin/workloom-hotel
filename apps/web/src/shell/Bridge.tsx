@@ -59,7 +59,17 @@ function CornerTicks() {
 
 
 
-export function Bridge({ children }: { children: ReactNode }) {
+export function Bridge({
+  children,
+  left,
+  right,
+}: {
+  children: ReactNode;
+  /** 左栏会话列表（P1 起由页面注入真实数据；缺省为占位） */
+  left?: ReactNode;
+  /** 右栏上下文面板（同上） */
+  right?: ReactNode;
+}) {
   return (
     <div className="min-h-screen bg-bg950">
       <StarField />
@@ -85,8 +95,9 @@ export function Bridge({ children }: { children: ReactNode }) {
 
           {/* IM 三栏（§4.1：236px 左｜弹性中｜264px 右；栏间 1px 全息青细线=border-line） */}
           <div className="flex min-h-[640px]">
-            {/* 左侧会话列表（占位：演示线程 T-101/102/103，种子数据口径） */}
+            {/* 左侧会话列表（P1 注入真实分组数据；缺省占位=演示线程种子口径） */}
             <aside className="w-col-left border-r border-line p-3">
+              {left ?? (<>
               <div className="mb-2 px-1 text-[11px] tracking-[.2em] text-ink3">会话 · THREADS</div>
               {[
                 { id: "T-101", title: "周五旺季调价", status: "completed", cls: "text-go" },
@@ -104,17 +115,22 @@ export function Bridge({ children }: { children: ReactNode }) {
                   <div className="mt-1 text-body text-ink2">{t.title}</div>
                 </div>
               ))}
+              </>)}
             </aside>
 
             {/* 主区 */}
             <main className="flex-1 p-5">{children}</main>
 
-            {/* 右上下文面板（占位） */}
+            {/* 右上下文面板（P1 注入真实投影；缺省占位） */}
             <aside className="w-col-right border-l border-line p-3">
-              <div className="mb-2 px-1 text-[11px] tracking-[.2em] text-ink3">上下文 · CONTEXT</div>
-              <div className="rounded-lg border border-line bg-card p-3 text-xs leading-relaxed text-ink3">
-                档案 / 阶段 / 目标三要素投影位（L3.7）。阶段三接线。
-              </div>
+              {right ?? (
+                <>
+                  <div className="mb-2 px-1 text-[11px] tracking-[.2em] text-ink3">上下文 · CONTEXT</div>
+                  <div className="rounded-lg border border-line bg-card p-3 text-xs leading-relaxed text-ink3">
+                    档案 / 阶段 / 目标三要素投影位（L3.7）。阶段三接线。
+                  </div>
+                </>
+              )}
             </aside>
           </div>
         </div>
