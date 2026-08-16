@@ -9,7 +9,7 @@
 | 阶段 | 状态 | tag |
 |---|---|---|
 | 阶段一 环境初始化 | ✅ 完成（A1–A7，Linux 沙箱实测全绿；Mac 实测项见「待回填」） | `v0.1.0` |
-| 阶段二 后端 API | ⬜ 未开始（**首卡 B0「dsh 落地验证」，D12**：vendor fork 锁 rc.6 → 跑通 dsh web → 最小插件挂载实证 → 对接报告） | — |
+| 阶段二 后端 API | 🚧 B0 已完成（dsh 落地验证三项实证全过）；下一卡 B1 | —（B10 后打 `v0.2.0`） |
 | 阶段三 前端页面 | ⬜ 未开始 | — |
 | 阶段四 联调与启动脚本 | ⬜ 未开始 | — |
 
@@ -45,6 +45,23 @@
 **批次 1 遗留修复（本批次顺手回填）**：
 1. `event-schema.ts`：三处 `z.iso.datetime()` 改 `z.iso.datetime({ offset: true })`（附录 E 示例带 `+08:00`，原写法单测「接受合法事件」失败）。
 2. `0001_init.sql`：GRANT 序列名 `biz_events_seq` → `biz_events_seq_seq`（bigserial 列名为 seq 的实际序列名）。
+3. 根 `package.json`：补 `pg`/`yaml`/`@workloom/shared` 依赖声明（migrate.ts/seed.ts 实际引用）；`@vitejs/plugin-react` pin `5.2.0`（6.x 依赖 vite 8 内部路径，与总纲 pin 的 vite 7 不兼容）。
+
+## 待回填（Mac 实测门禁）
+
+沙箱已覆盖上表全部机制项；以下 Mac 特有项待真机复核：`bash scripts/doctor.sh` 输出、`docker compose up -d`（OrbStack/Docker Desktop）、`./scripts/start.sh` 一条命令端到端（沙箱无 docker，docker 分支未实跑）。
+
+## 运行方式
+
+见 `README.md` 快速开始（`./scripts/start.sh` 一键）。
+
+## 已知限制与说明
+
+- 数据库迁移采用手写 SQL（`migrations/*.sql`）为 DDL 事实源，`packages/db/src/schema.ts` 为类型镜像，两者必须同步演进（DECISIONS D9）。
+- RLS：表 owner（迁移/种子账号）默认绕过策略；应用连接须事务内 `set_config('app.workspace_id' / 'app.tenant_id')`（已由 `packages/db/src/client.ts` 的 `withWorkspace` 封装；seed 的 gateway 写入用会话级 set_config）。
+- LLM 默认 `mock` provider（无 Key 全流程可跑）；真实模型在 `.env` 配 `LLM_PROVIDER/LLM_API_KEY`（阶段二 B7 落地）。
+- 事件库 append-only：reset=整库重建（`scripts/reset.sh`），不做清表 DELETE。
+init.sql`：GRANT 序列名 `biz_events_seq` → `biz_events_seq_seq`（bigserial 列名为 seq 的实际序列名）。
 3. 根 `package.json`：补 `pg`/`yaml`/`@workloom/shared` 依赖声明（migrate.ts/seed.ts 实际引用）；`@vitejs/plugin-react` pin `5.2.0`（6.x 依赖 vite 8 内部路径，与总纲 pin 的 vite 7 不兼容）。
 
 ## 待回填（Mac 实测门禁）

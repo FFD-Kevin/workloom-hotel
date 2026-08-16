@@ -20,6 +20,11 @@
     "typecheck": "pnpm -r --if-present typecheck",
     "test": "pnpm -r --if-present test"
   },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "node-pty"
+    ]
+  },
   "devDependencies": {
     "@types/node": "^24.0.0",
     "concurrently": "^9.1.0",
