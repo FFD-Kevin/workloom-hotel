@@ -291,9 +291,10 @@ credentials（凭据引用，加密存储，事件只记引用 ID）
 | 卡 | 内容 | 验收断言 |
 | --- | --- | --- |
 | E1 | E2E 演示剧本：PF.1 晨间审批 / PF.2 一句话派遣 / PF.3 巡检派单 / PF.4 夜班闭环（含一键暂停）/ PF.5 围栏演进 / PF.6 技能固化 | 六条流程在 Mac 上实跑通；演示脚本 `pnpm demo` 可一键重置并生成「昨夜」数据 |
-| E2 | `scripts/start.sh / stop.sh / reset.sh`：起 PG→migrate→seed→server→web；端口冲突与缺依赖的友好提示 | 全新终端 `./scripts/start.sh` 一条命令可用 |
+| E2 | `scripts/start.sh / stop.sh / reset.sh / doctor.sh`：起 PG→migrate→seed→server→web；端口冲突与缺依赖的友好提示；doctor.sh 输出一屏自检报告——对齐 dsh-TUI `/doctor` 清单（Node 版本/架构/模型/工作目录/凭据状态/会话存储）+ 本项目侧检查（PG 连通/迁移版本/RLS/种子完整性/node-pty 原生模块/Xcode CLT）（D13②） | 全新终端 `./scripts/start.sh` 一条命令可用；`./scripts/doctor.sh` 一屏定位环境断点 |
 | E3 | README（macOS 前置：Docker Desktop 或 brew PG；LLM Key 可选配置；Mock 模式说明）+ docs 四件套收尾 | 按 README 从零可在 ≤半天 跑起来 |
 | E4 | 可选：Tauri 2 桌面壳配置与说明（非必须，不影响 v1.0.0） | 文档就绪即可 |
+| E6 | dsh headless 回归门禁（D13①）：`dsh --profile headless` 非交互执行「最小 Quest → 围栏瀑布 → 事件落库 → 验链」脚本化用例，纳入回归套件；并作为 H-5（kill -9 重放续跑且幂等）的验收载体 | headless 用例单轮全绿；kill -9 重放零重复事件；失败即阻塞 E5 打 tag |
 | E5 | **tag `v1.0.0`** + PROGRESS.md 归档 | 仓库完整、可克隆、可运行 |
 
 ---
@@ -351,6 +352,7 @@ G1–G11 为生产 SLO，开发期落实「机制」而非「数字」：检索�
 | mem0 / Presidio 独立服务 / WrenAI | 记忆检索或脱敏规则复杂度超过自建薄层（如多语言 PII、语义层治理需求） |
 | LiteLLM（VPC 本地模型代理） | 私有化部署立项；届时按 V3 纪律（哈希 pin+验签+仅内网） |
 | WebSocket/SSE | 轮询口径无法满足推送 SLA 时 |
+| DSH Desktop 式桌面一键安装包（Electron 内嵌 Node + dsh 服务生命周期托管 + 首启自动建 Profile；参考 anywhere-labs/deepseek-harness-desktop，D13③） | 私有化交付/面向弱 IT 能力客户的一键分发需求出现时；届时评估替代或合并 E4 Tauri 方案 |
 | Redis / Kafka / OPA / Temporal / Lago / Keycloak | 同技术方案 V3 §11 触发条件，逐字继承 |
 
 ---
