@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./flydata-core": "./flydata-core/index.ts"
+    "./flydata-core": "./flydata-core/index.ts",
+    "./fence-engine": "./fence-engine/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
@@ -14,6 +15,7 @@
     "@workloom/db": "workspace:*",
     "@workloom/shared": "workspace:*",
     "pg": "8.23.0",
+    "yaml": "2.9.0",
     "zod": "^4.0.0"
   },
   "devDependencies": {
