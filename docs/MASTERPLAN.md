@@ -16,7 +16,7 @@
 
 | 编号 | 决策 | 理由 |
 | --- | --- | --- |
-| D1 | **运行时不直接依赖 dsh（DeepSeek Harness）**，改为「薄自研运行时 + 与 dsh 概念同构 + 迁移 seam 预留」 | dsh 于 2026-08-13 才以 MIT 开源（npm `@deepseek-ai/dsh@0.1.0-rc.6`），是发布仅 3 天的 RC；其 API 面尚无稳定文档，对话框生成代码无法对着未知 API 写，调试成本全压在你本机。技术方案 V3 自身也把「文档/接口不成熟」列为中风险。首版自建薄运行时（Loop/工具流水线/围栏瀑布/会话日志回放/调度），概念与 dsh 一一对应，未来达触发条件再迁移（见 §7 停车场）。453k 行里我们首版真正需要的只有：单工作区 ≤10 并发的任务循环与留痕。 |
+| D1 | ~~运行时不直接依赖 dsh，薄自研运行时 + 迁移 seam 预留~~ **已被 D12 取代（2026-08-16 用户拍板）**：确定使用 dsh 作为 L1 运行时地基，阶段二接入（首卡 B0 落地验证，vendor fork 锁 `0.1.0-rc.6`）；六插件核心逻辑仍为自研护城河、与 dsh 解耦 | 原决策理由（RC 风险、文档不成熟）仍成立，故以「vendor fork 锁 commit + B0 实证先行」的方式接入，而非直接裸用浮动版本 |
 | D2 | **首版只做酒店版 Bundle 演示** | PRD P 章全部示例（云栖酒店、王店长、R1–R6 围栏、7 Agent preset）均为酒店版场景；营销版结构同构，作为「第三行业复制」的后续动作，不进四阶段。 |
 | D3 | **数据库只用 PostgreSQL 17 + pgvector**，docker-compose 一键拉起；备选 Homebrew `postgresql@17` | PRD 的 RLS、JSONB GIN、向量记忆都依赖 PG；SQLite 边缘形态是私有化部署章节的事，进停车场。技术方案 V3 写的是 PG16，PG17 为当前主流稳定版，pgvector 官方镜像直接支持。 |
 | D4 | **LLM 经 OpenAI 兼容网关接入（DeepSeek / Kimi / GLM / OpenAI 可切），并内置确定性 Mock Provider** | 无 API Key 也能在 Mac 上完整跑通全部页面、状态与演示剧本——这是「断断续续接力开发」的保险丝：任何新窗口接手时，不需要任何外部凭据即可验证系统行为。 |
@@ -85,10 +85,10 @@
 │    model-router  消息生产成本：分级路由/峰谷/降级链/逐事件计量/熔断    │
 │    tenancy       组织与商业化：工作区隔离/版本能力矩阵/积分账户        │
 ├─────────────────────────────────────────────────────────────────┤
-│ L1 薄自研运行时 mini-harness（packages/runtime，与 dsh 概念同构）    │
-│    agent loop · 工具注册表 · pre-execute 瀑布（围栏段）·            │
-│    append-only 会话事件日志 + 重放断点续跑 · jobs 调度 ·            │
-│    preset/bundle 加载器 · skills 加载 · LLM 网关（含 Mock）         │
+│ L1 DeepSeek Harness v0.1（vendor fork 锁 rc.6 commit · vendor/dsh）   │
+│    agent loop · 工具注册表与受守卫执行流水线 · append-only 会话日志    │
+│    · jobs 调度 · agentPresets · skills · approval/userQuestions ·     │
+│    llm adapter seam · invariants 不变量注册表（G8 落点）              │
 ├─────────────────────────────────────────────────────────────────┤
 │ L0 基础设施                                                       │
 │    PostgreSQL 17 + pgvector · 本地文件证据存储 ./data/snapshots ·   │
@@ -117,13 +117,14 @@ packages/base（六插件，纯服务层，不碰 HTTP）
   │                  · 逐事件计量（model_trace）· 单任务消耗熔断
   └─ tenancy/        成员与角色 · 版本能力矩阵（社区/Pro/Teams/VPC）
                      · 越权返回空 · 积分账户投影
-packages/runtime（薄运行时）
-  ├─ loop.ts         Agent 主循环：step → 围栏瀑布 → 工具执行 → 写事件 → 下一步
-  ├─ waterfall.ts    pre-execute 瀑布（forbidden 先行 → 基线∪本店规则 → auto/review/block）
-  ├─ replay.ts       事件流重放 · 断点续跑 · 幂等恢复（kill -9 耐受，E3.3）
-  ├─ jobs.ts         cron 调度（18:00 候选 / 22:00 启动 / 08:30 决策包 / 07:00 巡检）
-  ├─ registry.ts     工具注册表（读/写标注）· preset 装配（三要素校验 F3.6）
-  └─ llm/            OpenAI 兼容 client + Mock Provider（确定性剧本）
+packages/runtime（dsh 接入层：六插件即 dsh 插件 + 自研 seam providers）
+  ├─ plugins/         flydata-core / fence-engine / review-console / night-shift
+  │                   / model-router / tenancy 的 dsh 插件挂载点（Cordis 生命周期）
+  ├─ providers/       session-persistence-pg（会话日志落 biz_events+哈希链）
+  │                   · llm-workloom-router（分级/峰谷/降级链/计量 adapter）
+  │                   · credentials-pg（凭据 seam）
+  └─ bridges/         事件桥：dsh 会话事件 → 五元事件投影 → PG（G8 不变量校验）
+vendor/dsh          # DeepSeek Harness fork（锁 0.1.0-rc.6 commit，B0 落地）
 bundles/hotel        行业资产（YAML/JSON/seed，不改底座一行代码）
 ```
 
@@ -180,14 +181,16 @@ workloom-im/
 ├─ docs/
 │  ├─ MASTERPLAN.md            # 本总纲
 │  ├─ PROGRESS.md              # 进度事实源（接力核心，每会话更新）
-│  ├─ DECISIONS.md             # ADR 决策记录（D1–D8 起）
-│  └─ RELAY.md                 # 接力协议（新窗口承接 SOP）
+│  ├─ DECISIONS.md             # ADR 决策记录（D1–D12）
+│  ├─ RELAY.md                 # 接力协议（新窗口/其他 AI 工具承接 SOP）
+│  └─ dsh-integration.md       # dsh 对接报告（阶段二 B0 产出）
 ├─ scripts/                    # start.sh / stop.sh / reset.sh / demo.ts / seed.ts
 ├─ packages/
 │  ├─ shared/                  # 五元事件 zod schema · 常量 · 枚举 · id 生成
-│  ├─ runtime/                 # 薄自研运行时（loop/waterfall/replay/jobs/llm）
+│  ├─ runtime/                 # dsh 接入层：六插件挂载点 + 自研 seam providers + 事件桥
 │  └─ base/                    # 六大插件服务
 ├─ bundles/hotel/              # 酒店版行业资产 + 演示 seed
+├─ vendor/dsh/                 # DeepSeek Harness fork（锁 0.1.0-rc.6 commit，阶段二 B0 落地）
 └─ apps/
    ├─ server/                  # Hono + tRPC
    └─ web/                     # React 19 + Vite + Tailwind 4
@@ -254,10 +257,11 @@ credentials（凭据引用，加密存储，事件只记引用 ID）
 | A6 | apps/server 最小入口（Hono+tRPC+健康检查）+ apps/web 壳（tokens.css+舰桥框架+空 P1） | 浏览器打开可见星盟战舰基底，tRPC 握手 200 |
 | A7 | git 初始化 + 建库脚本 + docs 四件套（总纲/PROGRESS/DECISIONS/RELAY） | push 成功，**tag `v0.1.0`** |
 
-### 阶段二 · 后端 API 开发（依赖拓扑：网关→事件→围栏→权限→审批→路由→运行时→夜班→巡检→技能）
+### 阶段二 · 后端 API 开发（首卡 B0 落地验证 dsh；此后依赖拓扑：网关→事件→围栏→权限→审批→路由→运行时(dsh 原生)→夜班→巡检→技能）
 
 | 卡 | 内容（回引） | 验收断言 |
 | --- | --- | --- |
+| B0 | **dsh 落地验证（D12）**：vendor fork 锁 `0.1.0-rc.6` commit（`vendor/dsh`）→ Mac 跑通 `pnpm dsh web` → 按官方 cookbook 挂载最小插件（hello-fence）实证 → 产出《dsh 对接报告》（六插件×seam 映射表落 `docs/dsh-integration.md`） | dsh web 可访问；最小插件在 dsh 内加载成功；报告入库 |
 | B1 | flydata-core 写入段：安全网关三段瀑布 + 事件 append + 哈希链 + 幂等（F1.1/F1.2/L1.4） | 旁路直写被 DB 拒绝（H-2）；重复写入丢弃不报错 |
 | B2 | 事件检索：结构化过滤 + NL 入口薄自译（LLM→where，超时降级表单）（F1.3/E1.6） | 结构化检索 P95 达标机制就位；NL 超时降级可演示 |
 | B3 | 组织记忆：三级作用域 + 归因 + pgvector 检索 + 使用记录（F1.4/F6.1） | 任一记忆可反查来源事件 |
@@ -341,7 +345,7 @@ G1–G11 为生产 SLO，开发期落实「机制」而非「数字」：检索�
 
 | 停车场（触发条件才引入） | 触发条件 |
 | --- | --- |
-| dsh 迁移 | dsh 发布稳定 1.x 且文档成熟；迁移范围限 L1 运行时层，六插件概念同构平移 |
+| dsh 上游升级跟进 | 官方发布稳定 1.x 后：跑契约测试套件评估升级 vendor fork（升级前必须全绿） |
 | Tauri 桌面壳 / Taro 小程序 | 浏览器版验收后；移动端先以 375 视口 Web 演示 |
 | IM 连接器（钉钉/企微/飞书/Slack） | 真实企业通道接入需求出现；首版 channel=inapp 回环已保幂等与回调语义 |
 | mem0 / Presidio 独立服务 / WrenAI | 记忆检索或脱敏规则复杂度超过自建薄层（如多语言 PII、语义层治理需求） |
