@@ -1,0 +1,65 @@
+/**
+ * 数据库连接与多租户上下文
+ * 双连接池纪律（F1.2/L1.2）：
+ *   - gateway 池（workloom_gateway）：唯一能 INSERT biz_events 的角色，专供安全网关使用
+ *   - app 池（workloom_app）：其余全部读写；对 biz_events 只读（旁路直写被 DB 层拒绝）
+ * RLS 口径（F7.1/L7.1）：每次请求在事务内 set_config app.workspace_id / app.tenant_id
+ */
+import { Pool, type PoolClient } from "pg";
+import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
+import * as schema from "./schema.js";
+
+export type Db = NodePgDatabase<typeof schema>;
+
+let appPool: Pool | null = null;
+let gatewayPool: Pool | null = null;
+
+export function getAppPool(url = process.env.DATABASE_APP_URL): Pool {
+  if (!url) throw new Error("缺少 DATABASE_APP_URL（见 .env.example）");
+  if (!appPool) appPool = new Pool({ connectionString: url, max: 10 });
+  return appPool;
+}
+
+export function getGatewayPool(url = process.env.DATABASE_GATEWAY_URL): Pool {
+  if (!url) throw new Error("缺少 DATABASE_GATEWAY_URL（见 .env.example）");
+  if (!gatewayPool) gatewayPool = new Pool({ connectionString: url, max: 4 });
+  return gatewayPool;
+}
+
+export interface TenantScope {
+  tenantId: string;
+  workspaceId: string;
+}
+
+/**
+ * 在工作区上下文内执行：事务内设置 RLS 变量 → 回调 → 提交；异常回滚。
+ * 用法：await withWorkspace(appPool, scope, async (db) => db.select()...)
+ */
+export async function withWorkspace<T>(
+  pool: Pool,
+  scope: TenantScope,
+  fn: (db: Db, client: PoolClient) => Promise<T>,
+): Promise<T> {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
+    await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
+    const db = drizzle(client, { schema });
+    const result = await fn(db, client);
+    await client.query("COMMIT");
+    return result;
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+/** 优雅关闭（stop.sh / 测试用） */
+export async function closeAllPools(): Promise<void> {
+  await Promise.all([appPool?.end(), gatewayPool?.end()]);
+  appPool = null;
+  gatewayPool = null;
+}
