@@ -192,7 +192,7 @@ export default function P1() {
       )}
       <div className="mt-3 mb-2 px-1 text-[11px] tracking-[.2em] text-ink3">任务线程 · ≤10 并发（G11）</div>
       {threads.map((t) => (
-        <div key={t.id} className="mb-1.5 cursor-pointer rounded-lg border border-line bg-card px-3 py-2.5 hover:border-gline">
+        <a key={t.id} href={`/p2/${t.id}`} className="mb-1.5 block rounded-lg border border-line bg-card px-3 py-2.5 no-underline hover:border-gline">
           <div className="flex items-center justify-between">
             <span className="font-mono text-[11px] text-ink3">{t.id}</span>
             <span className="inline-flex items-center gap-1.5 text-[11px] text-ink2">
@@ -201,7 +201,7 @@ export default function P1() {
             </span>
           </div>
           <div className="mt-1 text-body text-ink2">{t.title}</div>
-        </div>
+        </a>
       ))}
       {ready && threads.length === 0 && (
         <div className="rounded-lg border border-dashed border-line px-3 py-4 text-center text-caption text-ink3">

@@ -16,3 +16,4 @@ export * from "./NightStatusPill";
 export * from "./EmergencyBrake";
 export * from "./feedback";
 export * from "./gamification";
+export * from "./PlanCompareCard";

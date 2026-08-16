@@ -200,6 +200,47 @@ const threadsRouter = router({
       return { kind: "routed" as const, mode: intent.mode, via: intent.via, threadId, status: "queued" as const };
     }),
 
+  /** 线程详情（P2 线程头/信息面板；L7.1 越权返回空） */
+  get: protectedProcedure
+    .input(z.object({ threadId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const scope = scopeOf(ctx.identity);
+      const app = getAppPool();
+      const client = await app.connect();
+      try {
+        await client.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
+        const r = await client.query(
+          `SELECT id, title, mode, status, progress_done, progress_total, created_by, agent_id, created_at, updated_at
+           FROM threads WHERE workspace_id=$1 AND id=$2`,
+          [scope.workspaceId, input.threadId],
+        );
+        return r.rows[0] ?? null;
+      } finally {
+        client.release();
+      }
+    }),
+
+  /** 行动消息流（P2-⑤：该线程的事件流子序列投影，按 ts 升序；含 rule_impact/model_trace 渲染位） */
+  events: protectedProcedure
+    .input(z.object({ threadId: z.string(), limit: z.number().min(1).max(200).default(100) }))
+    .query(async ({ ctx, input }) => {
+      const scope = scopeOf(ctx.identity);
+      const app = getAppPool();
+      const client = await app.connect();
+      try {
+        await client.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
+        await client.query("SELECT set_config('app.tenant_id', $1, false)", [scope.tenantId]);
+        const r = await client.query<{ payload: unknown }>(
+          `SELECT payload FROM biz_events
+           WHERE workspace_id=$1 AND session_id=$2 ORDER BY seq ASC LIMIT $3`,
+          [scope.workspaceId, input.threadId, input.limit],
+        );
+        return r.rows.map((x) => x.payload);
+      } finally {
+        client.release();
+      }
+    }),
+
   /** 运行/续跑线程（replay 断点续跑幂等，E3.3/H-5；手动触发演示驱动） */
   run: capabilityProcedure("quest")
     .input(z.object({ threadId: z.string(), goal: z.string(), presetKey: z.string().default("pricing-agent") }))
