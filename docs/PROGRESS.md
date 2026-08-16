@@ -23,10 +23,24 @@
 - [x] A6 apps/server 最小入口（Hono+tRPC v11 fetch adapter+健康检查）+ apps/web 壳（tokens.css+舰桥框架+空 P1+链路自检卡）— `apps/server` / `apps/web`
 - [x] A7 start.sh / stop.sh / reset.sh + README 快速开始复核 + tag `v0.1.0`
 
+## 阶段二任务卡
+
+- [x] B0 dsh 落地验证（D12）：vendor fork 锁 rc.6（integrity 核验，`vendor/dsh/VENDOR.md`）→ `pnpm dsh web` 跑通 200 → hello-fence 最小插件经 profile `cordis.patch.yml` 挂载成功（`tools/pre-execute` 瀑布）→《dsh 对接报告》+ 六插件 × seam 映射表（`docs/dsh-integration.md`）
+- [x] B1 flydata-core 写入段：安全网关三段瀑布（权限/脱敏/高风险授权，F2.10/L9.1/L3.5 复查位）+ 事件 append + 哈希链 + 幂等（F1.1/F1.2/L1.4）— `packages/base/flydata-core/`，13 测试全绿（含 PG 集成：幂等丢弃/链序/脱敏落库）
+- [ ] B2 事件检索：结构化过滤 + NL 入口薄自译（F1.3/E1.6）
+- [ ] B3 组织记忆：三级作用域 + 归因 + pgvector 检索 + 使用记录（F1.4/F6.1）
+- [ ] B4 fence-engine：YAML DSL + 纯函数判定 + 单调守卫 + 版本化 + dry-run + 对象写锁（F2.1–F2.10）
+- [ ] B5 tenancy + 鉴权：演示身份 JWT + 角色 + 版本能力矩阵 + 越权返回空（F5.6/F7.1/F7.2）
+- [ ] B6 review-console：统一队列 + 三手势回写 + 批量采纳 + 快照过期检测（F5.1–F5.7）
+- [ ] B7 model-router：OpenAI 兼容网关 + Mock provider + 分级/峰谷/降级链/计量/熔断（F6.1–F6.8）
+- [ ] B8 runtime + 三态派遣：意图路由 + preset 装配 + loop + 回执校验 + replay 断点续跑（F3.1–F3.9/E3.3）
+- [ ] B9 night-shift：候选清单 + 状态机 + 一键暂停 + 决策包三段投影 + 触发器引擎（F4.1–F4.8）
+- [ ] B10 巡检 + 技能/意识：定时只读巡检 + 异常分级推送 + 一键派单 + 技能安装/绑定 + 高频检测建议（M9/F8.1–F8.4）
+
 ## 最后游标
 
-- **下一步**：阶段二首卡 **B0「dsh 落地验证」（D12）**。首个动作：vendor fork `@deepseek-ai/dsh@0.1.0-rc.6` 锁 commit 至 `vendor/dsh`，跑通 `pnpm dsh web`，按官方 cookbook 挂载最小插件（hello-fence）实证，产出 `docs/dsh-integration.md`（六插件 × seam 映射表）。
-- **此后顺序**：B1 网关/事件写入 → B2 检索 → B3 记忆 → B4 围栏 → B5 鉴权/tenancy → B6 审批 → B7 model-router → B8 runtime 三态派遣 → B9 夜班 → B10 巡检/技能。
+- **下一步**：**B2 事件检索**：结构化过滤 + NL 入口薄自译（LLM→where，超时降级表单，F1.3/E1.6）。首个文件：`packages/base/flydata-core/recall.ts`。
+- **此后顺序**：B3 记忆 → B4 围栏 → B5 鉴权/tenancy → B6 审批 → B7 model-router → B8 runtime 三态派遣（dsh 挂载）→ B9 夜班 → B10 巡检/技能。
 
 ## 实测记录（2026-08-16 · Linux 沙箱，Node 24.19 / pnpm 10.14 / PG 17.11 + pgvector 0.8.6）
 
