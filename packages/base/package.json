@@ -5,6 +5,8 @@
   "type": "module",
   "exports": {
     "./flydata-core": "./flydata-core/index.ts",
+    "./inspection": "./inspection/index.ts",
+    "./skills": "./skills/index.ts",
     "./fence-engine": "./fence-engine/index.ts",
     "./model-router": "./model-router/index.ts",
     "./night-shift": "./night-shift/index.ts",

@@ -44,27 +44,31 @@ d("PG 集成记忆（种子库）", async () => {
   const scope = { tenantId: "tenant-demo", workspaceId: "ws-yunqi" };
   const embedder = new MockEmbedder();
 
+  const RUN = Date.now().toString(36); // 唯一后缀：同一数据库可重跑（集成测试不留跨轮污染）
+  const memId = `mem-b3-test-${RUN}`;
+  const memContent = `B3 测试模式记忆（写入于集成测试 ${RUN}）`;
+
   it("写入记忆（脱敏）→ 结构化检索命中 → 语义检索有距离", async () => {
     await upsertMemory(pool, scope, {
-      memoryId: "mem-b3-test",
+      memoryId: memId,
       scope: "workspace",
       kind: "pattern",
-      content: "B3 测试模式记忆（写入于集成测试）",
+      content: memContent,
       sourceEvents: ["E-8801", "E-8802"],
       confidence: 0.6,
     }, embedder);
     const byKind = await searchMemories(pool, scope, { kind: "pattern" });
-    expect(byKind.some((m) => m.memory_id === "mem-b3-test")).toBe(true);
-    const semantic = await searchMemories(pool, scope, { query: "B3 测试模式", limit: 5 }, embedder);
+    expect(byKind.some((m) => m.memory_id === memId)).toBe(true);
+    const semantic = await searchMemories(pool, scope, { query: memContent, limit: 5 }, embedder);
     expect(semantic.length).toBeGreaterThan(0);
-    expect(semantic[0]!.memory_id).toBe("mem-b3-test"); // 同文本距离最近
+    expect(semantic[0]!.memory_id).toBe(memId); // 同文本距离 0，必居首
     expect(semantic[0]!.distance).not.toBeNull();
   });
 
   it("归因闭环：任一记忆可反查来源事件（验收断言）", async () => {
-    await recordMemoryUsage(pool, scope, "mem-b3-test", "E-8803");
-    const r = await getMemorySources(pool, scope, "mem-b3-test");
-    expect(r.memory?.memory_id).toBe("mem-b3-test");
+    await recordMemoryUsage(pool, scope, memId, "E-8803");
+    const r = await getMemorySources(pool, scope, memId);
+    expect(r.memory?.memory_id).toBe(memId);
     expect(r.sourceEvents.map((e) => e.event_id)).toEqual(["E-8801", "E-8802"]);
     expect(r.usedBy).toContain("E-8803");
     // 来源事件确为种子库真实事件（五元完整）
@@ -72,10 +76,10 @@ d("PG 集成记忆（种子库）", async () => {
   });
 
   it("生命周期：active→superseded 幂等约束，重复迁移报错", async () => {
-    await transitionMemory(pool, scope, "mem-b3-test", "superseded", "mem-occ-friday");
-    await expect(transitionMemory(pool, scope, "mem-b3-test", "recalled")).rejects.toThrow(/非 active/);
+    await transitionMemory(pool, scope, memId, "superseded", "mem-occ-friday");
+    await expect(transitionMemory(pool, scope, memId, "recalled")).rejects.toThrow(/非 active/);
     const after = await searchMemories(pool, scope, { kind: "pattern", status: "active" });
-    expect(after.some((m) => m.memory_id === "mem-b3-test")).toBe(false);
+    expect(after.some((m) => m.memory_id === memId)).toBe(false);
   });
 
   it("种子记忆可归因（E-8801/E-8802 反查）", async () => {

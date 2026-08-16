@@ -9,7 +9,7 @@
 | 阶段 | 状态 | tag |
 |---|---|---|
 | 阶段一 环境初始化 | ✅ 完成（A1–A7，Linux 沙箱实测全绿；Mac 实测项见「待回填」） | `v0.1.0` |
-| 阶段二 后端 API | 🚧 B0 已完成（dsh 落地验证三项实证全过）；下一卡 B1 | —（B10 后打 `v0.2.0`） |
+| 阶段二 后端 API | ✅ 完成（B0–B10 全绿，附录 H 可自动化条款回归通过） | `v0.2.0` |
 | 阶段三 前端页面 | ⬜ 未开始 | — |
 | 阶段四 联调与启动脚本 | ⬜ 未开始 | — |
 
@@ -35,14 +35,28 @@
 - [x] B7 model-router：记忆优先复用（F6.1 零消耗留痕）+ 确定性分级（F6.2 规则表）+ 峰谷窗口（F6.3，G9 谷时旗舰 ≤20% 实测）+ 降级链逐次留痕（F6.4/L6.1 禁静默）+ 逐事件计量+账单=事件投影（F6.5/L6.3）+ 单任务熔断（L6.4）+ 出站脱敏强制（F6.6/L6.2）+ 全链不可用排队/转需介入（E6.1）— `packages/base/model-router/`，84 测试全绿（含 PG 集成：计量/降级事件落库可检索）
 - [x] B8 runtime + 三态派遣：意图路由（含糊反问不建任务/LLM 白名单约束/3s 超时降级 F3.2）+ preset 装配三要素缺一拒绝（L3.7）+ Quest 循环（每步围栏瀑布 auto/review/block + 回执校验 E3.7 + step_id 幂等）+ replay 断点续跑零重复事件（H-5）+ L3.1 并发上限 + dsh 挂载点（plugins/workloom-fence 挂 tools/pre-execute）— `packages/runtime/`，端到端实测：含糊反问 ✅ / 调价 Quest T-104 全 3 步 completed ✅；judge 修复读类动作误吃 default_level；9+84 测试绿
 - [x] B9 night-shift：18:00 候选清单（F4.1 夜班 preset 覆盖+谷时价+围栏摘要）+ 状态机持久化（F4.8 非法迁移拒绝）+ 开启夜班=人类命令+围栏快照（F2.6）+ 一键暂停（G5 计时留痕/E4.1 超时 P0/running 线程断点挂起）+ 08:30 决策包三段投影（H-7 纯日志视图/G6 ≤20 条严重度截断/无回执标未核实 E3.7）+ 触发器引擎（F4.7 cron+事件双入口/L4.4 CRUD 启停全事件化）— `packages/base/night-shift/`，95 测试全绿
-- [ ] B10 巡检 + 技能/意识：定时只读巡检 + 异常分级推送 + 一键派单 + 技能安装/绑定 + 高频检测建议（M9/F8.1–F8.4）
+- [x] B10 巡检 + 技能/意识（阶段二收官）：巡检四检确定性探针 + 只读前置断言（L9.1 工具集裁剪复查）+ 异常分级事件/高优同源聚合推送（F9.2/G3/E9.2）+ 失败重试后必出 P0 告警事件不静默（L9.2/E9.1）+ 当日幂等去重（L9.3）+ 状态条纯日志投影（F9.4，关注区 ≤5 条按严重度）+ 一键派单建单回链/失败升级一级转需介入（F9.3/E9.3）+ 技能三级体系安装即绑定/卸载即撤销（F8.1/F8.2/L8.3，resolveAgentFenceBindings 为运行时唯一消费点）+ 未脱敏 industry 拦截（L8.1/E8.4）+ 签名白名单（L8.2）+ 围栏冲突进审批不静默（E8.1）+ 三要素零代码锻造+版本管理+dry-run 前置（F8.3/F2.5 同口径回放 10 条）+ 意识系统高频检测 ≥3 次/周→建议固化卡片→一键确认生成触发器/技能+驳回阈值 ×2 校准闭环（F8.4/E8.3）+ 行业资产复用闸门（L8.4）— `packages/base/inspection/`（4 文件）+ `packages/base/skills/`（3 文件）+ tRPC inspection/skills 双 router，集成冒烟：手动巡检 ✅ / 状态条点名 ✅ / 种子 100 事件检出 review.reply 30 次·price.adjust 26 次高频建议 ✅；31 条新测试两轮连跑全绿
 
 ## 最后游标
 
-- **下一步**：**B10 巡检 + 技能/意识**（阶段二收官卡）：定时只读巡检 + 异常分级推送（P0/P1/P2）+ 一键派单 + 技能安装/绑定 + 高频检测建议（M9/F8.1–F8.4；验收 L9.2 巡检失败必出事件不静默 / L8.3 卸载即撤销围栏绑定）。首个文件：`packages/base/inspection/scan.ts`。完成后按附录 H 可自动化条款回归 → tag `v0.2.0`。
-- **此后顺序**：B3 记忆 → B4 围栏 → B5 鉴权/tenancy → B6 审批 → B7 model-router → B8 runtime 三态派遣（dsh 挂载）→ B9 夜班 → B10 巡检/技能。
+- **阶段二已收官**：附录 H 可自动化条款（1/2/3/4/5/7/9/10/14）全部有对应测试/验收且通过；B10 验收 L9.2（巡检失败必出事件）/ L8.3（卸载即撤销）已转测试锁定。tag `v0.2.0`。
+- **下一步**：**阶段三 前端页面 F1**（tokens.css 全令牌 + 舰桥壳 + 顶栏夜班胶囊/紧急制动杆；视觉事实源 = 原型 V4.0 + 星盟战舰设计规范 V1.0，对照设计规范 §2/§4/§7 逐项可查）。阶段三顺序：F1 壳 → F2 HUD 组件库 → F3–F11 逐页（P1→P2→P9→P3→P4→P5→P8→P6→P7，25 屏状态变体）→ F12 全局收尾 → tag `v0.3.0`。
+- 集成测试纪律：DB 用例对同一数据库可重跑（B10 起全部用例带唯一后缀隔离；B3 memory 测试已顺手修同源污染）；回归前推荐 `./scripts/reset.sh` 整库重建后单轮全绿为准。
 
 ## 实测记录（2026-08-16 · Linux 沙箱，Node 24.19 / pnpm 10.14 / PG 17.11 + pgvector 0.8.6）
+
+**B10 批次（本批，同环境实测）**：
+
+| 门禁 | 结果 |
+|---|---|
+| `pnpm test`（根，含 PG 集成） | ✅ 两轮连跑全绿：shared 4 + base 117 + runtime 9（B10 新增 31 条） |
+| tRPC 新 router 冒烟 | ✅ loginAs → `inspection.status`（异常点名按严重度 ≤5 条）/ `inspection.run`（手动巡检 ok）/ `skills.list` / `skills.awareness.suggestions`（种子事件真实检出 review.reply×30、price.adjust×26 高频建议） |
+| L9.2 巡检失败不静默 | ✅ 探针全灭注入：重试后 `inspect.run.failed` P0 告警事件落库 |
+| L8.3 卸载即撤销 | ✅ install→并集生效→uninstall→revokedBindings 留痕，运行时消费点 `resolveAgentFenceBindings` |
+| E8.1 冲突进审批 | ✅ 绑定缺失围栏（R9）安装挂起 + approvals pending（skill_fence_conflict） |
+| 附录 H 可自动化条款回归 | ✅ H-1/2/3/4/5/7/9/10/14 全部由既有测试覆盖并通过（见各包测试） |
+
+**阶段一批次**：
 
 | 门禁 | 结果 |
 |---|---|
@@ -59,23 +73,6 @@
 **批次 1 遗留修复（本批次顺手回填）**：
 1. `event-schema.ts`：三处 `z.iso.datetime()` 改 `z.iso.datetime({ offset: true })`（附录 E 示例带 `+08:00`，原写法单测「接受合法事件」失败）。
 2. `0001_init.sql`：GRANT 序列名 `biz_events_seq` → `biz_events_seq_seq`（bigserial 列名为 seq 的实际序列名）。
-3. 根 `package.json`：补 `pg`/`yaml`/`@workloom/shared` 依赖声明（migrate.ts/seed.ts 实际引用）；`@vitejs/plugin-react` pin `5.2.0`（6.x 依赖 vite 8 内部路径，与总纲 pin 的 vite 7 不兼容）。
-
-## 待回填（Mac 实测门禁）
-
-沙箱已覆盖上表全部机制项；以下 Mac 特有项待真机复核：`bash scripts/doctor.sh` 输出、`docker compose up -d`（OrbStack/Docker Desktop）、`./scripts/start.sh` 一条命令端到端（沙箱无 docker，docker 分支未实跑）。
-
-## 运行方式
-
-见 `README.md` 快速开始（`./scripts/start.sh` 一键）。
-
-## 已知限制与说明
-
-- 数据库迁移采用手写 SQL（`migrations/*.sql`）为 DDL 事实源，`packages/db/src/schema.ts` 为类型镜像，两者必须同步演进（DECISIONS D9）。
-- RLS：表 owner（迁移/种子账号）默认绕过策略；应用连接须事务内 `set_config('app.workspace_id' / 'app.tenant_id')`（已由 `packages/db/src/client.ts` 的 `withWorkspace` 封装；seed 的 gateway 写入用会话级 set_config）。
-- LLM 默认 `mock` provider（无 Key 全流程可跑）；真实模型在 `.env` 配 `LLM_PROVIDER/LLM_API_KEY`（阶段二 B7 落地）。
-- 事件库 append-only：reset=整库重建（`scripts/reset.sh`），不做清表 DELETE。
-init.sql`：GRANT 序列名 `biz_events_seq` → `biz_events_seq_seq`（bigserial 列名为 seq 的实际序列名）。
 3. 根 `package.json`：补 `pg`/`yaml`/`@workloom/shared` 依赖声明（migrate.ts/seed.ts 实际引用）；`@vitejs/plugin-react` pin `5.2.0`（6.x 依赖 vite 8 内部路径，与总纲 pin 的 vite 7 不兼容）。
 
 ## 待回填（Mac 实测门禁）

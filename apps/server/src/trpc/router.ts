@@ -1,7 +1,7 @@
 /**
- * tRPC 根路由（B5 状态：system / auth / members / threads 四个 router 挂载；
- * 其余 router（events / fence / approvals / nightShift / inspection / skills / bundle）
- * 在 B6–B10 逐卡挂载——见 MASTERPLAN §2.2）
+ * tRPC 根路由（B10 状态：system / auth / members / threads / approvals / inspection / skills 挂载；
+ * 其余 router（events / fence / nightShift / bundle）后续按需要挂载——见 MASTERPLAN §2.2）
+ * B10 已挂载：inspection（巡检 M9）/ skills（技能+意识 M8）
  * 本文件同时是前端类型源：apps/web 经 `@workloom/server/router` 导入 AppRouter 类型。
  */
 import { z } from "zod";
@@ -26,6 +26,25 @@ import {
 } from "@workloom/base/review-console";
 import { routeIntent, runQuest } from "@workloom/runtime";
 import { MAX_CONCURRENT_THREADS } from "@workloom/shared";
+import {
+  dispatchFromAnomaly,
+  DispatchError,
+  inspectionStatusBar,
+  resolveAnomaly,
+  runInspectionScan,
+} from "@workloom/base/inspection";
+import {
+  confirmSuggestion,
+  createSkillDraft,
+  detectSuggestions,
+  dryRunSkill,
+  installSkill,
+  listInstalls,
+  listSkills,
+  rejectSuggestion,
+  SkillError,
+  uninstallSkill,
+} from "@workloom/base/skills";
 
 /** system router：健康检查（公开） */
 const systemRouter = router({
@@ -256,12 +275,149 @@ const approvalsRouter = router({
   }),
 });
 
+/** inspection router（B10/M9：巡检状态条 / 手动巡检 / 一键派单 / 回链） */
+const inspectionRouter = router({
+  /** 巡检状态条（F9.4 纯投影：正常项/总数 + 最近巡检时间 + 异常点名 ≤5 条） */
+  status: protectedProcedure.query(async ({ ctx }) => {
+    return inspectionStatusBar(getAppPool(), scopeOf(ctx.identity));
+  }),
+  /** 手动跑一轮巡检（生产由触发器引擎 cron 07:00 唤起，F9.1；演示手动触发） */
+  run: protectedProcedure.mutation(async ({ ctx }) => {
+    return runInspectionScan(getAppPool(), getGatewayPool(), scopeOf(ctx.identity));
+  }),
+  /** 一键派单（F9.3：以异常事件为输入唤起业务 Agent；幂等 L9.3） */
+  dispatch: protectedProcedure
+    .input(z.object({ anomalyEventId: z.string(), presetKey: z.string().default("review-agent") }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        return await dispatchFromAnomaly(getAppPool(), getGatewayPool(), scopeOf(ctx.identity), {
+          anomalyEventId: input.anomalyEventId, presetKey: input.presetKey, by: ctx.identity.memberNo,
+        });
+      } catch (err) {
+        if (err instanceof DispatchError) {
+          throw new TRPCError({ code: err.code === "ANOMALY_NOT_FOUND" ? "NOT_FOUND" : "BAD_REQUEST", message: err.message });
+        }
+        throw err;
+      }
+    }),
+  /** 处理结果回链（F9.3/E9.3：失败升级一级严重度 + 转需介入） */
+  resolve: protectedProcedure
+    .input(z.object({ anomalyEventId: z.string(), threadId: z.string(), ok: z.boolean(), note: z.string().max(500).optional() }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        return await resolveAnomaly(getAppPool(), getGatewayPool(), scopeOf(ctx.identity), {
+          ...input, by: ctx.identity.memberNo,
+        });
+      } catch (err) {
+        if (err instanceof DispatchError) {
+          throw new TRPCError({ code: err.code === "ANOMALY_NOT_FOUND" ? "NOT_FOUND" : "BAD_REQUEST", message: err.message });
+        }
+        throw err;
+      }
+    }),
+});
+
+/** skills router（B10/M8：技能广场 / 安装绑定 / 零代码锻造 / 意识系统） */
+const skillsRouter = router({
+  list: protectedProcedure
+    .input(z.object({ level: z.enum(["official", "team", "industry"]).optional() }).optional())
+    .query(async ({ input }) => listSkills(getAppPool(), { level: input?.level })),
+  installs: protectedProcedure.query(async ({ ctx }) => {
+    return listInstalls(getAppPool(), scopeOf(ctx.identity));
+  }),
+  /** 安装（F8.2 安装即绑定；L8.1 脱敏闸 / L8.2 白名单 / E8.1 冲突进审批 / F8.3 dry-run 前置） */
+  install: protectedProcedure
+    .input(z.object({ skillId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        return await installSkill(getAppPool(), getGatewayPool(), scopeOf(ctx.identity), {
+          skillId: input.skillId, by: ctx.identity.memberNo,
+        });
+      } catch (err) {
+        if (err instanceof SkillError) {
+          throw new TRPCError({ code: err.code === "NOT_FOUND" ? "NOT_FOUND" : "BAD_REQUEST", message: err.message });
+        }
+        throw err;
+      }
+    }),
+  /** 卸载（L8.3 卸载即撤销围栏绑定） */
+  uninstall: protectedProcedure
+    .input(z.object({ skillId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        return await uninstallSkill(getAppPool(), getGatewayPool(), scopeOf(ctx.identity), {
+          skillId: input.skillId, by: ctx.identity.memberNo,
+        });
+      } catch (err) {
+        if (err instanceof SkillError) {
+          throw new TRPCError({ code: err.code === "NOT_FOUND" ? "NOT_FOUND" : "BAD_REQUEST", message: err.message });
+        }
+        throw err;
+      }
+    }),
+  /** 零代码自定义技能草稿（F8.3 三要素；生成物进版本管理） */
+  forge: protectedProcedure
+    .input(z.object({
+      name: z.string().min(1).max(100),
+      description: z.string().max(500).default(""),
+      triplet: z.object({ trigger: z.string().min(1), steps: z.array(z.string().min(1)).min(1), boundary: z.string().min(1) }),
+      fenceBindings: z.array(z.string()).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      return createSkillDraft(getAppPool(), getGatewayPool(), scopeOf(ctx.identity), { ...input, by: ctx.identity.memberNo });
+    }),
+  /** 生效前 dry-run 预览（F8.3/F2.5：回放最近 10 条） */
+  dryRun: protectedProcedure
+    .input(z.object({ skillId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        return await dryRunSkill(getAppPool(), getGatewayPool(), scopeOf(ctx.identity), {
+          skillId: input.skillId, by: ctx.identity.memberNo,
+        });
+      } catch (err) {
+        if (err instanceof SkillError) {
+          throw new TRPCError({ code: "NOT_FOUND", message: err.message });
+        }
+        throw err;
+      }
+    }),
+  awareness: router({
+    /** 高频相似任务检测（F8.4：≥3 次/周建议固化；E8.3 驳回校准） */
+    suggestions: protectedProcedure.query(async ({ ctx }) => {
+      return detectSuggestions(getAppPool(), scopeOf(ctx.identity));
+    }),
+    /** 一键确认 → 生成触发器或新技能（F8.4） */
+    confirm: protectedProcedure
+      .input(z.object({
+        suggestion: z.object({
+          key: z.string(), objectType: z.string(), actionCategory: z.string(),
+          count: z.number(), windowDays: z.number(), threshold: z.number(), sampleEventIds: z.array(z.string()),
+        }),
+        target: z.enum(["trigger", "skill"]),
+        schedule: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        return confirmSuggestion(getAppPool(), getGatewayPool(), scopeOf(ctx.identity), {
+          suggestion: input.suggestion, target: input.target, schedule: input.schedule, by: ctx.identity.memberNo,
+        });
+      }),
+    /** 驳回建议（E8.3 校准闭环：该类阈值 ×2） */
+    reject: protectedProcedure
+      .input(z.object({ key: z.string(), reason: z.string().max(200).optional() }))
+      .mutation(async ({ ctx, input }) => {
+        return { eventId: await rejectSuggestion(getGatewayPool(), scopeOf(ctx.identity), { ...input, by: ctx.identity.memberNo }) };
+      }),
+  }),
+});
+
 export const appRouter = router({
   system: systemRouter,
   auth: authRouter,
   members: membersRouter,
   threads: threadsRouter,
   approvals: approvalsRouter,
+  inspection: inspectionRouter,
+  skills: skillsRouter,
 });
 
 export type AppRouter = typeof appRouter;
