@@ -1,0 +1,24 @@
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    container_name: workloom-db
+    environment:
+      POSTGRES_USER: workloom
+      POSTGRES_PASSWORD: workloom
+      POSTGRES_DB: workloom
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U workloom -d workloom"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+  presidio:
+    image: mcr.microsoft.com/presidio-analyzer:latest
+    container_name: workloom-presidio
+    ports:
+      - "5002:3000"
+volumes:
+  pgdata:

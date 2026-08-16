@@ -1,0 +1,12 @@
+@import "tailwindcss";
+
+/* PRD V3.0 §9 原型约定：深色工作台基调（Phase 3 设计令牌以此为源） */
+:root {
+  --wl-bg: #15171c;
+  --wl-card: #1d2026;
+  --wl-border: #2a2f37;
+  --wl-primary: #3a6ea5;
+}
+body {
+  background: var(--wl-bg);
+}
