@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./bundles": "./bundles/index.ts",
     "./flydata-core": "./flydata-core/index.ts",
     "./im-channels": "./im-channels/index.ts",
     "./inspection": "./inspection/index.ts",

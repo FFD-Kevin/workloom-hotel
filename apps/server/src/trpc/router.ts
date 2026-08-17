@@ -4,6 +4,7 @@
  * 已挂载：B10 inspection（巡检 M9）/ skills（技能+意识 M8）；F3 workspace（档案/成员）/ nightShift（夜班投影）；
  * F8 fence（围栏版本化+dry-run）；F9 roster（P8 船员名册：人机混编投影 + 工时聚合 L6.3 + 档案全字段）；
  * B11 im（IM 通道域 D14：注册表/入站幂等/审批卡片出站/手势回调，Mock 驱动默认）
+ * F11 bundles（P7 舰船换装坞：六槽注册表投影/起飞前检查单/profile 激活切换/五要素草稿向导）
  * 本文件同时是前端类型源：apps/web 经 `@workloom/server/router` 导入 AppRouter 类型。
  */
 import { z } from "zod";
@@ -60,6 +61,14 @@ import {
   type ChannelDriver,
   type ApprovalChannel,
 } from "@workloom/base/im-channels";
+import {
+  BundleError,
+  activateBundle,
+  computeAssembly,
+  createBundleDraft,
+  listProfileSlugs,
+  recheckBundle,
+} from "@workloom/base/bundles";
 
 /** system router：健康检查（公开） */
 const systemRouter = router({
@@ -1199,6 +1208,88 @@ const imRouter = router({
     })),
 });
 
+/** bundles router（F11：P7 舰船换装坞——行业装配台 §2.2/§2.3；校验 F2.10/L1.6；权限 E2.6）
+ *  数据来源（P7-⑤）：槽位=bundle 注册表实物投影（磁盘扫描）；校验=活算+留痕（biz_events bundle.*） */
+function assertBundleManage(role: string): void {
+  if (role === "readonly") {
+    throw new TRPCError({ code: "FORBIDDEN", message: "readonly 角色无装配管理权限（E2.6，服务端 403）" });
+  }
+}
+function bundleRethrow(err: unknown): never {
+  if (err instanceof BundleError) {
+    throw new TRPCError({
+      code: err.code === "NOT_FOUND" ? "NOT_FOUND"
+        : err.code === "ASSEMBLY_CHECK_FAILED" ? "PRECONDITION_FAILED"
+        : "BAD_REQUEST",
+      message: err.message,
+      cause: err.checks ? { checks: err.checks } : undefined,
+    });
+  }
+  throw err;
+}
+
+const bundlesRouter = router({
+  /** 装配状态投影：全部 profile（注册表扫描）+ 选中 profile 六槽/检查单/班组（默认当前激活） */
+  status: protectedProcedure
+    .input(z.object({ slug: z.string().optional() }).optional())
+    .query(async ({ ctx, input }) => {
+      const app = getAppPool();
+      const scope = scopeOf(ctx.identity);
+      const ws = await app.query<{ industry: string }>(`SELECT industry FROM workspaces WHERE id=$1`, [scope.workspaceId]);
+      const activeSlug = ws.rows[0]?.industry ?? "hotel";
+      const slugs = listProfileSlugs();
+      const profiles = [] as Awaited<ReturnType<typeof computeAssembly>>[];
+      for (const s of slugs) {
+        try {
+          profiles.push(await computeAssembly(app, scope, s));
+        } catch {
+          /* 注册表坏档不拖垮整页（L9.2：跳过并缺席，由校验页显式呈现缺失） */
+        }
+      }
+      const selected = profiles.find((p) => p.slug === (input?.slug ?? activeSlug)) ?? profiles[0] ?? null;
+      return { activeSlug, profiles, selected };
+    }),
+  /** 重跑校验并留痕（P7E3：修复后重跑；记录可查） */
+  recheck: protectedProcedure
+    .input(z.object({ slug: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        return await recheckBundle(getAppPool(), getGatewayPool(), scopeOf(ctx.identity), input.slug, ctx.identity.memberNo);
+      } catch (err) {
+        bundleRethrow(err);
+      }
+    }),
+  /** 激活/切换 profile（F2.10：任一校验失败拒绝激活，PRECONDITION_FAILED 带检查单） */
+  activate: protectedProcedure
+    .input(z.object({ slug: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      assertBundleManage(ctx.identity.role);
+      try {
+        return await activateBundle(getAppPool(), getGatewayPool(), scopeOf(ctx.identity), input.slug, ctx.identity.memberNo);
+      } catch (err) {
+        bundleRethrow(err);
+      }
+    }),
+  /** 新建行业 Bundle 五要素向导（P7E5/§2.3：草稿不进分发） */
+  createDraft: protectedProcedure
+    .input(z.object({
+      slug: z.string(),
+      displayName: z.string().min(1),
+      version: z.string().min(1),
+      changelog: z.string().min(1),
+      fenceRef: z.string().min(1),
+      ownerMemberNo: z.string().min(1),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      assertBundleManage(ctx.identity.role);
+      try {
+        return await createBundleDraft(getGatewayPool(), scopeOf(ctx.identity), input, ctx.identity.memberNo);
+      } catch (err) {
+        bundleRethrow(err);
+      }
+    }),
+});
+
 export const appRouter = router({
   system: systemRouter,
   auth: authRouter,
@@ -1212,6 +1303,7 @@ export const appRouter = router({
   fence: fenceRouter,
   roster: rosterRouter,
   im: imRouter,
+  bundles: bundlesRouter,
 });
 
 export type AppRouter = typeof appRouter;

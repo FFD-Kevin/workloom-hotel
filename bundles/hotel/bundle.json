@@ -25,7 +25,8 @@
         "schemas/objects.json",
         "schemas/stages.json",
         "schemas/archive.schema.json"
-      ]
+      ],
+      "ui": ["ui/cases.json"]
     }
   }
 }
