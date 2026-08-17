@@ -298,6 +298,15 @@ credentials（凭据引用，加密存储，事件只记引用 ID）
 | E6 | dsh headless 回归门禁（D13①）：`dsh --profile headless` 非交互执行「最小 Quest → 围栏瀑布 → 事件落库 → 验链」脚本化用例，纳入回归套件；并作为 H-5（kill -9 重放续跑且幂等）的验收载体 | headless 用例单轮全绿；kill -9 重放零重复事件；失败即阻塞 E5 打 tag |
 | E5 | **tag `v1.0.0`** + PROGRESS.md 归档 | 仓库完整、可克隆、可运行 |
 
+### 阶段五 · 官网与分发（D15；阶段三/四全部完成后启动——用户 2026-08-17 明确排期）
+
+| 卡 | 内容 | 验收断言 |
+| --- | --- | --- |
+| W1 | 官网落地页（视觉与文案事实源 = 用户供稿《WorkLoom织元·企业AgentIM官网.html》，2026-08-17）：hero（设定目标自动达成 · 关键时刻人来拍板）+ 下载区（三步启航首航检查单 + curl 备选一行装）+ 驾驶舱实景（守夜战队 18:00 / 昨夜战报 08:30）+ 能力六卡 + 安全四承诺（不确定不执行/无回执不宣称完成/错误可逆/失败转人工）+ 日循环六步 + 成就陈列 + CTA + 页脚；视觉=星盟战舰主题，与产品内 tokens 同源（深空为幕、金光为令，禁死黑） | 与供稿逐区对账（文案口径 PRD V2.5 一致，专业信息一字不减）；下载按钮指向 GitHub Release latest；**Release 无产物期间按钮挂「即将开放」态，不伪造分发事实**；移动端 375 可读 |
+| W2 | Mac 打包与 GitHub Release 分发管线：`WorkLoom-macOS.zip` 产物（依赖 E4 Tauri 桌面壳或 §7 桌面安装包方案落定）+ Release 发布脚本（tag/校验和/发布说明）+ 官网下载按钮激活为真实下载 | 全新 Mac 实测：下载 zip → 双击解压 → 拖入「应用程序」→ Control+点按打开（Gatekeeper 标准流程）→ 装配检查单首航跑通——与官网「三步启航」逐字对账 |
+
+完成标志：官网可访问 + 「一键下载 → 解压安装 → 首航」全链路真实走通 → tag `v1.1.0`
+
 ---
 
 ## 5. GitHub 托管与接力机制
@@ -353,7 +362,7 @@ G1–G11 为生产 SLO，开发期落实「机制」而非「数字」：检索�
 | mem0 / Presidio 独立服务 / WrenAI | 记忆检索或脱敏规则复杂度超过自建薄层（如多语言 PII、语义层治理需求） |
 | LiteLLM（VPC 本地模型代理） | 私有化部署立项；届时按 V3 纪律（哈希 pin+验签+仅内网） |
 | WebSocket/SSE | 轮询口径无法满足推送 SLA 时 |
-| DSH Desktop 式桌面一键安装包（Electron 内嵌 Node + dsh 服务生命周期托管 + 首启自动建 Profile；参考 anywhere-labs/deepseek-harness-desktop，D13③） | 私有化交付/面向弱 IT 能力客户的一键分发需求出现时；届时评估替代或合并 E4 Tauri 方案 |
+| DSH Desktop 式桌面一键安装包（Electron 内嵌 Node + dsh 服务生命周期托管 + 首启自动建 Profile；参考 anywhere-labs/deepseek-harness-desktop，D13③） | **触发条件已部分达成（D15，2026-08-17）**：官网一键下载承诺了 Mac 分发物 → 打包方案在 W2 卡内评估落定（Tauri E4 vs Electron 桌面壳二选一或合并）；打包实体仍在 W2 才动工 |
 | Redis / Kafka / OPA / Temporal / Lago / Keycloak | 同技术方案 V3 §11 触发条件，逐字继承 |
 
 ---
