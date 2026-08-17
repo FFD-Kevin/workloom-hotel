@@ -4,7 +4,7 @@
  * PG 集成：hotel profile 六槽全装配 + 五项校验全绿（F2.10）/ 校验留痕（P7E3）/
  *          激活幂等（bundle.activate 事件）/ 草稿校验失败拒绝激活（不静默 L9.2）
  */
-import { mkdtempSync, readFileSync, existsSync } from "node:fs";
+import { cpSync, mkdtempSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -91,6 +91,35 @@ describe.runIf(RUN_DB)("行业装配 PG 集成（F2.10 铁律）", async () => {
     const ind = await app.query(`SELECT industry FROM workspaces WHERE id=$1`, [scope.workspaceId]);
     expect(ind.rows[0]!.industry).toBe("hotel");
   });
+
+  it("H-15 第三行业五要素填充即可运行：填满五槽 → 6/6 全绿 → 激活切换 → 底座代码零改动（§2.3/§2.4）", async () => {
+    const root = mkdtempSync(join(tmpdir(), "wl-bundles-h15-"));
+    // 五要素填充 = 复制 hotel 实物资产作为第三行业草稿内容（演示口径：资产由行业方提供，非底座代码）
+    cpSync(join(process.cwd(), "..", "..", "bundles", "hotel"), join(root, "copycat"), { recursive: true });
+    const bjPath = join(root, "copycat", "bundle.json");
+    const bj = JSON.parse(readFileSync(bjPath, "utf-8"));
+    bj.name = "@workloom/copycat"; bj.workloom.industry = "copycat"; bj.workloom.status = "draft";
+    writeFileSync(bjPath, `${JSON.stringify(bj, null, 2)}\n`, "utf-8");
+
+    const p0 = await computeAssembly(app, scope, "copycat", root);
+    expect(p0.status).toBe("draft");
+    expect(p0.filledCount).toBe(6); // 五要素填满 → 六槽全装配
+    expect(p0.canActivate).toBe(true); // 检查单五项全绿
+
+    const act = await activateBundle(app, gw, scope, "copycat", "MEM-001", root);
+    expect(act.eventId).toMatch(/^E-\d+$/);
+    const ind = await app.query(`SELECT industry FROM workspaces WHERE id=$1`, [scope.workspaceId]);
+    expect(ind.rows[0]!.industry).toBe("copycat"); // profile 切换生效（§2.3）
+
+    // 激活态复核：档案/阶段一致性校验同样全绿（isActive 分支）
+    const p1 = await computeAssembly(app, scope, "copycat", root);
+    expect(p1.status).toBe("active");
+    expect(p1.checks.every((c) => c.ok)).toBe(true);
+
+    await activateBundle(app, gw, scope, "hotel", "MEM-001"); // 还原演示工作区
+    const back = await app.query(`SELECT industry FROM workspaces WHERE id=$1`, [scope.workspaceId]);
+    expect(back.rows[0]!.industry).toBe("hotel");
+  }, 20000);
 
   it("草稿 Bundle：0/6 待填充 + 校验五项全红 + 拒绝激活（F2.10 不静默 L9.2）", async () => {
     const root = mkdtempSync(join(tmpdir(), "wl-bundles-"));

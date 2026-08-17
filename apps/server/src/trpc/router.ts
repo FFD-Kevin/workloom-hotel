@@ -30,7 +30,7 @@ import {
 import { routeIntent, runQuest } from "@workloom/runtime";
 import { NightTransitionError, pauseAll, resumeNight } from "@workloom/base/night-shift";
 import { confirmDryRun, createDryRun } from "@workloom/base/fence-engine";
-import { MAX_CONCURRENT_THREADS } from "@workloom/shared";
+import { MAX_CONCURRENT_THREADS, PLAN_TIERS } from "@workloom/shared";
 import {
   dispatchFromAnomaly,
   DispatchError,
@@ -118,6 +118,35 @@ const authRouter = router({
         plan: t.rows[0]?.plan ?? "community",
       };
       return { token: await signDemoToken(identity), identity };
+    }),
+  /** 版本切换演示（F12 权限态：社区版/Pro/Teams/VPC 实切，F7.2 能力矩阵即时生效）
+   *  owner 专属；写 tenants.plan（登录引导例外点同口径走 owner 池）+ 留痕 plan.switch（G8）+ 重签 JWT */
+  setPlan: protectedProcedure
+    .input(z.object({ plan: z.enum(PLAN_TIERS) }))
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.identity.role !== "owner") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "仅 owner 可切换租户版本（F7.1/E2.6，服务端 403）" });
+      }
+      const before = ctx.identity.plan;
+      await getOwnerPool().query(`UPDATE tenants SET plan=$2 WHERE id=$1`, [ctx.identity.tenantId, input.plan]);
+      await gatewayAppend(getGatewayPool(), {
+        tenantId: ctx.identity.tenantId, workspaceId: ctx.identity.workspaceId,
+        actor: { id: ctx.identity.memberNo, type: "human" },
+      }, {
+        who: { type: "human", id: ctx.identity.memberNo },
+        context: {
+          tenant_id: ctx.identity.tenantId, workspace_id: ctx.identity.workspaceId,
+          time: new Date().toISOString(), channel: "inapp",
+        },
+        object: { type: "tenant", id: ctx.identity.tenantId },
+        decision: {
+          action: "plan.switch", before: { plan: before }, after: { plan: input.plan },
+          basis: ["F7.2 版本能力矩阵即时生效", "F12 权限态演示"],
+        },
+        rule_impact: [],
+      });
+      const identity: Identity = { ...ctx.identity, plan: input.plan };
+      return { token: await signDemoToken(identity), plan: input.plan };
     }),
 });
 

@@ -391,6 +391,15 @@ export async function activateBundle(
   } finally {
     client.release();
   }
+  // 草稿激活即转正（§2.3：草稿不进分发；通过检查单激活后脱离草稿态，bundle.json 实物同步）
+  if (profile.status === "draft") {
+    const bjPath = join(root, slug, "bundle.json");
+    const bj = readJson<BundleJson>(bjPath);
+    if (bj?.workloom) {
+      bj.workloom.status = "active";
+      writeFileSync(bjPath, `${JSON.stringify(bj, null, 2)}\n`, "utf-8");
+    }
+  }
   const r = await gatewayAppend(gateway, {
     tenantId: scope.tenantId, workspaceId: scope.workspaceId,
     actor: { id: by, type: "human" },

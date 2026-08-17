@@ -7,7 +7,9 @@
  * 内部数据为占位；逐页接线真实 API 在 F3–F11。
  */
 import type { ReactNode } from "react";
+import { useState } from "react";
 import { EmergencyBrake, NightStatusPill } from "../components/hud";
+import { PlanSwitcher } from "./PlanSwitcher";
 
 /** 星野背景（氛围层；永不遮挡信息、不影响 G10 首屏口径——§7 动效纪律） */
 function StarField() {
@@ -70,6 +72,9 @@ export function Bridge({
   /** 右栏上下文面板（同上） */
   right?: ReactNode;
 }) {
+  // 当前版本（F7.2）：社区版隐藏夜班胶囊与制动杆（隐藏非置灰 E2.6；F12 权限态演示）
+  const [plan, setPlan] = useState<string | null>(null);
+  const community = plan === "community";
   return (
     <div className="min-h-screen bg-bg950">
       <StarField />
@@ -89,8 +94,9 @@ export function Bridge({
               企业 Agent IM · <b className="font-semibold text-ink2">云栖酒店</b>
             </span>
             <span className="flex-1" />
-            <NightStatusPill onClick={() => { window.location.href = "/p9"; }} />
-            <EmergencyBrake />
+            <PlanSwitcher onPlan={setPlan} />
+            {!community && <NightStatusPill onClick={() => { window.location.href = "/p9"; }} />}
+            {!community && <EmergencyBrake />}
           </header>
 
           {/* IM 三栏（§4.1：236px 左｜弹性中｜264px 右；栏间 1px 全息青细线=border-line） */}

@@ -10,8 +10,8 @@
 |---|---|---|
 | 阶段一 环境初始化 | ✅ 完成（A1–A7，Linux 沙箱实测全绿；Mac 实测项见「待回填」） | `v0.1.0` |
 | 阶段二 后端 API | ✅ 完成（B0–B10 全绿，附录 H 可自动化条款回归通过；B11 IM 通道增量卡 2026-08-17 并入） | `v0.2.0` |
-| 阶段三 前端页面 | 🚧 F1–F11 完成（P1/P2/P9/P3/P4/P5/P8/P6/P7 九页真实接线）；下一卡 F12 全局收尾 | —（F12 后打 `v0.3.0`） |
-| 阶段四 联调与启动脚本 | ⬜ 未开始 | — |
+| 阶段三 前端页面 | ✅ 完成（F1–F12：P1/P2/P9/P3/P4/P5/P8/P6/P7 九页真实接线 + 全局收尾 25 屏走查） | `v0.3.0` |
+| 阶段四 联调与启动脚本 | ⬜ 未开始（下一卡 E1 E2E 演示剧本） | — |
 
 ## 阶段一任务卡
 
@@ -40,6 +40,7 @@
 
 ## 阶段三任务卡
 
+- [x] F12 全局收尾（MASTERPLAN 阶段三完成标志：25 屏走查清单全绿 + G10 首屏机制落地）：权限态=社区版切换演示（顶栏 PlanSwitcher 胶囊 `shell/PlanSwitcher.tsx` + server `auth.setPlan`：owner 专属 readonly 403 ✅、写 tenants.plan、留痕 plan.switch G8、重签 JWT 整页重载；社区版即时生效=夜班胶囊/紧急制动/快捷目标隐藏，threads.dispatch 403+升级提示 H-10 活体实测 ✅）+ 统一加载/空/错误/超时（SkeletonBlock/EmptyState/BannerAlert 全站机制登记）+ 游戏化文案口径自查（游戏规则手册 §10 映射总表 17 条逐条落位，专业信息一字不减）+ 附录 H 状态总表 15/15（新增 security-audit.test.ts：H-11 凭据全库扫描零命中、H-13 注入对抗拒写零残留、E1.3 占位符正向实测；bundles.test.ts 补 H-15 第三行业五要素填充→6/6 全绿→激活切换→还原，底座代码零改动；顺手修 activateBundle 草稿激活转正 bundle.json 同步 bug；H-6 一键暂停实测 6ms withinSla；H-5/H-12 留阶段四 E 卡既定排期）——产出 `docs/WALKTHROUGH-v0.3.0.md`（25 屏清单 17 张实机截图+8 态代码/测试锚点、§10 自查表、G10 机制、附录 H 总表）；tag `v0.3.0`
 - [x] F11 P7 舰船换装坞（PRD P7-①②③④⑤ 逐条对账）：六槽位卡 P7E1（档案 Schema/对象阶段/工具集/围栏包/Agent 班组/工作台 UI 逐卡装配状态=bundle 注册表实物投影，磁盘扫描 bundles/<slug>/；围栏包卡 →P5 P7E4、班组卡 →P8 P7E2）+ 起飞前检查单 P7E3（五项活算：档案 forbidden 校验=archive.schema 必填组+硬约束计数 / 枚举冲突检测=对象阶段重复定义+当前阶段合法性 / 工具探针健康=7 preset 实例注册+ready 探针 / 围栏绑定完整=fence_bindings 非空且规则 active，未声明即禁写标红 F2.10 / UI 用例同步=ui/cases.json 页面注册表核对）+ 任一失败拒绝激活（服务端 PRECONDITION_FAILED 带检查单，实测 412 ✅ 不静默 L9.2）+ 修复清单 FixList（失败项+修复指引+回链槽位，存在即阻断激活）+ 重跑校验留痕 bundle.check_run（实测 E-639 ✅）+ ProfileSwitcher（当前高亮/草稿标「不进分发」/激活=整套皮肤+通讯录+群规生效留痕 bundle.activate 实测 E-640 ✅ §2.3）+ BundleWizard 五要素向导 P7E5（slug/显示名/版本/变更日志/继承围栏/负责人 → 五槽骨架草稿，实测 E-641 ✅；草稿 0/6 待填充天然演示 p7_fail）+ p7_fail 状态变体（红条+失败槽位标红+修复清单）+ 空态草稿槽位待填充计数（§2.3）+ 权限态 readonly 无新建/激活入口（E2.6 隐藏非置灰，服务端 activate/createDraft 403 实测 ✅）；新增 packages/base/bundles 装配域（六插件之六「行业 Bundle 装载」落位）+ bundles/hotel/ui/cases.json ⑥槽实物（6 页 42 状态用例）+ bundlesRouter 四端点（status/recheck/activate/createDraft）；路由 /p7
 - [x] F10 P6 装备库（PRD P6-①②③④⑤ 逐条对账）：AwarenessBanner 意识建议横幅（P6E1：主建议卡+「待确认 N 条」计数+其余紧凑行折叠；一键固化→触发器 F4.7 实测 trg-auto-room-price-price-adjust E-106 ✅、生成草稿→p6_create 预填、驳回降权 E8.3 实测阈值 3→6 上屏 ✅；确认前不产生自动化 L4.4；超时态 >10s「分析中」可关闭）+ SkillGrid 三级稀有度卡（§6 官方=金/团队=银/行业共享=铜；官方套件 P6E2 绑定围栏可见+「已装给谁」chips →/p8/agent/:id；行业共享已脱敏 ✓ 标记 L8.1）+ F8.5 使用看板（server 新增 skills.usage：绑定 Agent 事件投影——双形态匹配 skills ? 短名/全 id，调用次数/采纳率/驳回模式分布/低采纳提示优化下架；实测差评危机公关 10 次·100%、收益管理专家 20 次）+ SkillWizard 零代码向导 p6_create（三要素触发/步骤/边界+「不能做什么」自动转围栏声明提示+SKILL.md 实时预览+R1–R6 围栏勾选；确认创建→团队技能 v1 进版本管理 F8.3 实测 skill-t-深夜房价守护 v1.0.0 ✅ → dry-run 回放 10 条前置 F2.5 → 安装；完成后态新卡入团队技能区 ✅）+ 空态仅官方套件+新建入口（F8.1）+ 加载骨架 G10 + 错误态安装拒绝原因行内展示（L8.2/E8.2 实测行业技能白名单拦截留痕 E-101 ✅）+ 权限态社区版隐藏行业共享区（F7.2 隐藏非置灰）+ readonly 隐藏全部动作入口（E2.6）且服务端 install/uninstall/forge/awareness.confirm/reject 五写操作补 readonly 403 守卫（实测 MEM-003 安装被拒 ✅）；种子补团队技能「周一经营复盘」v1.2（已装）+ 行业共享「旺季满房冲刺包」（已脱敏待装）；路由 /p6、/p6/create
 - [x] F9 P8 船员名册（PRD P8-①②③④⑤ 逐条对账）：人机混编 MemberGrid（P8E2 人类卡圆头像·角色口径经营者/集团 Teams/只读 + 权限摘要 F5.6 + 在线=近 24h 事件留痕推导不伪造 presence；P8E1 Agent 卡方头像+版本角标+LV/段位徽章+XpBar 战绩条（游戏化界面叙事，规则手册 §3 不设公式——XP=动作×2+积分确定性推导）+ 围栏绑定 tags + 技能包 + 30 天工时 L6.3 事件聚合投影（动作数/采纳率/积分·峰谷占比 G9）+ 夜班窗口 22:00–08:00 内 night_shift preset 青脉冲自动上线 M4 + 只读 preset 标绿 L9.1 + invalid 标红+原因 F2.10 错误态）+ 加装 preset P8E3 →P7（E2.6 非管理员隐藏）+ 档案态 p8_agent（身份与归属 Agent ID/版本 who.version 归因/工作区/来源 Bundle；航道许可围栏授权逐条对账 fence_rules active 版本、声明悬空标红 F2.10；技能包 join skills+installs →P6；运行约束+写回声明；30 天战绩四格；P8E4 发消息·派遣=threads.dispatch 复用（含糊反问不建单 F3.2 实测 ✅、明确派遣建 T-105 跳 P2 ✅；L3.7 三要素提示）；P8E5 最近事件流 who.id 过滤投影 12 条含回执位 E3.7，点击进线程 →P2 F1.12）；空态=仅官方 preset 引导（§2.2）；加载=骨架屏 G10；server 新增 roster router（list/profile，PRD P8-⑤ 数据来源逐条落地，全程 RLS set_config，越权返回空 L7.1）；顺手回填 devbox.sh REPO 路径 bug（cd /tmp 后相对路径失效）+ 技能包短名↔skill- 前缀 join 修复
@@ -58,15 +59,27 @@
 - **F9 已收官（2026-08-17）**：P8 船员名册双态（p8/p8_agent）真实接线，门禁全绿（见实测记录 F9 批次）。
 - **B11 已收官（2026-08-17，用户显式插单）**：dsh-im 评估结论=采纳（D14），IM 通道域代码整合完成并门禁全绿（见实测记录 B11 批次）；真实通道凭据由用户在 dsh 设置页自配（IM_DRIVER 默认 mock）。
 - **F10 已收官（2026-08-17）**：P6 装备库双态（p6/p6_create）真实接线，门禁全绿（见实测记录 F10 批次）；顺手回填 skills 五写操作 readonly 服务端 403 守卫。
+- **F12 已收官（2026-08-17）**：阶段三全局收尾完成——25 屏走查（`docs/WALKTHROUGH-v0.3.0.md`）+ 社区版切换演示 + 附录 H 13/15 测试锁定（H-5/H-12 排期阶段四），tag `v0.3.0`。
 - **F11 已收官（2026-08-17）**：P7 舰船换装坞（p7/p7_fail）真实接线，门禁全绿（见实测记录 F11 批次）；base 新增 bundles 装配域，L2 六插件全部落位。
 - **D15 已立项（2026-08-17，官网与分发）**：用户供稿官网单页素材并入计划——新增阶段五「官网与分发」（W1 官网落地页 / W2 Mac 打包+GitHub Release 分发管线，MASTERPLAN §4），排期=阶段三/四完成后；诚实性约束：Release 产物落地前下载按钮挂「即将开放」态。详见 DECISIONS D15。
-- **下一步**：**阶段三 F12 = 全局收尾**（九页联查 + 附录 H 前端条款回归 + tag `v0.3.0`；完成后进阶段四 E1–E6）。阶段五官网与分发（D15：W1 官网 / W2 Mac 打包+Release）排期在阶段三/四之后。
+- **下一步**：**阶段四 E1 = E2E 演示剧本**（PF.1 晨间审批 / PF.2 一句话派遣 / PF.3 巡检派单 / PF.4 夜班闭环 / PF.5 围栏演进 / PF.6 技能固化六条流程实跑；`pnpm demo` 一键重置并生成「昨夜」数据）。后续 E2–E6 → 阶段五官网与分发（D15：W1 官网 / W2 Mac 打包+Release）。
 - 环境重建：沙箱 /tmp 回收后 `bash scripts/devbox.sh`（+`serve`）一条命令恢复全环境。
 - 外部真实接口纪律（用户 2026-08-17 明确）：LLM 等外部 API 一律走 Mock Provider/OpenAI 兼容网关跑通测试（D4），用户安装后自行在 .env 接入真实 Key（LLM_PROVIDER/LLM_API_KEY）。
 - 集成测试纪律：DB 用例对同一数据库可重跑（B10 起全部用例带唯一后缀隔离；B3 memory 测试已顺手修同源污染）；回归前推荐 `./scripts/reset.sh` 整库重建后单轮全绿为准。
 - **D13 已立项（2026-08-17，dsh 社区生态评估）**：① 阶段四新增 E6「dsh headless 回归门禁」（`dsh --profile headless` 脚本化用例 + H-5 kill -9 重放验收载体）；② E2 扩为含 doctor.sh 一屏自检（对齐 dsh-TUI `/doctor` 清单）；③ DSH Desktop 式桌面安装包进停车场（触发条件=私有化/一键分发需求）。详见 DECISIONS D13 / MASTERPLAN 阶段四与 §7。社区项目实证不改 Harness 内核、纯消费文档化 seam 的路线（DSH Desktop ≈8.5k★ / dsh-TUI ≈1.5k★），D12 双轨纪律不变。
 
 ## 实测记录（2026-08-17 · Linux 沙箱，Node 24.19 / pnpm 10.14 / PG 17.11 + pgvector 0.8.6）
+
+**F12 批次（本批，同环境实测）**：
+
+| 门禁 | 结果 |
+|---|---|
+| `pnpm -r --if-present typecheck` | ✅ 6 包零错误（新增 PlanSwitcher/auth.setPlan/security-audit） |
+| `pnpm -r --if-present test`（RUN_DB_TESTS=1 双角色） | ✅ 154/154 全绿（base 141：新增 security-audit 3 条 H-11/H-13/E1.3 + bundles H-15；shared 4 / runtime 9） |
+| `pnpm -C apps/web build` | ✅ 2.80s（407KB） |
+| 社区版切换冒烟 | ✅ owner→community 200（留痕 plan.switch）；community 下 dispatch 403+升级提示（H-10）；readonly setPlan 403；回切 pro 200 |
+| H-6 一键暂停计时 | ✅ nightShift.pause 服务端 elapsedMs=6 · withinSla=true（上限 60s，G5）；p9_paused 截图后 resume 还原 |
+| 25 屏走查 | ✅ 17 张实机截图（p1/p1_community/p2 三态/p9 双态/p3/p4/p5 双态/p8 双态/p6 双态/p7 双态）+ 8 瞬态代码/测试锚点，全绿入 `docs/WALKTHROUGH-v0.3.0.md` |
 
 **F11 批次（本批，同环境实测）**：
 
