@@ -2,6 +2,7 @@ import { Route, Routes } from "react-router";
 import P1 from "./pages/p1/P1";
 import P2 from "./pages/p2/P2";
 import P9 from "./pages/p9/P9";
+import P3 from "./pages/p3/P3";
 import DevMatrix from "./pages/dev/DevMatrix";
 import { Bridge } from "./shell/Bridge";
 
@@ -12,6 +13,7 @@ export default function App() {
       <Route path="/" element={<P1 />} />
       <Route path="/p2/:threadId" element={<P2 />} />
       <Route path="/p9" element={<P9 />} />
+      <Route path="/p3" element={<P3 />} />
       <Route path="/dev" element={<Bridge><DevMatrix /></Bridge>} />
       <Route path="*" element={<P1 />} />
     </Routes>
