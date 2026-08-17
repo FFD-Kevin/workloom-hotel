@@ -15,3 +15,8 @@ data/
 # 系统与日志
 .DS_Store
 *.log
+
+# E6 dsh 门禁运行时产物（lockfile 依铁律入库：pin 版本 + lock）
+.dsh-home/
+packages/runtime/dsh-gate/out/
+packages/runtime/dsh-gate/node_modules/

@@ -38,6 +38,7 @@ export function apply(ctx, config = {}) {
         if (LEVEL_RANK[r.level] > LEVEL_RANK[level]) level = r.level
       }
     }
+    console.log(`[workloom-fence] judge tool=${toolName} level=${level}（deny 优先并集 E2.2）`)
     if (level === 'block') return { kind: 'deny', reason: 'WorkLoom 围栏熔断（E2.2 deny 优先）' }
     if (level === 'review') return { kind: 'ask', reason: 'WorkLoom 围栏挂起必审（F2.1）' }
     return next()
