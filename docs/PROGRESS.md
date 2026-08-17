@@ -11,7 +11,7 @@
 | 阶段一 环境初始化 | ✅ 完成（A1–A7，Linux 沙箱实测全绿；Mac 实测项见「待回填」） | `v0.1.0` |
 | 阶段二 后端 API | ✅ 完成（B0–B10 全绿，附录 H 可自动化条款回归通过；B11 IM 通道增量卡 2026-08-17 并入） | `v0.2.0` |
 | 阶段三 前端页面 | ✅ 完成（F1–F12：P1/P2/P9/P3/P4/P5/P8/P6/P7 九页真实接线 + 全局收尾 25 屏走查） | `v0.3.0` |
-| 阶段四 联调与启动脚本 | 🚧 进行中（E1 ✅ E2 ✅ E6 ✅ E3 ✅；下一卡 E5 tag v1.0.0，E4 Tauri 停车场） | — |
+| 阶段四 联调与启动脚本 | ✅ 完成（E1 E2E 演示剧本 / E2 启动脚本四件套+doctor.sh / E3 README+docs 收尾 / E6 dsh headless 回归门禁；E4 Tauri 停车场 D13③） | `v1.0.0` |
 
 ## 阶段一任务卡
 
@@ -59,11 +59,13 @@
 - [x] E2 启动脚本四件套 + doctor.sh 一屏自检（D13②）：四件套复核定稿——`start.sh`（缺依赖友好提示/无 docker 回落本机 PG/幂等迁移种子/端口占用前置拒绝）·`stop.sh`（按端口优雅终止不误杀，`--pg` 可选停容器）·`reset.sh`（`--yes|-y` 非交互确认，供 demo/CI 调用）·`scripts/devbox.sh`（沙箱/无 Mac 一键重建）；**doctor.sh 重写**为分区一屏报告（运行时 node≥24+arch/pnpm/git/Xcode CLT｜工作目录 .env/node_modules/vendor 锁版｜模型 LLM_PROVIDER+Key 尾号打码｜凭据 JWT_SECRET 默认值告警+IM_DRIVER｜会话存储 PG 连通+版本 17+pgvector 扩展+_migrations 计数+H-1 五元完整率+组织计数+RLS 0 行实测+app 角色 INSERT 拒绝实测｜原生模块 pty.node 探测｜端口 5432/8787/5173），`FAIL` 计数 exit 0/1；沙箱实测 exit 0 全绿
 - [x] E6 dsh headless 回归门禁（D13①，H-5 验收载体）：`scripts/dsh-gate.sh` 六步脚本化——`packages/runtime/dsh-gate/` 锁版依赖（dsh 0.1.0-rc.6 + node-pty onlyBuiltDependencies）→ headless profile 初始化 + `profile.cordis.patch.yml`（占位符模板：id 覆盖 agent-default-model 指向 workloom-mock + insert workloom-fence/workloom-audit 双插件）+ `settings.yaml`（llm-pi-ai.providers.workloom-mock → OpenAI 兼容 Mock `mock-openai.mjs`：/rules 围栏规则源 GATE-R1/R2 + SSE 流式 + DSH_SLOW_MS 慢速模式）→ **用例一**最小任务全链（headless → bash 工具调用 → 围栏瀑布判定日志 `judge tool=…level=…` → workloom-audit 事件桥落账 37 条 → 哈希链逐条重算通过）→ **用例二 H-5**：DSH_SLOW_MS=1500 慢速 Mock + headless 后台跑 + 推理流中途 `kill -9`（断言 run2.log **无** TASK_COMPLETE，确为崩溃现场非事后补刀）→ 审计链 25 条完整 + `verify-audit.mjs --replay` 递归遍历会话目录（含 `.jsonl.zstd` zstd 解压）重放 6 条会话事件 → 首投 6 · 重投新增 0 幂等零重复；workloom-audit 事件桥原型（session/event 监听 + canonical 序列化 + prev_hash 链 + 挂载时崩溃恢复跳过尾部半行 + JSON 往返净化消 undefined/Date 运行时差异）；踩坑回填：① 用例二必须**先杀快速 Mock 再占同端口起慢速 Mock**，否则 headless 抢在 kill 前跑完、崩溃现场造假；② dsh 会话为嵌套目录 `session.jsonl.zstd`，扁平 readdir 会重放出 0 条假绿——已改递归 walker 且 0 事件即失败
 - [x] E3 README + docs 四件套收尾：README 重写为「从零 ≤半天」口径——macOS 前置条件表（Node24/pnpm10/PG17+pgvector docker 优先或 brew/Xcode CLT 仅 node-pty 需要）+ 四件套用法表与 doctor 输出分级解读（✅/⚠️/❌）+ LLM 可选配置（默认 mock 离线全通，真实 Key 用户侧自配永不入库 D4）+ IM 通道 mock/真实双口径（install-im-channels.sh → dsh 设置页配凭据）+ `pnpm demo` 与 `bash scripts/dsh-gate.sh` 入口 + devbox.sh 沙箱重建 + 目录结构同步（base 九域/runtime 双件/vendor 双锁版）；RELAY.md 新增 §5 提交与推送实测口径（git 协议强制 HTTP/1.1 规避 GnuTLS -110；REST 兜底带重试，间歇 404 与 /git/commits 恒 404 已登记）
+- [x] E5 tag `v1.0.0` + PROGRESS 归档：打 tag 前置全量回归单轮全绿（typecheck 6 包 / 测试 157=shared4+base144+runtime9 / web build 3.33s / demo 44/44 / doctor exit 0 / dsh-gate 用例一 37 条验链+用例二 H-5 崩溃现场 25 条验链+重放零重复）；阶段四收官——仓库完整、可克隆、可运行（README 从零 ≤半天路径 + devbox.sh 沙箱重建 + 四件套 + 双门禁脚本化）
 
 ## 最后游标
 
-- **E3 已收官（2026-08-17）**：README 重写+RELAY §5 推送口径入库，阶段四文档面齐备。
-- **下一步**：**E5 tag `v1.0.0` + PROGRESS 归档**（前置门禁：全量回归单轮全绿；E4 Tauri 按 D13③ 留停车场不阻塞）。随后阶段五官网与分发（D15：W1 官网落地页 → W2 Mac 打包+GitHub Release 极简安装）。
+- **E5 已收官（2026-08-17）**：tag `v1.0.0` 打出，阶段四归档完成（见实测记录 E5 批次）。
+- **下一步**：**阶段五 W1 官网落地页**（D15；事实源=D15 登记的章节结构——用户供稿 HTML 原件未入库，按 D15 结构重建；星盟战舰 tokens 同源；移动端 375 可读；**诚实性约束：Release 无产物前下载按钮挂「即将开放」态**）。随后 W2 Mac 打包+GitHub Release 极简安装管线。
+- **E3 已收官（2026-08-17）**：README 重写+RELAY §5 推送口径入库。commit `3a261c4`。
 - **E2+E6 已收官（2026-08-17）**：启动脚本四件套复核+doctor.sh 一屏自检全绿；dsh headless 回归门禁（含 H-5 kill -9 崩溃重放）真实崩溃现场全绿（见实测记录 E2+E6 批次）。commit `2b962df`。
 - **E1 已收官（2026-08-17）**：E2E 演示剧本六条流程沙箱实跑全绿（见实测记录 E1 批次）；Mac 实跑属 E2/E3 排期（用户无 Mac 环境，沙箱实测为准）。
 - **阶段二已收官**：附录 H 可自动化条款（1/2/3/4/5/7/9/10/14）全部有对应测试/验收且通过；B10 验收 L9.2（巡检失败必出事件）/ L8.3（卸载即撤销）已转测试锁定。tag `v0.2.0`。
@@ -79,6 +81,17 @@
 - **D13 已立项（2026-08-17，dsh 社区生态评估）**：① 阶段四新增 E6「dsh headless 回归门禁」（`dsh --profile headless` 脚本化用例 + H-5 kill -9 重放验收载体）；② E2 扩为含 doctor.sh 一屏自检（对齐 dsh-TUI `/doctor` 清单）；③ DSH Desktop 式桌面安装包进停车场（触发条件=私有化/一键分发需求）。详见 DECISIONS D13 / MASTERPLAN 阶段四与 §7。社区项目实证不改 Harness 内核、纯消费文档化 seam 的路线（DSH Desktop ≈8.5k★ / dsh-TUI ≈1.5k★），D12 双轨纪律不变。
 
 ## 实测记录（2026-08-17 · Linux 沙箱，Node 24.19 / pnpm 10.14 / PG 17.11 + pgvector 0.8.6）
+
+**E5 批次（本批，同环境实测）**：
+
+| 门禁 | 结果 |
+|---|---|
+| `pnpm -r --if-present typecheck` | ✅ 6 包零错误 |
+| `pnpm -r --if-present test`（RUN_DB_TESTS=1 双角色） | ✅ 157/157（shared 4 / base 144 / runtime 9） |
+| `pnpm -C apps/web build` | ✅ 3.33s（407KB） |
+| `pnpm demo` | ✅ 44/44 全绿 |
+| `bash scripts/doctor.sh` | ✅ exit 0 |
+| `bash scripts/dsh-gate.sh` | ✅ 用例一 37 条验链 + 用例二 H-5 崩溃现场（kill -9 于推理流中途，run2 无 TASK_COMPLETE）25 条验链 + 会话重放零重复 |
 
 **E2+E6 批次（本批，同环境实测）**：
 
