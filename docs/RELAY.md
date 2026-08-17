@@ -38,3 +38,12 @@ docs/DECISIONS.md 的全部决策；③ 只推进「最后游标」指向的下�
 
 - 窗口中断/工具切换：以仓库 `PROGRESS.md` 的「最后游标」为准重做当前任务卡即可，已入库内容永远一致。
 - 若发现本地与远端不一致：以远端 main 为准（`git fetch && git reset --hard origin/main`）。
+
+## 5. 提交与推送（实测口径 2026-08-17）
+
+- PAT 只在远端 URL 或凭据助手中使用，**用完即清**，绝不写入文件/提交/对话归档。
+- **首选 git 协议**：`git -c http.version=HTTP/1.1 push`（强制 HTTP/1.1 可规避沙箱 GnuTLS recv error (-110)；fetch 同理）。
+- **REST 兜底**（git 协议不通时）：`GET /git/refs`（复数端点；单数 `/git/ref/heads/main` 对此仓库恒 404）取基线 → 逐变更 `POST /git/blobs` → `POST /git/trees`（base_tree 可用 `GET /git/trees/main` 的 sha）→ `POST /git/commits` → `PATCH /git/refs/heads/main`。
+- **已知坑**：该网络路径下 REST 端点间歇性 404（同端点 curl 与 urllib 表现不一致），**每步须带重试**（≥8 次、指数退避）；`/git/commits/{sha}` 恒 404，取提交对象改用浅 `git fetch`。
+- `docs/prd/` 下 28MB PPT 原件不经 REST 重传（远端 blob 原样保留，tree 里不带它即可）。
+- 打 tag：`POST /git/refs` `refs/tags/vX.Y.Z`（REST）或 `git push origin vX.Y.Z`（HTTP/1.1）。
