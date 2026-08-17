@@ -560,6 +560,32 @@ async function main(): Promise<void> {
   }
   console.log(`✓ 官方技能 ×${skillsDocs.length} 已安装（围栏绑定随安装生效）`);
 
+  // 团队技能 + 行业共享技能（P6 装备库三区演示数据；F8.1 三级体系；幂等 ON CONFLICT）
+  await q(
+    `INSERT INTO skills (id, level, bundle, name, version, description, fence_bindings, body, desensitized)
+     VALUES ('skill-t-weekly-ops-review','team','hotel','周一经营复盘','1.2.0',
+             '每周一 08:00 自动汇总上周经营：入住率/RevPAR/差评闭环/调价采纳率，产出复盘报告草稿（本工作区自建，F8.3 三要素零代码锻造）。',
+             '[]',
+             '# 周一经营复盘\n\n## 触发（何时用）\n每周一 08:00 定时触发。\n\n## 步骤（怎么做）\n1. 汇总上周入住率与 RevPAR 曲线（只读）。\n2. 汇总差评闭环与调价采纳率。\n3. 产出复盘报告草稿进 P4 待审。\n\n## 边界（什么不做）\n不直接改价、不直接回评价。',
+             false)
+     ON CONFLICT (id) DO NOTHING`,
+  );
+  await q(
+    `INSERT INTO skill_installs (skill_id, workspace_id, installed_by)
+     VALUES ('skill-t-weekly-ops-review',$1,'MEM-002') ON CONFLICT (skill_id, workspace_id) DO NOTHING`,
+    [WS_ID],
+  );
+  await q(
+    `INSERT INTO skills (id, level, bundle, name, version, description, fence_bindings, body, desensitized)
+     VALUES ('skill-i-peak-season-sprint','industry','east-china-hotel-alliance','旺季满房冲刺包','2.1.0',
+             '华东酒店联盟共享：旺季满房冲刺打法包（竞对盯价+满房溢价节奏+差评快反 SOP），326 店在用；上架前已脱敏（L8.1 ✓）。',
+             '["R1","R2"]',
+             '# 旺季满房冲刺包\n\n## 触发（何时用）\n旺季/节假日满房冲刺期。\n\n## 步骤（怎么做）\n1. 竞对盯价：同档房型价差 >5% 提醒。\n2. 满房溢价节奏建议（单日涨幅 ≤8%，R1 管辖）。\n3. 差评快反 SOP（R6 必审）。\n\n## 边界（什么不做）\n不低于保底价（R2 红线）。',
+             true)
+     ON CONFLICT (id) DO NOTHING`,
+  );
+  console.log(`✓ 团队技能 ×1（已装）+ 行业共享技能 ×1（已脱敏待装）`);
+
   // 触发器（F4.7：07:00 巡检 / 22:00 夜班出征）
   const triggers = [
     { id: "tg-inspection-0700", name: "每日 07:00 只读巡检", kind: "cron", schedule: "0 7 * * *", action: { dispatch: "inspection-agent", template: "inspection.daily" } },

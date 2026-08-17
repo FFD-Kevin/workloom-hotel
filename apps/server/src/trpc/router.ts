@@ -374,6 +374,13 @@ const inspectionRouter = router({
 });
 
 /** skills router（B10/M8：技能广场 / 安装绑定 / 零代码锻造 / 意识系统） */
+/** 技能管理写操作角色守卫（E2.6/L5.1 同口径：readonly 服务端 403，前端隐藏非置灰） */
+function assertSkillManage(role: string): void {
+  if (role === "readonly") {
+    throw new TRPCError({ code: "FORBIDDEN", message: "readonly 角色无技能管理权限（E2.6，服务端 403）" });
+  }
+}
+
 const skillsRouter = router({
   list: protectedProcedure
     .input(z.object({ level: z.enum(["official", "team", "industry"]).optional() }).optional())
@@ -381,10 +388,75 @@ const skillsRouter = router({
   installs: protectedProcedure.query(async ({ ctx }) => {
     return listInstalls(getAppPool(), scopeOf(ctx.identity));
   }),
+  /** F8.5 技能使用看板：每技能 30 天事件投影——调用=绑定 Agent 动作数 / 采纳率 / 驳回模式分布
+   *  归因口径：agents.skills 声明（短名/全 id 双形态匹配）→ 绑定 Agent 的 who.id 事件聚合 */
+  usage: protectedProcedure.query(async ({ ctx }) => {
+    const scope = scopeOf(ctx.identity);
+    const client = await getAppPool().connect();
+    try {
+      await client.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
+      await client.query("SELECT set_config('app.tenant_id', $1, false)", [scope.tenantId]);
+      const skillIds = (await client.query<{ id: string }>(`SELECT id FROM skills ORDER BY id`)).rows.map((r) => r.id);
+      const out: Record<string, {
+        calls30: number; adopted30: number; rejected30: number; adoptionRate: number | null;
+        rejectReasons: Array<{ reason: string; count: number }>;
+        boundAgents: Array<{ id: string; presetKey: string; name: string }>;
+      }> = {};
+      for (const skillId of skillIds) {
+        const short = skillId.replace(/^skill-[ti]?-?/, "");
+        const agents = await client.query<{ id: string; preset_key: string; name: string }>(
+          `SELECT id, preset_key, name FROM agents
+           WHERE workspace_id=$1 AND (skills ? $2 OR skills ? $3) ORDER BY preset_key`,
+          [scope.workspaceId, short, skillId],
+        );
+        const keys = agents.rows.map((a) => a.preset_key);
+        if (keys.length === 0) {
+          out[skillId] = { calls30: 0, adopted30: 0, rejected30: 0, adoptionRate: null, rejectReasons: [], boundAgents: [] };
+          continue;
+        }
+        const calls = await client.query<{ c: string }>(
+          `SELECT count(*) AS c FROM biz_events
+           WHERE workspace_id=$1 AND created_at > now() - interval '30 days'
+             AND payload->'who'->>'type'='agent' AND payload->'who'->>'id' = ANY($2)`,
+          [scope.workspaceId, keys],
+        );
+        const gestures = await client.query<{ status: string; c: string }>(
+          `SELECT a.status, count(*) AS c FROM approvals a
+           JOIN biz_events e ON e.event_id = a.event_id
+           WHERE e.workspace_id=$1 AND e.payload->'who'->>'id' = ANY($2)
+             AND a.created_at > now() - interval '30 days'
+           GROUP BY a.status`,
+          [scope.workspaceId, keys],
+        );
+        const reasons = await client.query<{ reason: string; c: string }>(
+          `SELECT a.gesture->>'reason_enum' AS reason, count(*) AS c FROM approvals a
+           JOIN biz_events e ON e.event_id = a.event_id
+           WHERE e.workspace_id=$1 AND e.payload->'who'->>'id' = ANY($2)
+             AND a.status='rejected' AND a.created_at > now() - interval '30 days'
+           GROUP BY 1 ORDER BY 2 DESC LIMIT 3`,
+          [scope.workspaceId, keys],
+        );
+        const adopted = gestures.rows.filter((g) => g.status === "approved" || g.status === "edited").reduce((s, g) => s + Number(g.c), 0);
+        const rejected = Number(gestures.rows.find((g) => g.status === "rejected")?.c ?? 0);
+        out[skillId] = {
+          calls30: Number(calls.rows[0]?.c ?? 0),
+          adopted30: adopted,
+          rejected30: rejected,
+          adoptionRate: adopted + rejected > 0 ? adopted / (adopted + rejected) : null,
+          rejectReasons: reasons.rows.map((r) => ({ reason: r.reason ?? "未填", count: Number(r.c) })),
+          boundAgents: agents.rows.map((a) => ({ id: a.id, presetKey: a.preset_key, name: a.name })),
+        };
+      }
+      return out;
+    } finally {
+      client.release();
+    }
+  }),
   /** 安装（F8.2 安装即绑定；L8.1 脱敏闸 / L8.2 白名单 / E8.1 冲突进审批 / F8.3 dry-run 前置） */
   install: protectedProcedure
     .input(z.object({ skillId: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      assertSkillManage(ctx.identity.role);
       try {
         return await installSkill(getAppPool(), getGatewayPool(), scopeOf(ctx.identity), {
           skillId: input.skillId, by: ctx.identity.memberNo,
@@ -400,6 +472,7 @@ const skillsRouter = router({
   uninstall: protectedProcedure
     .input(z.object({ skillId: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      assertSkillManage(ctx.identity.role);
       try {
         return await uninstallSkill(getAppPool(), getGatewayPool(), scopeOf(ctx.identity), {
           skillId: input.skillId, by: ctx.identity.memberNo,
@@ -420,6 +493,7 @@ const skillsRouter = router({
       fenceBindings: z.array(z.string()).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
+      assertSkillManage(ctx.identity.role);
       return createSkillDraft(getAppPool(), getGatewayPool(), scopeOf(ctx.identity), { ...input, by: ctx.identity.memberNo });
     }),
   /** 生效前 dry-run 预览（F8.3/F2.5：回放最近 10 条） */
@@ -453,6 +527,7 @@ const skillsRouter = router({
         schedule: z.string().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
+        assertSkillManage(ctx.identity.role);
         return confirmSuggestion(getAppPool(), getGatewayPool(), scopeOf(ctx.identity), {
           suggestion: input.suggestion, target: input.target, schedule: input.schedule, by: ctx.identity.memberNo,
         });
@@ -461,6 +536,7 @@ const skillsRouter = router({
     reject: protectedProcedure
       .input(z.object({ key: z.string(), reason: z.string().max(200).optional() }))
       .mutation(async ({ ctx, input }) => {
+        assertSkillManage(ctx.identity.role);
         return { eventId: await rejectSuggestion(getGatewayPool(), scopeOf(ctx.identity), { ...input, by: ctx.identity.memberNo }) };
       }),
   }),
