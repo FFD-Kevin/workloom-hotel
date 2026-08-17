@@ -9,7 +9,7 @@
 | 阶段 | 状态 | tag |
 |---|---|---|
 | 阶段一 环境初始化 | ✅ 完成（A1–A7，Linux 沙箱实测全绿；Mac 实测项见「待回填」） | `v0.1.0` |
-| 阶段二 后端 API | ✅ 完成（B0–B10 全绿，附录 H 可自动化条款回归通过） | `v0.2.0` |
+| 阶段二 后端 API | ✅ 完成（B0–B10 全绿，附录 H 可自动化条款回归通过；B11 IM 通道增量卡 2026-08-17 并入） | `v0.2.0` |
 | 阶段三 前端页面 | 🚧 F1–F9 完成（P1/P2/P9/P3/P4/P5/P8 七页真实接线）；下一卡 F10=P6 | —（F12 后打 `v0.3.0`） |
 | 阶段四 联调与启动脚本 | ⬜ 未开始 | — |
 
@@ -36,6 +36,7 @@
 - [x] B8 runtime + 三态派遣：意图路由（含糊反问不建任务/LLM 白名单约束/3s 超时降级 F3.2）+ preset 装配三要素缺一拒绝（L3.7）+ Quest 循环（每步围栏瀑布 auto/review/block + 回执校验 E3.7 + step_id 幂等）+ replay 断点续跑零重复事件（H-5）+ L3.1 并发上限 + dsh 挂载点（plugins/workloom-fence 挂 tools/pre-execute）— `packages/runtime/`，端到端实测：含糊反问 ✅ / 调价 Quest T-104 全 3 步 completed ✅；judge 修复读类动作误吃 default_level；9+84 测试绿
 - [x] B9 night-shift：18:00 候选清单（F4.1 夜班 preset 覆盖+谷时价+围栏摘要）+ 状态机持久化（F4.8 非法迁移拒绝）+ 开启夜班=人类命令+围栏快照（F2.6）+ 一键暂停（G5 计时留痕/E4.1 超时 P0/running 线程断点挂起）+ 08:30 决策包三段投影（H-7 纯日志视图/G6 ≤20 条严重度截断/无回执标未核实 E3.7）+ 触发器引擎（F4.7 cron+事件双入口/L4.4 CRUD 启停全事件化）— `packages/base/night-shift/`，95 测试全绿
 - [x] B10 巡检 + 技能/意识（阶段二收官）：巡检四检确定性探针 + 只读前置断言（L9.1 工具集裁剪复查）+ 异常分级事件/高优同源聚合推送（F9.2/G3/E9.2）+ 失败重试后必出 P0 告警事件不静默（L9.2/E9.1）+ 当日幂等去重（L9.3）+ 状态条纯日志投影（F9.4，关注区 ≤5 条按严重度）+ 一键派单建单回链/失败升级一级转需介入（F9.3/E9.3）+ 技能三级体系安装即绑定/卸载即撤销（F8.1/F8.2/L8.3，resolveAgentFenceBindings 为运行时唯一消费点）+ 未脱敏 industry 拦截（L8.1/E8.4）+ 签名白名单（L8.2）+ 围栏冲突进审批不静默（E8.1）+ 三要素零代码锻造+版本管理+dry-run 前置（F8.3/F2.5 同口径回放 10 条）+ 意识系统高频检测 ≥3 次/周→建议固化卡片→一键确认生成触发器/技能+驳回阈值 ×2 校准闭环（F8.4/E8.3）+ 行业资产复用闸门（L8.4）— `packages/base/inspection/`（4 文件）+ `packages/base/skills/`（3 文件）+ tRPC inspection/skills 双 router，集成冒烟：手动巡检 ✅ / 状态条点名 ✅ / 种子 100 事件检出 review.reply 30 次·price.adjust 26 次高频建议 ✅；31 条新测试两轮连跑全绿
+- [x] B11 IM 通道接入（D14，用户显式插单·阶段二后端增量卡）：自研 `packages/base/im-channels/` 通道域四件（registry 注册表对账 approvals.channel 枚举 5 值+未启用即拒 / inbound 入站归一化→网关瀑布落五元事件+通道消息幂等+PII 脱敏天然覆盖 F1.10 / cards 审批卡片出站留痕 approval.card.sent+ChannelDriver 抽象+Mock 驱动 D4 同纪律 / callback 手势回调复用 decide 全纪律 L5.1/L5.2/L5.3/E5.3+回执回写通道 F5.5）+ openid→成员映射（members.im_openids，E5.2 预留位；未映射=外部访客 ext: 口径只读无权审批）+ tRPC im router 五端点（channels/inbound/sendApprovalCard/callback/outbox，ChannelError→403/400 映射）+ dsh-im 锁版集成（`vendor/dsh-im/VENDOR.md` pin 0.2.2+integrity + `scripts/install-im-channels.sh` pin 安装校验幂等）+ `.env.example` IM_DRIVER=mock — 17 条新测试全绿（纯单测 5 组+PG 集成：入站落库/幂等/脱敏/映射/手势闭环/readonly 403/卡片留痕）；端到端冒烟：钉钉入站→E-309 落库·重推 deduped ✅ / 审批卡 apr-e-8895→mock-dingtalk-1·手势回调 approved·重复回调「已处理过」回执 ✅ / 未映射 openid 403 ✅；dsh 实证：`dsh plugin --profile web add @xmanrui/dsh-im@0.2.2` 挂载 profile 依赖 ✅ → `dsh web` 200 且页面注入 dsh-im/client.js 入口 ✅
 
 ## 阶段三任务卡
 
@@ -53,6 +54,7 @@
 
 - **阶段二已收官**：附录 H 可自动化条款（1/2/3/4/5/7/9/10/14）全部有对应测试/验收且通过；B10 验收 L9.2（巡检失败必出事件）/ L8.3（卸载即撤销）已转测试锁定。tag `v0.2.0`。
 - **F9 已收官（2026-08-17）**：P8 船员名册双态（p8/p8_agent）真实接线，门禁全绿（见实测记录 F9 批次）。
+- **B11 已收官（2026-08-17，用户显式插单）**：dsh-im 评估结论=采纳（D14），IM 通道域代码整合完成并门禁全绿（见实测记录 B11 批次）；真实通道凭据由用户在 dsh 设置页自配（IM_DRIVER 默认 mock）。
 - **下一步**：**阶段三 F10 = P6 装备库**（Agent 能力商店 · 技能广场：意识系统建议横幅（F8.4 ≥3 次/周→固化/草稿/驳回降权 E8.3）+ 官方套件金边（P6E2 安装态/绑定围栏可见/「已装给谁」→P8）+ 团队技能银边/行业共享铜边（L8.1 脱敏闸）+ 零代码新建技能（F8.3 三要素+dry-run 前置 F2.5）；数据=skills router 已有（list/installs/forge/dryRun/awareness.*），接线即可）。后续：P7 → F12 → tag `v0.3.0`。
 - 环境重建：沙箱 /tmp 回收后 `bash scripts/devbox.sh`（+`serve`）一条命令恢复全环境。
 - 外部真实接口纪律（用户 2026-08-17 明确）：LLM 等外部 API 一律走 Mock Provider/OpenAI 兼容网关跑通测试（D4），用户安装后自行在 .env 接入真实 Key（LLM_PROVIDER/LLM_API_KEY）。
@@ -61,7 +63,20 @@
 
 ## 实测记录（2026-08-17 · Linux 沙箱，Node 24.19 / pnpm 10.14 / PG 17.11 + pgvector 0.8.6）
 
-**F9 批次（本批，同环境实测）**：
+**B11 批次（本批，同环境实测）**：
+
+| 门禁 | 结果 |
+|---|---|
+| `pnpm -r --if-present typecheck` | ✅ 6 包全绿（含新增 im-channels 四件 + server im router） |
+| `pnpm -C packages/shared test` | ✅ 4 绿 |
+| `pnpm -C packages/base test`（RUN_DB_TESTS=1 双角色） | ✅ 129/129 全绿（含 im-channels 12 条：注册表↔DDL 对账/未启用通道拒绝/入站校验四拒/卡片组装/Mock 驱动 + PG 集成入站落库·幂等·PII 脱敏·openid 映射·手势闭环·readonly 403·卡片留痕）；踩坑回填：首轮往种子工作区 INSERT 测试成员并发污染 tenancy「3 成员」断言 → 改 UPDATE 绑定种子成员 openid（不增行，与 approvals.test.ts 同惯例）+ 清残留后两轮连跑全绿 |
+| `pnpm db:migrate && pnpm db:seed` | ✅ 复跑幂等（H-1 完整率 100%，L1.4 冲突丢弃） |
+| server 冒烟 | ✅ `/health` + `/trpc/system.health` 200（db:up）；im.channels 返回 5 通道注册表（slack=planned） |
+| im 端到端冒烟（mock 驱动） | ✅ 入站 dingtalk→E-309 落库·同 channelMsgId 重推 deduped=true 返回原事件 ✅；sendApprovalCard apr-e-8895（R4:review）→ mock-dingtalk-1 + approval.card.sent E-410 留痕 ✅；callback approve→approved·回执「已采纳（操作人 王店长）」✅；重复回调 deduped·回执「已处理过（L5.3 幂等）」✅；未映射 openid 回调 → 403 E5.2 ✅；im.outbox 检视 3 条出站记录 ✅ |
+| web 构建 | ✅ `vite build` 4.62s 绿（AppRouter 类型源同步通过） |
+| dsh-im 真实挂载实证 | ✅ registry integrity 逐字符一致；`dsh plugin --profile web add @xmanrui/dsh-im@0.2.2` → profile 依赖挂载 ✅；`dsh web` 启动 200 且 index 注入 dsh-im/client.js 插件入口 ✅（凭据配置与真实通道收发属用户侧操作，不入沙箱门禁） |
+
+**F9 批次（2026-08-17，同环境实测）**：
 
 | 门禁 | 结果 |
 |---|---|

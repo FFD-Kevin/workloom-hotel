@@ -1,8 +1,9 @@
 /**
- * tRPC 根路由（F9 状态：system / auth / members / threads / approvals / inspection / skills
- * / workspace / nightShift / fence / roster 挂载；其余 router（events / bundle）后续按需要挂载——见 MASTERPLAN §2.2）
+ * tRPC 根路由（B11 状态：system / auth / members / threads / approvals / inspection / skills
+ * / workspace / nightShift / fence / roster / im 挂载；其余 router（events / bundle）后续按需要挂载——见 MASTERPLAN §2.2）
  * 已挂载：B10 inspection（巡检 M9）/ skills（技能+意识 M8）；F3 workspace（档案/成员）/ nightShift（夜班投影）；
- * F8 fence（围栏版本化+dry-run）；F9 roster（P8 船员名册：人机混编投影 + 工时聚合 L6.3 + 档案全字段）
+ * F8 fence（围栏版本化+dry-run）；F9 roster（P8 船员名册：人机混编投影 + 工时聚合 L6.3 + 档案全字段）；
+ * B11 im（IM 通道域 D14：注册表/入站幂等/审批卡片出站/手势回调，Mock 驱动默认）
  * 本文件同时是前端类型源：apps/web 经 `@workloom/server/router` 导入 AppRouter 类型。
  */
 import { z } from "zod";
@@ -48,6 +49,17 @@ import {
   SkillError,
   uninstallSkill,
 } from "@workloom/base/skills";
+import {
+  ChannelError,
+  composeApprovalCard,
+  handleGestureCallback,
+  ingestInbound,
+  listChannels,
+  MockChannelDriver,
+  sendApprovalCard,
+  type ChannelDriver,
+  type ApprovalChannel,
+} from "@workloom/base/im-channels";
 
 /** system router：健康检查（公开） */
 const systemRouter = router({
@@ -977,6 +989,140 @@ const rosterRouter = router({
     }),
 });
 
+/** im router（B11/D14：IM 通道域 tRPC 薄壳——通道注册表/入站/审批卡片出站/手势回调）
+ *  Mock 驱动默认（D4 同纪律：无真实凭据全流程可跑）；真实通道凭据在 dsh 设置页配置（dsh-im，D14），
+ *  凭据永不经事件明文（L7.3）。server 层只做装配与错误映射，纪律全部内聚在 packages/base/im-channels。 */
+const imDriverKind = process.env.IM_DRIVER ?? "mock";
+const imDrivers = new Map<ApprovalChannel, MockChannelDriver>();
+function mockDriverFor(channel: ApprovalChannel): MockChannelDriver {
+  let d = imDrivers.get(channel);
+  if (!d) {
+    d = new MockChannelDriver(channel);
+    imDrivers.set(channel, d);
+  }
+  return d;
+}
+/** 通道域错误 → tRPC 映射：身份未映射=403（E5.2 无权审批）；其余通道错误=400 */
+function imRethrow(err: unknown): never {
+  if (err instanceof ChannelError) {
+    throw new TRPCError({
+      code: err.code === "IDENTITY_UNMAPPED" ? "FORBIDDEN" : "BAD_REQUEST",
+      message: err.message,
+    });
+  }
+  if (err instanceof ApprovalError) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: err.message });
+  }
+  throw err;
+}
+const imRouter = router({
+  /** 通道注册表 + 驱动状态（P 设置页/联调用） */
+  channels: protectedProcedure.query(() => ({
+    driver: imDriverKind,
+    channels: listChannels(),
+  })),
+  /** 入站 webhook（dsh-im 归一化后注入；幂等+PII 脱敏+openid 映射内聚在服务层） */
+  inbound: protectedProcedure
+    .input(
+      z.object({
+        channel: z.enum(["inapp", "dingtalk", "wecom", "feishu"]),
+        channelMsgId: z.string().min(1),
+        conversationId: z.string().min(1),
+        kind: z.enum(["direct", "group"]),
+        senderOpenId: z.string().min(1),
+        text: z.string().min(1).max(2000),
+        sentAt: z.string().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      try {
+        return await ingestInbound(getAppPool(), getGatewayPool(), scopeOf(ctx.identity), input);
+      } catch (err) {
+        imRethrow(err);
+      }
+    }),
+  /** 审批卡片出站（F5.5 IM 卡片多通道；仅 pending 可发，出站留痕 approval.card.sent） */
+  sendApprovalCard: protectedProcedure
+    .input(
+      z.object({
+        approvalId: z.string().min(1),
+        channel: z.enum(["dingtalk", "wecom", "feishu"]),
+        conversationId: z.string().min(1),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const scope = scopeOf(ctx.identity);
+      const client = await getAppPool().connect();
+      try {
+        await client.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
+        await client.query("SELECT set_config('app.tenant_id', $1, false)", [scope.tenantId]);
+        const r = await client.query<{
+          approval_id: string;
+          event_id: string;
+          snapshot: { expires_at?: string } | null;
+          payload: unknown;
+        }>(
+          `SELECT a.approval_id, a.event_id, a.snapshot, e.payload
+             FROM approvals a JOIN biz_events e ON e.event_id = a.event_id
+            WHERE a.approval_id = $1 AND a.status = 'pending'`,
+          [input.approvalId],
+        );
+        const row = r.rows[0];
+        if (!row) {
+          throw new TRPCError({ code: "NOT_FOUND", message: `审批单 ${input.approvalId} 不存在或已决（L7.1 越权返回空）` });
+        }
+        const card = composeApprovalCard(row as never);
+        const sent = await sendApprovalCard(
+          getGatewayPool(),
+          scope,
+          mockDriverFor(input.channel),
+          { conversationId: input.conversationId },
+          card,
+          ctx.identity.memberNo,
+        );
+        return { ...sent, card };
+      } catch (err) {
+        imRethrow(err);
+      } finally {
+        client.release();
+      }
+    }),
+  /** 手势回调（F5.4 手势回写多通道；decide 内聚 L5.1/L5.2/L5.3/E5.3 全纪律） */
+  callback: protectedProcedure
+    .input(
+      z.object({
+        channel: z.enum(["dingtalk", "wecom", "feishu"]),
+        approvalId: z.string().min(1),
+        operatorOpenId: z.string().min(1),
+        conversationId: z.string().min(1),
+        gesture: z.enum(["approve", "edit", "reject"]),
+        reasonEnum: z.string().optional(),
+        reasonText: z.string().max(200).optional(),
+        editedAfter: z.unknown().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      try {
+        return await handleGestureCallback(
+          getAppPool(),
+          getGatewayPool(),
+          scopeOf(ctx.identity),
+          input,
+          mockDriverFor(input.channel),
+        );
+      } catch (err) {
+        imRethrow(err);
+      }
+    }),
+  /** mock 出站盒检视（IM_DRIVER=mock 联调/演示用；真实驱动下为空） */
+  outbox: protectedProcedure
+    .input(z.object({ channel: z.enum(["dingtalk", "wecom", "feishu"]) }))
+    .query(({ input }) => ({
+      driver: imDriverKind,
+      outbox: imDrivers.get(input.channel)?.outbox ?? [],
+    })),
+});
+
 export const appRouter = router({
   system: systemRouter,
   auth: authRouter,
@@ -989,6 +1135,7 @@ export const appRouter = router({
   nightShift: nightShiftRouter,
   fence: fenceRouter,
   roster: rosterRouter,
+  im: imRouter,
 });
 
 export type AppRouter = typeof appRouter;

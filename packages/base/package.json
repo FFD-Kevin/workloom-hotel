@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     "./flydata-core": "./flydata-core/index.ts",
+    "./im-channels": "./im-channels/index.ts",
     "./inspection": "./inspection/index.ts",
     "./skills": "./skills/index.ts",
     "./fence-engine": "./fence-engine/index.ts",
