@@ -55,7 +55,7 @@
 
 ## 阶段四任务卡
 
-- [x] E1 E2E 演示剧本（PRD PF 章六条流程实跑）— `pnpm demo`：一键重置（`reset.sh --yes` 整库重建+迁移+种子，生成「昨夜」数据）→ PF.1 晨间审批（交接班三栏 F4.4/批量采纳 G6/手势权重写回 F5.5）→ PF.2 一句话派遣（含糊反问不建任务 F3.2/建档 19ms ≤3s F3.1/Quest 3 步过围栏瀑布/G8 留痕 100%）→ PF.3 巡检派单（只读巡检 L9.1 真实检出 3 异常/高优聚合推送 G3/一键派单 F9.3+幂等 L9.3/回链 E9.3）→ PF.4 夜班闭环（候选清单 F4.1/人类命令开启+围栏快照 F2.6/一键暂停 3ms ≤60s G5/恢复 E4.2/决策包投递 F4.4/状态机 F4.8 全链）→ PF.5 围栏演进（dry-run 回放 10 条 F2.5/未确认不得激活 L2.4/提案进 P4 高危审批 F5.4/手势通过→activateRuleVersion 激活 F2.4）→ PF.6 技能沉淀（高频检测 ≥3 次/周 F8.4/一键固化触发器 F4.7/技能草稿 dry-run F8.3/安装即绑定 F8.2/使用看板回流 F8.5）；断言 44/44 全绿、`--no-reset` 复跑降级 42/42 全绿——产出 `scripts/demo.ts` + 服务端联调补线（nightShift.candidates/start/deliver 三端点 + confirmDryRun 提案进 P4 审批队列 + decide/batchApprove 手势通过→围栏激活接线，纯函数 `fenceRuleRowId`/`fenceActivationFromProposal` 入 fence-engine 带 3 条单测）+ 种子补巡检只读快照（archive.inspection：高危差评+中危价格/房态，schema 同步登记）—— commit 见本节推送
+- [x] E1 E2E 演示剧本（PRD PF 章六条流程实跑）— `pnpm demo`：一键重置（`reset.sh --yes` 整库重建+迁移+种子，生成「昨夜」数据）→ PF.1 晨间审批（交接班三栏 F4.4/批量采纳 G6/手势权重写回 F5.5）→ PF.2 一句话派遣（含糊反问不建任务 F3.2/建档 19ms ≤3s F3.1/Quest 3 步过围栏瀑布/G8 留痕 100%）→ PF.3 巡检派单（只读巡检 L9.1 真实检出 3 异常/高优聚合推送 G3/一键派单 F9.3+幂等 L9.3/回链 E9.3）→ PF.4 夜班闭环（候选清单 F4.1/人类命令开启+围栏快照 F2.6/一键暂停 3ms ≤60s G5/恢复 E4.2/决策包投递 F4.4/状态机 F4.8 全链）→ PF.5 围栏演进（dry-run 回放 10 条 F2.5/未确认不得激活 L2.4/提案进 P4 高危审批 F5.4/手势通过→activateRuleVersion 激活 F2.4）→ PF.6 技能沉淀（高频检测 ≥3 次/周 F8.4/一键固化触发器 F4.7/技能草稿 dry-run F8.3/安装即绑定 F8.2/使用看板回流 F8.5）；断言 44/44 全绿、`--no-reset` 复跑降级 42/42 全绿——产出 `scripts/demo.ts` + 服务端联调补线（nightShift.candidates/start/deliver 三端点 + confirmDryRun 提案进 P4 审批队列 + decide/batchApprove 手势通过→围栏激活接线，纯函数 `fenceRuleRowId`/`fenceActivationFromProposal` 入 fence-engine 带 3 条单测）+ 种子补巡检只读快照（archive.inspection：高危差评+中危价格/房态，schema 同步登记）—— commit `ea9a506`
 
 ## 最后游标
 
