@@ -89,7 +89,7 @@ export function Bridge({
               企业 Agent IM · <b className="font-semibold text-ink2">云栖酒店</b>
             </span>
             <span className="flex-1" />
-            <NightStatusPill />
+            <NightStatusPill onClick={() => { window.location.href = "/p9"; }} />
             <EmergencyBrake />
           </header>
 

@@ -234,7 +234,7 @@ export default function P1() {
       {!isCommunity && (
         <div className="mb-3 rounded-lg border border-line bg-card p-3">
           <div className="mb-1.5 text-caption font-bold text-holo">守夜战队</div>
-          <NightStatusPill state={pillState} window="22:00–08:00" />
+          <NightStatusPill state={pillState} window="22:00–08:00" onClick={() => { window.location.href = "/p9"; }} />
           {night?.run?.fenceSnapshot && (
             <div className="mt-1.5 font-mono text-micro text-ink3">围栏快照 {night.run.fenceSnapshot}</div>
           )}

@@ -25,6 +25,7 @@ import {
   listQueue,
 } from "@workloom/base/review-console";
 import { routeIntent, runQuest } from "@workloom/runtime";
+import { NightTransitionError, pauseAll, resumeNight } from "@workloom/base/night-shift";
 import { MAX_CONCURRENT_THREADS } from "@workloom/shared";
 import {
   dispatchFromAnomaly,
@@ -526,6 +527,69 @@ const nightShiftRouter = router({
       client.release();
     }
   }),
+
+  /** 班组消息流（P9E1：夜班频道事件流投影，ts 升序；夜班动作 100% 过围栏 L4.1） */
+  events: protectedProcedure
+    .input(z.object({ limit: z.number().min(1).max(200).default(80) }).optional())
+    .query(async ({ ctx, input }) => {
+      const scope = scopeOf(ctx.identity);
+      const app = getAppPool();
+      const client = await app.connect();
+      try {
+        await client.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
+        await client.query("SELECT set_config('app.tenant_id', $1, false)", [scope.tenantId]);
+        const r = await client.query<{ payload: unknown }>(
+          `SELECT payload FROM biz_events
+           WHERE workspace_id=$1 AND payload->'context'->>'channel' = '夜班'
+           ORDER BY seq DESC LIMIT $2`,
+          [scope.workspaceId, input?.limit ?? 80],
+        );
+        return r.rows.map((x) => x.payload).reverse(); // ts 升序
+      } finally {
+        client.release();
+      }
+    }),
+
+  /** 一键暂停（P9E2：二次确认在组件层；G5 端到端计时留痕；超时 P0 升级 E4.1） */
+  pause: protectedProcedure
+    .input(z.object({ runId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        return await pauseAll(getAppPool(), getGatewayPool(), scopeOf(ctx.identity), input.runId, {
+          memberNo: ctx.identity.memberNo, channel: "inapp",
+        });
+      } catch (err) {
+        if (err instanceof NightTransitionError) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: err.message });
+        }
+        throw err;
+      }
+    }),
+
+  /** 恢复（E4.2：断点续跑由 runtime replay 保证） */
+  resume: protectedProcedure
+    .input(z.object({ runId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      await resumeNight(getAppPool(), getGatewayPool(), scopeOf(ctx.identity), input.runId, ctx.identity.memberNo);
+      return { ok: true };
+    }),
+
+  /** 班组留言（P9E6：人给班组留言=五元事件留痕；触发的动作照常过围栏 L4.1/L4.4） */
+  note: protectedProcedure
+    .input(z.object({ text: z.string().min(1).max(500) }))
+    .mutation(async ({ ctx, input }) => {
+      const scope = scopeOf(ctx.identity);
+      const r = await gatewayAppend(getGatewayPool(), {
+        ...scope, actor: { id: ctx.identity.memberNo, type: "human" },
+      }, {
+        who: { type: "human", id: ctx.identity.memberNo },
+        context: { tenant_id: scope.tenantId, workspace_id: scope.workspaceId, time: new Date().toISOString(), channel: "夜班" },
+        object: { type: "store", id: scope.workspaceId },
+        decision: { action: "night.note", after: { text: input.text } },
+        rule_impact: [],
+      });
+      return { eventId: r.eventId };
+    }),
 });
 
 export const appRouter = router({

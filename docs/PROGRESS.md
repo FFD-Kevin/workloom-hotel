@@ -10,7 +10,7 @@
 |---|---|---|
 | 阶段一 环境初始化 | ✅ 完成（A1–A7，Linux 沙箱实测全绿；Mac 实测项见「待回填」） | `v0.1.0` |
 | 阶段二 后端 API | ✅ 完成（B0–B10 全绿，附录 H 可自动化条款回归通过） | `v0.2.0` |
-| 阶段三 前端页面 | 🚧 F1–F4 完成（组件库 + P1 主甲板 + P2 任务舱）；下一卡 F5=P9 | —（F12 后打 `v0.3.0`） |
+| 阶段三 前端页面 | 🚧 F1–F5 完成（P1/P2/P9 三页真实接线）；下一卡 F6=P3 | —（F12 后打 `v0.3.0`） |
 | 阶段四 联调与启动脚本 | ⬜ 未开始 | — |
 
 ## 阶段一任务卡
@@ -40,6 +40,7 @@
 ## 阶段三任务卡
 
 - [x] F2 HUD 组件库 18 件（`apps/web/src/components/hud/`）：DispatchBar 航线设定台 / QuestCard（六态+重连）/ HandoffCard（空态禁显0）/ TriGestureBar（过期锁定 E5.3+权限隐藏 L5.1）/ FenceLight（四态+基线金锁）/ 消息族四件（回执三态徽标/子调用虚线/系统分隔线）/ KpiGauge（扫描线+截至时间+stale 置灰）/ RadarAlertCard（P0–P2+雷达扫动 4s+无异常态禁消失）/ NightStatusPill（四态）/ EmergencyBrake（二次确认）/ EmptyState / SkeletonBlock（1.4s 流光）/ BannerAlert 三级 / XpBar（斜纹流光 1.2s）/ LevelBadge / AchievementBadge / SquadRing / EquipSlot / EquipCard（金银铜稀有度）/ EventIdChip——动效令牌 sweep/xpflow/skflow 入 tokens.css 并登记降级；/dev 状态矩阵页逐格对账（§10 检查表），Bridge 顶栏改引库组件；无头截图三段走查 ✅ 双强调色分工无混用 ✅
+- [x] F5 P9 守夜战队频道（PRD P9-①②③④ 逐条对账）：班组消息流=夜班频道事件流投影（ts 升序；越围栏标「未生效·待审批」L4.1；需介入红框卡 L4.2 → 一键派单 P9E3）+ 一键暂停实接 pauseAll（二次确认在组件层；G5 计时回执卡；非法迁移 F4.8 干净 400）+ 恢复 resumeNight（E4.2 续跑）+ 班组留言=五元事件留痕（P9E6 实测 E-101 落库可检索）+ 右栏班组状态机/峰谷计量（off-peak 投影 G9）/围栏快照（F2.6 可回溯）/SquadRing 7 船员环+在线脉冲（P9E4）+ 交接班预告卡（P9E5）；权限态：只读成员隐藏留言栏与制动杆（E2.6/L3.4）；server nightShift 补 events/pause/resume/note 四端点；顶栏夜班胶囊点击必达 P9（§5.9 铁律）；新增 `scripts/devbox.sh`（沙箱重建一键恢复：Node24+PG17/pgvector 用户态解包+迁移种子+serve，接力环境纪律入库）
 - [x] F4 P2 任务舱·主线执行（PRD P2-①②③④⑤ 逐条对账）：行动消息流=线程事件流子序列投影（session_id 查询，ts 升序；回执三态/命中规则/能量逐事件渲染，无回执标未核实 L3.6/E3.7）+ ThreadInspector 右栏（进度 XP 条/计量 model_trace 投影/围栏判定聚合/参与成员，≤5s 轮询+断线显重连不伪造进度 F3.4）+ 内联审批卡（diff+命中规则版本+三手势写回 approvals.decide，驳回必填原因 ≤200 字 L5.2；已决态渲染）+ p2_done 交付卡+决策链路时间轴（无对外变更明示「仅只读分析」E3.7）+ p2_error 三入口（转人工/降级重试接 threads.run replay 幂等/回滚标注 E1 接线位）+ 只读成员隐藏输入栏（E2.6）+ 追问沿用线程上下文（threads.run）；server 补 threads.get/threads.events；P1 线程点击跳 /p2/:id；hud 补 PlanCompareCard（F3.7 越围栏双人确认提示）；走查：T-101 完成态交付卡+20 事件时间轴 ✅ T-102 待审查态+舰长决断气泡 ✅
 - [x] F3 P1 主甲板真实接线（PRD P1-①②③ 逐条对账）：左栏分组会话列表（📌守夜战队/昨夜战报 ✓9◆3▲2/待办审批 badge/线程状态点+进度）+ 中栏（交接班卡三计数与左栏强一致 F4.4 + KPI 四卡=一店一档 history_curve 真实投影 + 巡检雷达推送接 inspection.dispatch 一键派单 + 无异常「昨夜一切正常」）+ 右栏（档案 chips/守夜战队卡/人机混编在线成员 10/渠道巡检）+ 底部航线设定台受控输入（空文本禁点 §5.1/Enter 或启航建单）+ 快捷目标 6 条（F3.5）；状态变体 p1/p1_loading 骨架/p1_empty/p1_community（隐藏夜班+Quest 快捷目标，F7.2 隐藏非置灰）；轮询线程夜班 5s 其余 10s（F3.4/D6）；含糊反问不建任务实测 ✅（「搞一下」→clarify）、明确派遣建 T-104 ✅；server 补 workspace/nightShift 两薄 router + trpc 客户端 JWT 头（演示身份自动登录 MEM-001）；DispatchBar 升级受控组件 — `apps/web/src/pages/p1/P1.tsx` / `lib/trpc.ts` / server router；Bridge 支持 left/right 插槽
 - [x] F1 tokens.css 全令牌 + 舰桥壳 + 顶栏（设计规范 §2/§3/§4/§7 逐项回引注释可查）：色板补齐星云晕染对/金底深棕/需介入紫、字号阶梯 Display→Micro、圆角/栏宽 236·264/间距、动效令牌 drift 90s·pulse 1.6s·2s·0.8s·sheen 2.6s（全部登记 prefers-reduced-motion 降级）；星野背景双层（公理Ⅰ 禁死黑）；HUD 四角刻度对齐原型 18px·2px·贴边；P1E5 夜班胶囊（999px+呼吸灯，含 paused 琥珀变体）+ P1E6 紧急制动杆（.brk 描边款）；Orbitron/JetBrains Mono 字体引入（§3）— `apps/web/src/styles/tokens.css` / `shell/Bridge.tsx` / `index.html`；走查：vite build ✅、无头截图双强调色分工无混用 ✅、vite dev 全链路 tRPC 握手 200 ✅
@@ -47,7 +48,8 @@
 ## 最后游标
 
 - **阶段二已收官**：附录 H 可自动化条款（1/2/3/4/5/7/9/10/14）全部有对应测试/验收且通过；B10 验收 L9.2（巡检失败必出事件）/ L8.3（卸载即撤销）已转测试锁定。tag `v0.2.0`。
-- **下一步**：**阶段三 F5 = P9 守夜战队频道**（夜班班组群：SquadRing 群头 + 班组消息流 + 一键制动接 pauseAll（G5 计时）+ 状态变体 p9/p9_paused；夜班 5s 轮询）。后续：P3→P4→P5→P8→P6→P7 → F12 → tag `v0.3.0`。
+- **下一步**：**阶段三 F6 = P3 掌上战报**（移动端 375px：交接班消息 + 逐条手势 ≤2 步 + 战报计数头；状态变体 p3/p3_empty/p3_expired；数据源=nightShift.current + approvals）。后续：P4→P5→P8→P6→P7 → F12 → tag `v0.3.0`。
+- 环境重建：沙箱 /tmp 回收后 `bash scripts/devbox.sh`（+`serve`）一条命令恢复全环境。
 - 外部真实接口纪律（用户 2026-08-17 明确）：LLM 等外部 API 一律走 Mock Provider/OpenAI 兼容网关跑通测试（D4），用户安装后自行在 .env 接入真实 Key（LLM_PROVIDER/LLM_API_KEY）。
 - 集成测试纪律：DB 用例对同一数据库可重跑（B10 起全部用例带唯一后缀隔离；B3 memory 测试已顺手修同源污染）；回归前推荐 `./scripts/reset.sh` 整库重建后单轮全绿为准。
 - **D13 已立项（2026-08-17，dsh 社区生态评估）**：① 阶段四新增 E6「dsh headless 回归门禁」（`dsh --profile headless` 脚本化用例 + H-5 kill -9 重放验收载体）；② E2 扩为含 doctor.sh 一屏自检（对齐 dsh-TUI `/doctor` 清单）；③ DSH Desktop 式桌面安装包进停车场（触发条件=私有化/一键分发需求）。详见 DECISIONS D13 / MASTERPLAN 阶段四与 §7。社区项目实证不改 Harness 内核、纯消费文档化 seam 的路线（DSH Desktop ≈8.5k★ / dsh-TUI ≈1.5k★），D12 双轨纪律不变。
