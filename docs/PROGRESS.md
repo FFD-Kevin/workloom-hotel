@@ -11,7 +11,7 @@
 | 阶段一 环境初始化 | ✅ 完成（A1–A7，Linux 沙箱实测全绿；Mac 实测项见「待回填」） | `v0.1.0` |
 | 阶段二 后端 API | ✅ 完成（B0–B10 全绿，附录 H 可自动化条款回归通过；B11 IM 通道增量卡 2026-08-17 并入） | `v0.2.0` |
 | 阶段三 前端页面 | ✅ 完成（F1–F12：P1/P2/P9/P3/P4/P5/P8/P6/P7 九页真实接线 + 全局收尾 25 屏走查） | `v0.3.0` |
-| 阶段四 联调与启动脚本 | ⬜ 未开始（下一卡 E1 E2E 演示剧本） | — |
+| 阶段四 联调与启动脚本 | 🚧 进行中（E1 E2E 演示剧本 ✅；下一卡 E2 启动脚本四件套+doctor.sh） | — |
 
 ## 阶段一任务卡
 
@@ -53,8 +53,14 @@
 - [x] F3 P1 主甲板真实接线（PRD P1-①②③ 逐条对账）：左栏分组会话列表（📌守夜战队/昨夜战报 ✓9◆3▲2/待办审批 badge/线程状态点+进度）+ 中栏（交接班卡三计数与左栏强一致 F4.4 + KPI 四卡=一店一档 history_curve 真实投影 + 巡检雷达推送接 inspection.dispatch 一键派单 + 无异常「昨夜一切正常」）+ 右栏（档案 chips/守夜战队卡/人机混编在线成员 10/渠道巡检）+ 底部航线设定台受控输入（空文本禁点 §5.1/Enter 或启航建单）+ 快捷目标 6 条（F3.5）；状态变体 p1/p1_loading 骨架/p1_empty/p1_community（隐藏夜班+Quest 快捷目标，F7.2 隐藏非置灰）；轮询线程夜班 5s 其余 10s（F3.4/D6）；含糊反问不建任务实测 ✅（「搞一下」→clarify）、明确派遣建 T-104 ✅；server 补 workspace/nightShift 两薄 router + trpc 客户端 JWT 头（演示身份自动登录 MEM-001）；DispatchBar 升级受控组件 — `apps/web/src/pages/p1/P1.tsx` / `lib/trpc.ts` / server router；Bridge 支持 left/right 插槽
 - [x] F1 tokens.css 全令牌 + 舰桥壳 + 顶栏（设计规范 §2/§3/§4/§7 逐项回引注释可查）：色板补齐星云晕染对/金底深棕/需介入紫、字号阶梯 Display→Micro、圆角/栏宽 236·264/间距、动效令牌 drift 90s·pulse 1.6s·2s·0.8s·sheen 2.6s（全部登记 prefers-reduced-motion 降级）；星野背景双层（公理Ⅰ 禁死黑）；HUD 四角刻度对齐原型 18px·2px·贴边；P1E5 夜班胶囊（999px+呼吸灯，含 paused 琥珀变体）+ P1E6 紧急制动杆（.brk 描边款）；Orbitron/JetBrains Mono 字体引入（§3）— `apps/web/src/styles/tokens.css` / `shell/Bridge.tsx` / `index.html`；走查：vite build ✅、无头截图双强调色分工无混用 ✅、vite dev 全链路 tRPC 握手 200 ✅
 
+## 阶段四任务卡
+
+- [x] E1 E2E 演示剧本（PRD PF 章六条流程实跑）— `pnpm demo`：一键重置（`reset.sh --yes` 整库重建+迁移+种子，生成「昨夜」数据）→ PF.1 晨间审批（交接班三栏 F4.4/批量采纳 G6/手势权重写回 F5.5）→ PF.2 一句话派遣（含糊反问不建任务 F3.2/建档 19ms ≤3s F3.1/Quest 3 步过围栏瀑布/G8 留痕 100%）→ PF.3 巡检派单（只读巡检 L9.1 真实检出 3 异常/高优聚合推送 G3/一键派单 F9.3+幂等 L9.3/回链 E9.3）→ PF.4 夜班闭环（候选清单 F4.1/人类命令开启+围栏快照 F2.6/一键暂停 3ms ≤60s G5/恢复 E4.2/决策包投递 F4.4/状态机 F4.8 全链）→ PF.5 围栏演进（dry-run 回放 10 条 F2.5/未确认不得激活 L2.4/提案进 P4 高危审批 F5.4/手势通过→activateRuleVersion 激活 F2.4）→ PF.6 技能沉淀（高频检测 ≥3 次/周 F8.4/一键固化触发器 F4.7/技能草稿 dry-run F8.3/安装即绑定 F8.2/使用看板回流 F8.5）；断言 44/44 全绿、`--no-reset` 复跑降级 42/42 全绿——产出 `scripts/demo.ts` + 服务端联调补线（nightShift.candidates/start/deliver 三端点 + confirmDryRun 提案进 P4 审批队列 + decide/batchApprove 手势通过→围栏激活接线，纯函数 `fenceRuleRowId`/`fenceActivationFromProposal` 入 fence-engine 带 3 条单测）+ 种子补巡检只读快照（archive.inspection：高危差评+中危价格/房态，schema 同步登记）—— commit 见本节推送
+
 ## 最后游标
 
+- **E1 已收官（2026-08-17）**：E2E 演示剧本六条流程沙箱实跑全绿（见实测记录 E1 批次）；Mac 实跑属 E2/E3 排期（用户无 Mac 环境，沙箱实测为准）。
+- **下一步**：**E2 启动脚本四件套**（`start.sh/stop.sh/reset.sh/doctor.sh` 复核补全：端口冲突与缺依赖友好提示；doctor.sh 一屏自检对齐 dsh-TUI `/doctor` 清单 D13② + 本项目侧检查 PG 连通/迁移版本/RLS/种子完整性/node-pty/Xcode CLT）。后续 E3 README 收尾 → E6 dsh headless 回归门禁（D13①，H-5 验收载体）→ E4（可选 Tauri）→ E5 tag `v1.0.0` → 阶段五官网与分发（D15）。
 - **阶段二已收官**：附录 H 可自动化条款（1/2/3/4/5/7/9/10/14）全部有对应测试/验收且通过；B10 验收 L9.2（巡检失败必出事件）/ L8.3（卸载即撤销）已转测试锁定。tag `v0.2.0`。
 - **F9 已收官（2026-08-17）**：P8 船员名册双态（p8/p8_agent）真实接线，门禁全绿（见实测记录 F9 批次）。
 - **B11 已收官（2026-08-17，用户显式插单）**：dsh-im 评估结论=采纳（D14），IM 通道域代码整合完成并门禁全绿（见实测记录 B11 批次）；真实通道凭据由用户在 dsh 设置页自配（IM_DRIVER 默认 mock）。
@@ -62,13 +68,22 @@
 - **F12 已收官（2026-08-17）**：阶段三全局收尾完成——25 屏走查（`docs/WALKTHROUGH-v0.3.0.md`）+ 社区版切换演示 + 附录 H 13/15 测试锁定（H-5/H-12 排期阶段四），tag `v0.3.0`。
 - **F11 已收官（2026-08-17）**：P7 舰船换装坞（p7/p7_fail）真实接线，门禁全绿（见实测记录 F11 批次）；base 新增 bundles 装配域，L2 六插件全部落位。
 - **D15 已立项（2026-08-17，官网与分发）**：用户供稿官网单页素材并入计划——新增阶段五「官网与分发」（W1 官网落地页 / W2 Mac 打包+GitHub Release 分发管线，MASTERPLAN §4），排期=阶段三/四完成后；诚实性约束：Release 产物落地前下载按钮挂「即将开放」态。详见 DECISIONS D15。
-- **下一步**：**阶段四 E1 = E2E 演示剧本**（PF.1 晨间审批 / PF.2 一句话派遣 / PF.3 巡检派单 / PF.4 夜班闭环 / PF.5 围栏演进 / PF.6 技能固化六条流程实跑；`pnpm demo` 一键重置并生成「昨夜」数据）。后续 E2–E6 → 阶段五官网与分发（D15：W1 官网 / W2 Mac 打包+Release）。
-- 环境重建：沙箱 /tmp 回收后 `bash scripts/devbox.sh`（+`serve`）一条命令恢复全环境。
+- 环境重建：沙箱 /tmp 回收后 `bash scripts/devbox.sh`（+`serve`）一条命令恢复全环境；`pnpm demo` 需 server 在线（devbox.sh serve 或 pnpm dev），沙箱内 psql 路径由 devbox 提供（Mac 上 brew/docker 自带）。
 - 外部真实接口纪律（用户 2026-08-17 明确）：LLM 等外部 API 一律走 Mock Provider/OpenAI 兼容网关跑通测试（D4），用户安装后自行在 .env 接入真实 Key（LLM_PROVIDER/LLM_API_KEY）。
 - 集成测试纪律：DB 用例对同一数据库可重跑（B10 起全部用例带唯一后缀隔离；B3 memory 测试已顺手修同源污染）；回归前推荐 `./scripts/reset.sh` 整库重建后单轮全绿为准。
 - **D13 已立项（2026-08-17，dsh 社区生态评估）**：① 阶段四新增 E6「dsh headless 回归门禁」（`dsh --profile headless` 脚本化用例 + H-5 kill -9 重放验收载体）；② E2 扩为含 doctor.sh 一屏自检（对齐 dsh-TUI `/doctor` 清单）；③ DSH Desktop 式桌面安装包进停车场（触发条件=私有化/一键分发需求）。详见 DECISIONS D13 / MASTERPLAN 阶段四与 §7。社区项目实证不改 Harness 内核、纯消费文档化 seam 的路线（DSH Desktop ≈8.5k★ / dsh-TUI ≈1.5k★），D12 双轨纪律不变。
 
 ## 实测记录（2026-08-17 · Linux 沙箱，Node 24.19 / pnpm 10.14 / PG 17.11 + pgvector 0.8.6）
+
+**E1 批次（本批，同环境实测）**：
+
+| 门禁 | 结果 |
+|---|---|
+| `pnpm -r --if-present typecheck` | ✅ 6 包零错误（server 路由补线 + fence-engine 接线纯函数 + demo.ts） |
+| `pnpm -r --if-present test`（RUN_DB_TESTS=1 双角色） | ✅ 157/157 全绿（base 144：新增 fenceActivationFromProposal/fenceRuleRowId 3 条；shared 4 / runtime 9） |
+| `pnpm -C apps/web build` | ✅ 3.01s（407KB，AppRouter 类型源同步通过） |
+| `pnpm demo`（默认：一键重置+六流程） | ✅ 断言 44/44 全绿：PF.1 交接班 ✓9◆3▲2+批量采纳 1 条+手势权重写回；PF.2 含糊反问+T-104 建档 19ms（≤3s F3.1）+Quest 3/3 completed+留痕 4 条五元齐备；PF.3 巡检 9 检项检出 3 异常（高危差评+中危价格/房态）+聚合推送 1 条+派单 T-105+重复派单 deduped+回链 E-112；PF.4 候选 3 项+开启 nr-2026-08-17+围栏快照 v1+暂停 3ms withinSla（G5）+恢复+决策包 ✓4◆0▲0+状态机全链；PF.5 R7 dry-run 回放 10 条+L2.4 未确认不生效+提案 apr-e-118 进 P4 高危+采纳 E-119→R7 v-next active；PF.6 高频建议 7 条（price.adjust×21 等）+固化触发器 trg-auto-room-price-price-adjust E-121+技能草稿 dry-run+安装+看板 6 投影 |
+| `pnpm demo --no-reset`（复跑降级） | ✅ 42/42 全绿：已派单/已固化按 L9.3/L4.4 幂等跳过，夜班顺移次日班次（nr-2026-08-18），R7 已激活降级提示不谎报 |
 
 **F12 批次（本批，同环境实测）**：
 

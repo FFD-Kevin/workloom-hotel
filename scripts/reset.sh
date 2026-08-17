@@ -2,13 +2,13 @@
 # WorkLoom IM 底座 · 数据重置（演示剧本前置：回到干净的云栖酒店数据集）
 # 注意：biz_events 为 append-only（触发器禁 DELETE，L1.1），
 #      因此重置 = 整库重建（drop schema）→ 迁移 → 种子，而非清表。
-# 用法：./scripts/reset.sh
+# 用法：./scripts/reset.sh [--yes]（--yes/-y 跳过交互确认，供 pnpm demo 等脚本调用）
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 echo "== WorkLoom IM 底座 · 重置演示数据 =="
 echo "⚠️  将删除本地 workloom 库全部数据（append-only 事件库只能整库重建）"
-[ -t 0 ] && { read -r -p "确认继续？[y/N] " a; [ "$a" = "y" ] || exit 0; }
+case "${1:-}" in --yes|-y) ;; *) [ -t 0 ] && { read -r -p "确认继续？[y/N] " a; [ "$a" = "y" ] || exit 0; } ;; esac
 
 DB_URL=$(grep -E '^DATABASE_URL=' .env | cut -d= -f2-)
 if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then

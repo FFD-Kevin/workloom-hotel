@@ -28,8 +28,22 @@ import {
   listQueue,
 } from "@workloom/base/review-console";
 import { routeIntent, runQuest } from "@workloom/runtime";
-import { NightTransitionError, pauseAll, resumeNight } from "@workloom/base/night-shift";
-import { confirmDryRun, createDryRun } from "@workloom/base/fence-engine";
+import {
+  buildCandidateList,
+  confirmNight,
+  deliverPackage,
+  ensureReady,
+  NightTransitionError,
+  pauseAll,
+  resumeNight,
+} from "@workloom/base/night-shift";
+import {
+  activateRuleVersion,
+  confirmDryRun,
+  createDryRun,
+  fenceActivationFromProposal,
+  fenceRuleRowId,
+} from "@workloom/base/fence-engine";
 import { MAX_CONCURRENT_THREADS, PLAN_TIERS } from "@workloom/shared";
 import {
   dispatchFromAnomaly,
@@ -305,6 +319,51 @@ const threadsRouter = router({
     }),
 });
 
+/**
+ * E1 联调接线（PF.5/F2.4）：审批手势通过后的副作用分发——
+ * 被审批事件为 fence.rule.propose 且手势=通过 → 激活对应围栏规则版本（activateRuleVersion）。
+ * 幂等：规则已离开 pending_approval/draft（重复回调/重复提案）时跳过不报错（L5.3 同口径）。
+ * 返回激活的规则行 ID（未触发接线返回 null）。
+ */
+async function activateFenceRuleAfterApproval(
+  scope: { tenantId: string; workspaceId: string },
+  approvalId: string,
+): Promise<string | null> {
+  const app = getAppPool();
+  const client = await app.connect();
+  try {
+    await client.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
+    await client.query("SELECT set_config('app.tenant_id', $1, false)", [scope.tenantId]);
+    const r = await client.query<{ payload: unknown }>(
+      `SELECT e.payload FROM approvals a JOIN biz_events e ON e.event_id = a.event_id
+       WHERE a.approval_id=$1 AND a.workspace_id=$2`,
+      [approvalId, scope.workspaceId],
+    );
+    const params = fenceActivationFromProposal(r.rows[0]?.payload, scope.workspaceId);
+    if (!params) return null;
+    // 审批留痕 ID = 手势回写事件（approval.gesture，F5.5 经安全网关落库）
+    const g = await client.query<{ event_id: string }>(
+      `SELECT event_id FROM biz_events
+       WHERE workspace_id=$1 AND payload->'decision'->>'action'='approval.gesture'
+         AND payload->'decision'->'after'->>'approvalId'=$2
+       ORDER BY seq DESC LIMIT 1`,
+      [scope.workspaceId, approvalId],
+    );
+    const approvalEventId = g.rows[0]?.event_id;
+    if (!approvalEventId) return null;
+    const st = await client.query<{ status: string }>(
+      `SELECT status FROM fence_rules WHERE id=$1 AND workspace_id=$2`,
+      [params.ruleRowId, scope.workspaceId],
+    );
+    const status = st.rows[0]?.status;
+    if (status !== "draft" && status !== "pending_approval") return null; // 幂等跳过
+    await activateRuleVersion(app, scope, { ...params, approvalEventId });
+    return params.ruleRowId;
+  } finally {
+    client.release();
+  }
+}
+
 /** approvals router（B6：统一队列/三手势/批量/超时扫描；L5.1 服务端强制鉴权） */
 const approvalsRouter = router({
   list: protectedProcedure
@@ -325,7 +384,7 @@ const approvalsRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       try {
-        return await decide(
+        const res = await decide(
           getAppPool(),
           getGatewayPool(),
           scopeOf(ctx.identity),
@@ -333,6 +392,11 @@ const approvalsRouter = router({
           input.approvalId,
           { type: input.gesture, reasonEnum: input.reasonEnum, reasonText: input.reasonText, editedAfter: input.editedAfter },
         );
+        // E1 联调接线（PF.5/F2.4）：fence.rule.propose 手势通过 → 激活规则版本
+        if (!res.deduped && res.status === "approved") {
+          await activateFenceRuleAfterApproval(scopeOf(ctx.identity), input.approvalId);
+        }
+        return res;
       } catch (err) {
         if (err instanceof ApprovalError) {
           throw new TRPCError({
@@ -348,13 +412,18 @@ const approvalsRouter = router({
     .input(z.object({ approvalIds: z.array(z.string()).min(1).max(50) }))
     .mutation(async ({ ctx, input }) => {
       try {
-        return await batchApprove(
+        const res = await batchApprove(
           getAppPool(),
           getGatewayPool(),
           scopeOf(ctx.identity),
           { memberNo: ctx.identity.memberNo, role: ctx.identity.role },
           input.approvalIds,
         );
+        // E1 联调接线（PF.5/F2.4）：批量采纳通过项同样触发围栏激活接线（防御性；围栏提案标记 high_risk 本不可批量）
+        for (const id of res.approved) {
+          await activateFenceRuleAfterApproval(scopeOf(ctx.identity), id);
+        }
+        return res;
       } catch (err) {
         if (err instanceof ApprovalError) {
           throw new TRPCError({ code: "FORBIDDEN", message: err.message });
@@ -625,6 +694,44 @@ const workspaceRouter = router({
 
 /** nightShift router（F3 起 P1 数据源：夜班状态胶囊 + 昨夜战报卡投影） */
 const nightShiftRouter = router({
+  /** 18:00 候选清单（F4.1：夜班 preset 覆盖过滤 + 谷时价 + 围栏摘要；E1 联调挂端点） */
+  candidates: protectedProcedure.query(async ({ ctx }) => {
+    return buildCandidateList(getAppPool(), scopeOf(ctx.identity));
+  }),
+
+  /** 开启夜班（F4.1 人类命令·不经模型轮次；ensureReady→confirmNight：围栏快照 F2.6 + 状态机 F4.8） */
+  start: protectedProcedure
+    .input(z.object({
+      runDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      candidateIds: z.array(z.string()).default([]),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.identity.role === "readonly") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "readonly 角色无权开启夜班（E2.6/L3.4，服务端 403）" });
+      }
+      const scope = scopeOf(ctx.identity);
+      const runId = await ensureReady(getAppPool(), getGatewayPool(), scope, input.runDate);
+      try {
+        await confirmNight(getAppPool(), getGatewayPool(), scope, runId, ctx.identity.memberNo, input.candidateIds);
+      } catch (err) {
+        if (err instanceof NightTransitionError) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: err.message });
+        }
+        throw err;
+      }
+      return { runId, status: "running" as const };
+    }),
+
+  /** 08:30 决策包投递（F4.4 三段投影；状态机 → package_generated，统计回写 night_runs.stats） */
+  deliver: protectedProcedure
+    .input(z.object({
+      runId: z.string(),
+      window: z.object({ from: z.string(), to: z.string() }),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      return deliverPackage(getAppPool(), getGatewayPool(), scopeOf(ctx.identity), input.runId, input.window);
+    }),
+
   /** 最近班次 + 状态机投影（F4.8）+ 决策包统计（F4.4，deliverPackage 回写的 stats） */
   current: protectedProcedure.query(async ({ ctx }) => {
     const scope = scopeOf(ctx.identity);
@@ -803,12 +910,12 @@ const fenceRouter = router({
     .mutation(async ({ ctx, input }) => {
       const scope = scopeOf(ctx.identity);
       await confirmDryRun(getAppPool(), scope, input.dryRunId);
-      // 规则草稿进 pending_approval（激活须审批事件 ID，activateRuleVersion 在 P4 手势后调用——E1 联调卡）
+      // 规则草稿进 pending_approval（激活须审批事件 ID，activateRuleVersion 在 P4 手势后调用——E1 已接线，见下方 decide/batchApprove）
       const app = getAppPool();
       const client = await app.connect();
       try {
         await client.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
-        const rowId = `fr-${input.rule.ruleId.toLowerCase()}-vnext-${scope.workspaceId}`;
+        const rowId = fenceRuleRowId(input.rule.ruleId, scope.workspaceId);
         await client.query(
           `INSERT INTO fence_rules (id, rule_id, version, workspace_id, name, level, match_spec, action, is_baseline, status, created_by)
            VALUES ($1,$2,'v-next',$3,$4,$5,$6,$7,false,'pending_approval',$8)
@@ -829,6 +936,21 @@ const fenceRouter = router({
         decision: { action: "fence.rule.propose", after: { ...input.rule, dryRunId: input.dryRunId } },
         rule_impact: [],
       });
+      // E1 联调接线（PF.5/F2.4）：围栏变更提案进 P4 决断队列——高危（不可批量采纳，须逐条手势，F5.4/G6）
+      // 幂等：UNIQUE(event_id, channel) 冲突丢弃（L5.3 同口径）
+      const client2 = await app.connect();
+      try {
+        await client2.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
+        await client2.query(
+          `INSERT INTO approvals (approval_id, tenant_id, workspace_id, event_id, channel, status, snapshot)
+           VALUES ($1,$2,$3,$4,'inapp','pending',$5)
+           ON CONFLICT (event_id, channel) DO NOTHING`,
+          [`apr-${ev.eventId.toLowerCase()}`, scope.tenantId, scope.workspaceId, ev.eventId,
+           JSON.stringify({ after: input.rule, high_risk: true })],
+        );
+      } finally {
+        client2.release();
+      }
       return { proposed: true, eventId: ev.eventId };
     }),
 });

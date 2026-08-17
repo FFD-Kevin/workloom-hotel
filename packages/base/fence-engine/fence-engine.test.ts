@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import { evalCondition, FenceEvalError } from "./expr.js";
 import { judge, judgeSubCall, type RuntimeRule } from "./judge.js";
 import { checkMonotonic, loadFencePack } from "./dsl.js";
+import { fenceActivationFromProposal, fenceRuleRowId } from "./lifecycle.js";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -180,5 +181,32 @@ d("PG 集成（dry-run / 激活门禁 / 对象写锁）", async () => {
     });
     await confirmDryRun(appPool, scope, dr.dryRunId);
     await expect(confirmDryRun(appPool, scope, dr.dryRunId)).rejects.toThrow(/非 pending/);
+  });
+});
+
+/* ================= E1 联调接线：审批 → 激活参数提取（纯函数，PF.5/F2.4） ================= */
+
+describe("fenceActivationFromProposal（E1 审批→激活接线）", () => {
+  const WS = "ws-yunqi";
+
+  it("fenceRuleRowId 生成口径稳定（与 confirmDryRun 入库一致）", () => {
+    expect(fenceRuleRowId("R7", WS)).toBe("fr-r7-vnext-ws-yunqi");
+  });
+
+  it("fence.rule.propose 事件 → 提取 ruleRowId + dryRunId", () => {
+    const payload = {
+      decision: { action: "fence.rule.propose", after: { ruleId: "R7", dryRunId: "fdr-r7-abc" } },
+    };
+    expect(fenceActivationFromProposal(payload, WS)).toEqual({
+      ruleRowId: "fr-r7-vnext-ws-yunqi",
+      dryRunId: "fdr-r7-abc",
+    });
+  });
+
+  it("非提案事件 / 缺字段 → null（不激活）", () => {
+    expect(fenceActivationFromProposal({ decision: { action: "price.adjust" } }, WS)).toBeNull();
+    expect(fenceActivationFromProposal({ decision: { action: "fence.rule.propose", after: { ruleId: "R7" } } }, WS)).toBeNull();
+    expect(fenceActivationFromProposal(null, WS)).toBeNull();
+    expect(fenceActivationFromProposal({}, WS)).toBeNull();
   });
 });

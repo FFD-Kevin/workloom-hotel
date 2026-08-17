@@ -93,6 +93,32 @@ export async function createDryRun(
   }
 }
 
+/* ---------- 审批 → 激活联调接线（E1 · PF.5/F2.4） ---------- */
+
+/** 候选规则行 ID 的唯一生成口径（confirmDryRun 入库与审批激活接线共用，防漂移） */
+export function fenceRuleRowId(ruleId: string, workspaceId: string): string {
+  return `fr-${ruleId.toLowerCase()}-vnext-${workspaceId}`;
+}
+
+/**
+ * 从事件 payload 提取围栏激活参数（纯函数，可单测）：
+ * 仅当 decision.action === 'fence.rule.propose' 且 after 携带 ruleId/dryRunId 时返回参数，否则 null。
+ * 消费点：server 层 approvals 手势通过后的副作用分发（P4 手势 → activateRuleVersion）。
+ */
+export function fenceActivationFromProposal(
+  payload: unknown,
+  workspaceId: string,
+): { ruleRowId: string; dryRunId: string } | null {
+  const p = payload as
+    | { decision?: { action?: string; after?: { ruleId?: unknown; dryRunId?: unknown } } }
+    | null
+    | undefined;
+  if (p?.decision?.action !== "fence.rule.propose") return null;
+  const { ruleId, dryRunId } = p.decision.after ?? {};
+  if (typeof ruleId !== "string" || typeof dryRunId !== "string" || !ruleId || !dryRunId) return null;
+  return { ruleRowId: fenceRuleRowId(ruleId, workspaceId), dryRunId };
+}
+
 /** 确认 dry-run（人类看过报告；pending→confirmed）。未确认不得激活（L2.4） */
 export async function confirmDryRun(
   app: pg.Pool,

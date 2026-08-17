@@ -188,6 +188,24 @@ function yunqiArchive(): Record<string, unknown> {
       "2026-08": { occ: 0.78, adr: 496, revpar: 387 },
     },
     sop: ["差评 24h 内响应", "调价须附竞对依据", "夜间对账三轮比对"],
+    // 巡检只读快照（M9/F9.1 探针输入；E1 补登：07:00 巡检真实检出——高危差评 + 中危价格/房态异常）
+    inspection: {
+      channels: [
+        { channel: "美团", price: 458, parity: true, status: "online" },
+        { channel: "携程", price: 458, parity: true, status: "online" },
+        { channel: "飞猪", price: 438, parity: false, status: "online" },
+      ],
+      roomStates: [
+        { roomType: "大床房", synced: true },
+        { roomType: "双床房", synced: true },
+        { roomType: "亲子房", synced: false },
+      ],
+      reviews: [
+        { id: "rv-ctrip-9901", channel: "携程", score: 5 },
+        { id: "rv-meituan-1032", channel: "美团", score: 2 },
+      ],
+      violations: [],
+    },
     forbidden: [
       { rule: "美团大床房不低于 ¥380", scope: "room_price" },
       { rule: "不承诺档案之外的补偿金额", scope: "review" },
