@@ -10,7 +10,7 @@
 |---|---|---|
 | 阶段一 环境初始化 | ✅ 完成（A1–A7，Linux 沙箱实测全绿；Mac 实测项见「待回填」） | `v0.1.0` |
 | 阶段二 后端 API | ✅ 完成（B0–B10 全绿，附录 H 可自动化条款回归通过） | `v0.2.0` |
-| 阶段三 前端页面 | 🚧 F1–F7 完成（P1/P2/P9/P3/P4 五页真实接线）；下一卡 F8=P5 | —（F12 后打 `v0.3.0`） |
+| 阶段三 前端页面 | 🚧 F1–F8 完成（P1/P2/P9/P3/P4/P5 六页真实接线）；下一卡 F9=P8 | —（F12 后打 `v0.3.0`） |
 | 阶段四 联调与启动脚本 | ⬜ 未开始 | — |
 
 ## 阶段一任务卡
@@ -40,6 +40,7 @@
 ## 阶段三任务卡
 
 - [x] F2 HUD 组件库 18 件（`apps/web/src/components/hud/`）：DispatchBar 航线设定台 / QuestCard（六态+重连）/ HandoffCard（空态禁显0）/ TriGestureBar（过期锁定 E5.3+权限隐藏 L5.1）/ FenceLight（四态+基线金锁）/ 消息族四件（回执三态徽标/子调用虚线/系统分隔线）/ KpiGauge（扫描线+截至时间+stale 置灰）/ RadarAlertCard（P0–P2+雷达扫动 4s+无异常态禁消失）/ NightStatusPill（四态）/ EmergencyBrake（二次确认）/ EmptyState / SkeletonBlock（1.4s 流光）/ BannerAlert 三级 / XpBar（斜纹流光 1.2s）/ LevelBadge / AchievementBadge / SquadRing / EquipSlot / EquipCard（金银铜稀有度）/ EventIdChip——动效令牌 sweep/xpflow/skflow 入 tokens.css 并登记降级；/dev 状态矩阵页逐格对账（§10 检查表），Bridge 顶栏改引库组件；无头截图三段走查 ✅ 双强调色分工无混用 ✅
+- [x] F8 P5 航道管制台（PRD P5-①②③④⑤ 逐条对账）：版本历史（active/rolled_back/出厂基线 🔒 L2.1）+ 生效范围统计 + 规则列表 R1–R6（级别 pill 四色语义 + 基线金锁 F2.3 + 30 天触发数 rule_impact 聚合）+ NL 新增群规（Mock 转写草稿 D4 → 结构化预览 → dry-run 回放最近 10 条 F2.5 → 确认进变更审批 pending_approval F2.4；影响面过大拒绝拆条 E2.3；未确认不生效 L2.4）+ p5_readonly 只读视图（E2.6/L5.1）；server 新增 fence router（rules/versions/dryRun/confirmDryRun）；冒烟实测：R7 dry-run 回放 10 条挂起 4 → 确认 → pending_approval + fence.rule.propose 事件落库 ✅
 - [x] F7 P4 决断队列（PRD P4-①②③④⑤ 逐条对账）：统一队列分级（高危→双人/越围栏 review→必审/其余→逐步审，F5.4/F5.1）+ 原生审批卡详情（diff 前删线后高亮 P4E1 + 命中规则随行 + 影响面 + 执行回执位说明 F1.1/E3.7）+ 三手势（驳回必填原因 L5.2；写回 approvals.decide + 记忆校准 F5.5/F1.7）+ p4_conflict 快照冲突红条+刷新再审（E5.3/F2.7，冲突项禁审）+ WhyPanel 决策链路（依据事件/引用记忆/模型档与积分，F1.12/L3.6）+ IM 卡片同步卡（幂等键/原地更新语义，L5.3/D7 本地回环）+ 批量采纳低风险（G6 二次确认接 batchApprove）+ p4_empty 清空+手势统计；权限态：只读隐藏手势 diff 只读（E2.6/L5.1）
 - [x] F6 P3 掌上战报（移动端 375px 拇指化重排，PRD P3-①②③④⑤ 逐条对账）：三栏计数头与 P1 交接班卡同源强一致（F4.4，点击筛选）+ 审批卡逐条三手势（热区 ≥44px §4.2；驳回必填原因 L5.2；写回接 approvals.decide 权重 1/2/3 F5.3）+ expired 虚框卡（F5.7；高危无超时放行 L5.4 提示）+ 求援卡（夜间未执行任何动作 L4.2）+ 批量推进（仅低风险可批量 G6 二次确认，接 batchApprove 高危跳过）+ 紧急制动（P3E5 接 nightShift.pause）+ 完成后态「今日待审已清空」+手势统计（F5.5）；权限态：只读成员隐藏手势与双键（E2.6）；独立移动机身（44px 圆角+深空内容区 §4.2）
 - [x] F5 P9 守夜战队频道（PRD P9-①②③④ 逐条对账）：班组消息流=夜班频道事件流投影（ts 升序；越围栏标「未生效·待审批」L4.1；需介入红框卡 L4.2 → 一键派单 P9E3）+ 一键暂停实接 pauseAll（二次确认在组件层；G5 计时回执卡；非法迁移 F4.8 干净 400）+ 恢复 resumeNight（E4.2 续跑）+ 班组留言=五元事件留痕（P9E6 实测 E-101 落库可检索）+ 右栏班组状态机/峰谷计量（off-peak 投影 G9）/围栏快照（F2.6 可回溯）/SquadRing 7 船员环+在线脉冲（P9E4）+ 交接班预告卡（P9E5）；权限态：只读成员隐藏留言栏与制动杆（E2.6/L3.4）；server nightShift 补 events/pause/resume/note 四端点；顶栏夜班胶囊点击必达 P9（§5.9 铁律）；新增 `scripts/devbox.sh`（沙箱重建一键恢复：Node24+PG17/pgvector 用户态解包+迁移种子+serve，接力环境纪律入库）
@@ -50,7 +51,7 @@
 ## 最后游标
 
 - **阶段二已收官**：附录 H 可自动化条款（1/2/3/4/5/7/9/10/14）全部有对应测试/验收且通过；B10 验收 L9.2（巡检失败必出事件）/ L8.3（卸载即撤销）已转测试锁定。tag `v0.2.0`。
-- **下一步**：**阶段三 F8 = P5 航道管制台**（规则围栏页：版本历史 + 基线金锁 🔒 R1–R6 + 自然语言新增群规（转写→预览→dry-run→审批）+ dry-run 报告；需 fence router（rules 查询/dry-run 创建与确认）；状态变体 p5/p5_readonly）。后续：P8→P6→P7 → F12 → tag `v0.3.0`。
+- **下一步**：**阶段三 F9 = P8 船员名册**（人机混编通讯录：3 人类 + 7 Agent preset 卡片（LV 等级/段位/技能包/围栏授权/工时记录）+ 点击档案；数据=members + workspace.agents + skills.installs + 事件聚合）。后续：P6→P7 → F12 → tag `v0.3.0`。
 - 环境重建：沙箱 /tmp 回收后 `bash scripts/devbox.sh`（+`serve`）一条命令恢复全环境。
 - 外部真实接口纪律（用户 2026-08-17 明确）：LLM 等外部 API 一律走 Mock Provider/OpenAI 兼容网关跑通测试（D4），用户安装后自行在 .env 接入真实 Key（LLM_PROVIDER/LLM_API_KEY）。
 - 集成测试纪律：DB 用例对同一数据库可重跑（B10 起全部用例带唯一后缀隔离；B3 memory 测试已顺手修同源污染）；回归前推荐 `./scripts/reset.sh` 整库重建后单轮全绿为准。

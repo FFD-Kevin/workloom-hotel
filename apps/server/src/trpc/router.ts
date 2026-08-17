@@ -26,6 +26,7 @@ import {
 } from "@workloom/base/review-console";
 import { routeIntent, runQuest } from "@workloom/runtime";
 import { NightTransitionError, pauseAll, resumeNight } from "@workloom/base/night-shift";
+import { confirmDryRun, createDryRun } from "@workloom/base/fence-engine";
 import { MAX_CONCURRENT_THREADS } from "@workloom/shared";
 import {
   dispatchFromAnomaly,
@@ -592,6 +593,119 @@ const nightShiftRouter = router({
     }),
 });
 
+/** fence router（F8 起 P5 数据源：规则版本化投影 + 30 天触发聚合 + dry-run 生命周期 F2.4/F2.5） */
+const fenceRouter = router({
+  /** 规则列表（P5E2：级别 pill + 来源 + 30 天触发数；基线 🔒 集团强制 F2.3） */
+  rules: protectedProcedure.query(async ({ ctx }) => {
+    const scope = scopeOf(ctx.identity);
+    const app = getAppPool();
+    const client = await app.connect();
+    try {
+      await client.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
+      await client.query("SELECT set_config('app.tenant_id', $1, false)", [scope.tenantId]);
+      const r = await client.query(
+        `SELECT f.id, f.rule_id, f.version, f.workspace_id, f.name, f.level, f.match_spec,
+                f.is_baseline, f.status, f.created_by, f.created_at,
+                (SELECT count(*) FROM biz_events e
+                  WHERE e.workspace_id=$1 AND e.created_at > now() - interval '30 days'
+                    AND EXISTS (SELECT 1 FROM jsonb_array_elements(e.payload->'rule_impact') ri
+                                WHERE ri->>'rule_id' = f.rule_id)) AS hits30
+         FROM fence_rules f
+         WHERE (f.workspace_id=$1 OR f.workspace_id='*') AND f.status IN ('active','pending_approval','draft')
+         ORDER BY f.rule_id, f.created_at DESC`,
+        [scope.workspaceId],
+      );
+      return r.rows;
+    } finally {
+      client.release();
+    }
+  }),
+
+  /** 版本历史（P5E1：active/rolled_back/出厂基线 🔒；单调守卫 L2.1） */
+  versions: protectedProcedure.query(async ({ ctx }) => {
+    const scope = scopeOf(ctx.identity);
+    const app = getAppPool();
+    const client = await app.connect();
+    try {
+      await client.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
+      const r = await client.query(
+        `SELECT version, status, count(*) AS rules, min(created_at) AS created_at
+         FROM fence_rules WHERE (workspace_id=$1 OR workspace_id='*')
+         GROUP BY version, status ORDER BY min(created_at) DESC`,
+        [scope.workspaceId],
+      );
+      return r.rows;
+    } finally {
+      client.release();
+    }
+  }),
+
+  /** NL 新增群规 dry-run（P5E3/P5E4：候选规则回放最近 10 条 F2.5；未确认不生效 L2.4） */
+  dryRun: protectedProcedure
+    .input(z.object({
+      ruleId: z.string().regex(/^R\d+$/),
+      name: z.string().min(1).max(100),
+      level: z.enum(["auto", "review", "block"]),
+      objectTypes: z.array(z.string()).min(1),
+      actions: z.array(z.string()).min(1),
+      when: z.string().min(1),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const scope = scopeOf(ctx.identity);
+      return createDryRun(getAppPool(), scope, {
+        ruleId: input.ruleId,
+        ruleVersion: "v-next",
+        rules: [{
+          rule_id: input.ruleId, version: "v-next", name: input.name, level: input.level,
+          is_baseline: false, objectTypes: input.objectTypes, actions: input.actions, when: input.when,
+        }],
+        defaultLevel: "review",
+        createdBy: ctx.identity.memberNo,
+      });
+    }),
+
+  /** 确认 dry-run（人看过报告才激活 L2.4）→ 规则进 pending_approval + 变更审批（F2.4，走 P4 决断流） */
+  confirmDryRun: protectedProcedure
+    .input(z.object({
+      dryRunId: z.string(),
+      rule: z.object({
+        ruleId: z.string(), name: z.string(), level: z.enum(["auto", "review", "block"]),
+        objectTypes: z.array(z.string()), actions: z.array(z.string()), when: z.string(),
+      }),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const scope = scopeOf(ctx.identity);
+      await confirmDryRun(getAppPool(), scope, input.dryRunId);
+      // 规则草稿进 pending_approval（激活须审批事件 ID，activateRuleVersion 在 P4 手势后调用——E1 联调卡）
+      const app = getAppPool();
+      const client = await app.connect();
+      try {
+        await client.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
+        const rowId = `fr-${input.rule.ruleId.toLowerCase()}-vnext-${scope.workspaceId}`;
+        await client.query(
+          `INSERT INTO fence_rules (id, rule_id, version, workspace_id, name, level, match_spec, action, is_baseline, status, created_by)
+           VALUES ($1,$2,'v-next',$3,$4,$5,$6,$7,false,'pending_approval',$8)
+           ON CONFLICT (id) DO NOTHING`,
+          [rowId, input.rule.ruleId, scope.workspaceId, input.rule.name, input.rule.level,
+           JSON.stringify({ object_types: input.rule.objectTypes, actions: input.rule.actions, when: input.rule.when }),
+           JSON.stringify({ result: input.rule.level }), ctx.identity.memberNo],
+        );
+      } finally {
+        client.release();
+      }
+      const ev = await gatewayAppend(getGatewayPool(), {
+        ...scope, actor: { id: ctx.identity.memberNo, type: "human" },
+      }, {
+        who: { type: "human", id: ctx.identity.memberNo },
+        context: { tenant_id: scope.tenantId, workspace_id: scope.workspaceId, time: new Date().toISOString(), channel: "inapp" },
+        object: { type: "staff", id: input.rule.ruleId },
+        decision: { action: "fence.rule.propose", after: { ...input.rule, dryRunId: input.dryRunId } },
+        rule_impact: [],
+      });
+      return { proposed: true, eventId: ev.eventId };
+    }),
+});
+
 export const appRouter = router({
   system: systemRouter,
   auth: authRouter,
@@ -602,6 +716,7 @@ export const appRouter = router({
   skills: skillsRouter,
   workspace: workspaceRouter,
   nightShift: nightShiftRouter,
+  fence: fenceRouter,
 });
 
 export type AppRouter = typeof appRouter;
