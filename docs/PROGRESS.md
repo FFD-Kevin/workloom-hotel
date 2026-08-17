@@ -10,7 +10,7 @@
 |---|---|---|
 | 阶段一 环境初始化 | ✅ 完成（A1–A7，Linux 沙箱实测全绿；Mac 实测项见「待回填」） | `v0.1.0` |
 | 阶段二 后端 API | ✅ 完成（B0–B10 全绿，附录 H 可自动化条款回归通过） | `v0.2.0` |
-| 阶段三 前端页面 | 🚧 F1–F8 完成（P1/P2/P9/P3/P4/P5 六页真实接线）；下一卡 F9=P8 | —（F12 后打 `v0.3.0`） |
+| 阶段三 前端页面 | 🚧 F1–F9 完成（P1/P2/P9/P3/P4/P5/P8 七页真实接线）；下一卡 F10=P6 | —（F12 后打 `v0.3.0`） |
 | 阶段四 联调与启动脚本 | ⬜ 未开始 | — |
 
 ## 阶段一任务卡
@@ -39,6 +39,7 @@
 
 ## 阶段三任务卡
 
+- [x] F9 P8 船员名册（PRD P8-①②③④⑤ 逐条对账）：人机混编 MemberGrid（P8E2 人类卡圆头像·角色口径经营者/集团 Teams/只读 + 权限摘要 F5.6 + 在线=近 24h 事件留痕推导不伪造 presence；P8E1 Agent 卡方头像+版本角标+LV/段位徽章+XpBar 战绩条（游戏化界面叙事，规则手册 §3 不设公式——XP=动作×2+积分确定性推导）+ 围栏绑定 tags + 技能包 + 30 天工时 L6.3 事件聚合投影（动作数/采纳率/积分·峰谷占比 G9）+ 夜班窗口 22:00–08:00 内 night_shift preset 青脉冲自动上线 M4 + 只读 preset 标绿 L9.1 + invalid 标红+原因 F2.10 错误态）+ 加装 preset P8E3 →P7（E2.6 非管理员隐藏）+ 档案态 p8_agent（身份与归属 Agent ID/版本 who.version 归因/工作区/来源 Bundle；航道许可围栏授权逐条对账 fence_rules active 版本、声明悬空标红 F2.10；技能包 join skills+installs →P6；运行约束+写回声明；30 天战绩四格；P8E4 发消息·派遣=threads.dispatch 复用（含糊反问不建单 F3.2 实测 ✅、明确派遣建 T-105 跳 P2 ✅；L3.7 三要素提示）；P8E5 最近事件流 who.id 过滤投影 12 条含回执位 E3.7，点击进线程 →P2 F1.12）；空态=仅官方 preset 引导（§2.2）；加载=骨架屏 G10；server 新增 roster router（list/profile，PRD P8-⑤ 数据来源逐条落地，全程 RLS set_config，越权返回空 L7.1）；顺手回填 devbox.sh REPO 路径 bug（cd /tmp 后相对路径失效）+ 技能包短名↔skill- 前缀 join 修复
 - [x] F2 HUD 组件库 18 件（`apps/web/src/components/hud/`）：DispatchBar 航线设定台 / QuestCard（六态+重连）/ HandoffCard（空态禁显0）/ TriGestureBar（过期锁定 E5.3+权限隐藏 L5.1）/ FenceLight（四态+基线金锁）/ 消息族四件（回执三态徽标/子调用虚线/系统分隔线）/ KpiGauge（扫描线+截至时间+stale 置灰）/ RadarAlertCard（P0–P2+雷达扫动 4s+无异常态禁消失）/ NightStatusPill（四态）/ EmergencyBrake（二次确认）/ EmptyState / SkeletonBlock（1.4s 流光）/ BannerAlert 三级 / XpBar（斜纹流光 1.2s）/ LevelBadge / AchievementBadge / SquadRing / EquipSlot / EquipCard（金银铜稀有度）/ EventIdChip——动效令牌 sweep/xpflow/skflow 入 tokens.css 并登记降级；/dev 状态矩阵页逐格对账（§10 检查表），Bridge 顶栏改引库组件；无头截图三段走查 ✅ 双强调色分工无混用 ✅
 - [x] F8 P5 航道管制台（PRD P5-①②③④⑤ 逐条对账）：版本历史（active/rolled_back/出厂基线 🔒 L2.1）+ 生效范围统计 + 规则列表 R1–R6（级别 pill 四色语义 + 基线金锁 F2.3 + 30 天触发数 rule_impact 聚合）+ NL 新增群规（Mock 转写草稿 D4 → 结构化预览 → dry-run 回放最近 10 条 F2.5 → 确认进变更审批 pending_approval F2.4；影响面过大拒绝拆条 E2.3；未确认不生效 L2.4）+ p5_readonly 只读视图（E2.6/L5.1）；server 新增 fence router（rules/versions/dryRun/confirmDryRun）；冒烟实测：R7 dry-run 回放 10 条挂起 4 → 确认 → pending_approval + fence.rule.propose 事件落库 ✅
 - [x] F7 P4 决断队列（PRD P4-①②③④⑤ 逐条对账）：统一队列分级（高危→双人/越围栏 review→必审/其余→逐步审，F5.4/F5.1）+ 原生审批卡详情（diff 前删线后高亮 P4E1 + 命中规则随行 + 影响面 + 执行回执位说明 F1.1/E3.7）+ 三手势（驳回必填原因 L5.2；写回 approvals.decide + 记忆校准 F5.5/F1.7）+ p4_conflict 快照冲突红条+刷新再审（E5.3/F2.7，冲突项禁审）+ WhyPanel 决策链路（依据事件/引用记忆/模型档与积分，F1.12/L3.6）+ IM 卡片同步卡（幂等键/原地更新语义，L5.3/D7 本地回环）+ 批量采纳低风险（G6 二次确认接 batchApprove）+ p4_empty 清空+手势统计；权限态：只读隐藏手势 diff 只读（E2.6/L5.1）
@@ -51,15 +52,29 @@
 ## 最后游标
 
 - **阶段二已收官**：附录 H 可自动化条款（1/2/3/4/5/7/9/10/14）全部有对应测试/验收且通过；B10 验收 L9.2（巡检失败必出事件）/ L8.3（卸载即撤销）已转测试锁定。tag `v0.2.0`。
-- **下一步**：**阶段三 F9 = P8 船员名册**（人机混编通讯录：3 人类 + 7 Agent preset 卡片（LV 等级/段位/技能包/围栏授权/工时记录）+ 点击档案；数据=members + workspace.agents + skills.installs + 事件聚合）。后续：P6→P7 → F12 → tag `v0.3.0`。
+- **F9 已收官（2026-08-17）**：P8 船员名册双态（p8/p8_agent）真实接线，门禁全绿（见实测记录 F9 批次）。
+- **下一步**：**阶段三 F10 = P6 装备库**（Agent 能力商店 · 技能广场：意识系统建议横幅（F8.4 ≥3 次/周→固化/草稿/驳回降权 E8.3）+ 官方套件金边（P6E2 安装态/绑定围栏可见/「已装给谁」→P8）+ 团队技能银边/行业共享铜边（L8.1 脱敏闸）+ 零代码新建技能（F8.3 三要素+dry-run 前置 F2.5）；数据=skills router 已有（list/installs/forge/dryRun/awareness.*），接线即可）。后续：P7 → F12 → tag `v0.3.0`。
 - 环境重建：沙箱 /tmp 回收后 `bash scripts/devbox.sh`（+`serve`）一条命令恢复全环境。
 - 外部真实接口纪律（用户 2026-08-17 明确）：LLM 等外部 API 一律走 Mock Provider/OpenAI 兼容网关跑通测试（D4），用户安装后自行在 .env 接入真实 Key（LLM_PROVIDER/LLM_API_KEY）。
 - 集成测试纪律：DB 用例对同一数据库可重跑（B10 起全部用例带唯一后缀隔离；B3 memory 测试已顺手修同源污染）；回归前推荐 `./scripts/reset.sh` 整库重建后单轮全绿为准。
 - **D13 已立项（2026-08-17，dsh 社区生态评估）**：① 阶段四新增 E6「dsh headless 回归门禁」（`dsh --profile headless` 脚本化用例 + H-5 kill -9 重放验收载体）；② E2 扩为含 doctor.sh 一屏自检（对齐 dsh-TUI `/doctor` 清单）；③ DSH Desktop 式桌面安装包进停车场（触发条件=私有化/一键分发需求）。详见 DECISIONS D13 / MASTERPLAN 阶段四与 §7。社区项目实证不改 Harness 内核、纯消费文档化 seam 的路线（DSH Desktop ≈8.5k★ / dsh-TUI ≈1.5k★），D12 双轨纪律不变。
 
-## 实测记录（2026-08-16 · Linux 沙箱，Node 24.19 / pnpm 10.14 / PG 17.11 + pgvector 0.8.6）
+## 实测记录（2026-08-17 · Linux 沙箱，Node 24.19 / pnpm 10.14 / PG 17.11 + pgvector 0.8.6）
 
-**B10 批次（本批，同环境实测）**：
+**F9 批次（本批，同环境实测）**：
+
+| 门禁 | 结果 |
+|---|---|
+| `pnpm -r --if-present typecheck` | ✅ 6 包全绿（shared/db/base/runtime/server/web） |
+| `pnpm test`（含 PG 集成） | ✅ shared 4 + base 117 + runtime 9 = 130 全绿（本卡无新增服务层逻辑，roster 为 tRPC 投影层） |
+| `pnpm db:migrate && pnpm db:seed` | ✅ devbox.sh 一条命令重建（H-1 完整率 100%）；顺手修复 devbox.sh 自身 REPO 路径 bug |
+| roster.list 冒烟 | ✅ MEM-001 登录：人类 ×3（王店长在线=近24h留痕推导/李前台离线）+ Agent ×7 带 30 天聚合（调价 34 动作/23 币·峰谷 65%；评价 21 动作/采纳率 75%=3采纳÷(3+1驳回)） |
+| roster.profile 冒烟 | ✅ agt-pricing-agent：R1 auto🔒/R2 block🔒 已声明对账 active 版本；revenue-manager 技能包（短名↔skill- 前缀 join 已修）；事件流 12 条含回执位 |
+| 越权/只读 | ✅ MEM-003（readonly）调 roster 正常返回（L7.1 同工作区可读）；前端权限态隐藏「加装/派遣」入口（E2.6 截图走查 ✅） |
+| P8E4 派遣闭环 | ✅ 无头浏览器实测：「搞一下」→ 意图含糊反问横幅不建单（F3.2）；「周五旺季调价…」→ 建 T-105 跳 /p2/T-105 |
+| web 构建 + 截图走查 | ✅ `vite build` 绿；无头截图三段走查：p8 默认（人机混编/工时/夜班口径）✅ p8_agent 档案（身份/围栏/技能/战绩/事件流）✅ p8 只读权限态 ✅；双强调色分工无混用 |
+
+**B10 批次（2026-08-16）**：
 
 | 门禁 | 结果 |
 |---|---|

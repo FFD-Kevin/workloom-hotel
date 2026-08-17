@@ -3,6 +3,7 @@
 # 用途：沙箱 /tmp 被回收后 ~3 分钟恢复「Node 24 + PG 17.11 + pgvector 0.8.6 + 依赖 + 迁移 + 种子」
 # 用法：bash scripts/devbox.sh && bash scripts/devbox.sh serve   # serve=起 server+web
 set -e
+REPO="$(cd "$(dirname "$0")/.." && pwd)"   # 先解析仓库根（下方 cd /tmp 后相对路径即失效，勿后移）
 cd /tmp
 
 # 1) Node 24（官方二进制）
@@ -34,7 +35,6 @@ psql -h /tmp -p 5432 -U postgres -d workloom -c "ALTER USER postgres PASSWORD 'w
 # 4) pnpm + 依赖 + 迁移 + 种子
 [ -x /tmp/npm-global/bin/pnpm ] || npm i -g pnpm@10.14.0 --prefix /tmp/npm-global > /dev/null
 export PATH=/tmp/npm-global/bin:$PATH
-REPO="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO"
 [ -f .env ] || cp .env.example .env
 pnpm install --reporter=silent

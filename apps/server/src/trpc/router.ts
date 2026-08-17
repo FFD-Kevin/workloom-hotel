@@ -1,7 +1,8 @@
 /**
- * tRPC 根路由（B10 状态：system / auth / members / threads / approvals / inspection / skills 挂载；
- * 其余 router（events / fence / bundle）后续按需要挂载——见 MASTERPLAN §2.2）
- * 已挂载：B10 inspection（巡检 M9）/ skills（技能+意识 M8）；F3 workspace（档案/成员）/ nightShift（夜班投影）
+ * tRPC 根路由（F9 状态：system / auth / members / threads / approvals / inspection / skills
+ * / workspace / nightShift / fence / roster 挂载；其余 router（events / bundle）后续按需要挂载——见 MASTERPLAN §2.2）
+ * 已挂载：B10 inspection（巡检 M9）/ skills（技能+意识 M8）；F3 workspace（档案/成员）/ nightShift（夜班投影）；
+ * F8 fence（围栏版本化+dry-run）；F9 roster（P8 船员名册：人机混编投影 + 工时聚合 L6.3 + 档案全字段）
  * 本文件同时是前端类型源：apps/web 经 `@workloom/server/router` 导入 AppRouter 类型。
  */
 import { z } from "zod";
@@ -706,6 +707,276 @@ const fenceRouter = router({
     }),
 });
 
+/**
+ * roster router（F9 起 P8 船员名册数据源：PRD P8-⑤ 数据来源逐条落地）
+ *  - 成员列表 = 工作区成员（members）+ Agent preset 注册表投影（agents）
+ *  - 工时统计 = 事件库聚合投影（动作数/采纳率/积分/峰谷占比，L6.3 账单=事件投影同口径）
+ *  - 事件流 = 该 Agent 的 who.id 过滤投影（append-only 库只读）
+ *  - LV/段位为游戏化界面叙事（规则手册 §3：本版不设数值门槛公式），由真实战绩确定性推导，不改业务机制
+ *  - 本页无直接写入；「发消息·派遣」走 threads.dispatch（F3.1）；加装 preset 走 P7（§2.3）
+ */
+/** 游戏化展示层映射（界面叙事；输入全部为真实战绩聚合，确定性、零编造） */
+function gameOf(xp: number): { level: number; rank: "青铜" | "白银" | "黄金" | "铂金" | "星钻"; xp: number; xpFloor: number; xpNext: number } {
+  // level 阶梯：xp ≥ 8·LV² 升级（展示层自定映射，手册 §3 不定义公式）；LV.1 无门槛（floor=0）
+  let level = 1;
+  while (xp >= 8 * (level + 1) * (level + 1)) level += 1;
+  const rank = level >= 15 ? "星钻" : level >= 10 ? "铂金" : level >= 6 ? "黄金" : level >= 3 ? "白银" : "青铜";
+  return { level, rank, xp, xpFloor: level === 1 ? 0 : 8 * level * level, xpNext: 8 * (level + 1) * (level + 1) };
+}
+
+/** 夜班窗口判断（M4：22:00–08:00 内 night_shift Agent 自动上线；以服务器本地时区计，演示口径） */
+function inNightWindow(now = new Date()): boolean {
+  const h = now.getHours();
+  return h >= 22 || h < 8;
+}
+
+const rosterRouter = router({
+  /** 名册总览（p8 默认态：人类 3 + Agent 7 混编 + 30 天工时聚合 + 在线状态） */
+  list: protectedProcedure.query(async ({ ctx }) => {
+    const scope = scopeOf(ctx.identity);
+    const app = getAppPool();
+    const client = await app.connect();
+    try {
+      await client.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
+      await client.query("SELECT set_config('app.tenant_id', $1, false)", [scope.tenantId]);
+
+      // 人类成员 + 近 24h 活动信号推导在线（事件留痕为唯一事实源，不伪造 presence）
+      const humans = await client.query<{
+        member_no: string; name: string; role: string;
+        active24h: string; decided30: string; dispatched30: string; rules30: string;
+      }>(
+        `SELECT m.member_no, m.name, m.role,
+                (SELECT count(*) FROM biz_events e
+                  WHERE e.workspace_id=$1 AND e.payload->'who'->>'id' = m.member_no
+                    AND e.created_at > now() - interval '24 hours') AS active24h,
+                (SELECT count(*) FROM approvals a
+                  WHERE a.workspace_id=$1 AND a.decided_by = m.member_no
+                    AND a.decided_at > now() - interval '30 days') AS decided30,
+                (SELECT count(*) FROM biz_events e
+                  WHERE e.workspace_id=$1 AND e.payload->'who'->>'id' = m.member_no
+                    AND e.payload->'decision'->>'action' = 'thread.dispatch'
+                    AND e.created_at > now() - interval '30 days') AS dispatched30,
+                (SELECT count(*) FROM biz_events e
+                  WHERE e.workspace_id=$1 AND e.payload->'who'->>'id' = m.member_no
+                    AND e.payload->'decision'->>'action' IN ('fence.rule.propose','skill.forge','awareness.confirm')
+                    AND e.created_at > now() - interval '30 days') AS rules30
+         FROM members m WHERE m.workspace_id=$1 ORDER BY m.member_no`,
+        [scope.workspaceId],
+      );
+
+      // Agent 成员 + 30 天工时聚合（L6.3：动作数/采纳/驳回/积分/峰谷占比全部事件投影）
+      const agents = await client.query<{
+        id: string; preset_key: string; name: string; version: string; kind: string;
+        readonly: boolean; status: string; invalid_reason: string | null;
+        fence_bindings: string[]; skills: string[];
+        meta: { night_shift?: boolean; high_risk?: boolean; description?: string };
+        actions30: string; adopted30: string; rejected30: string; credits30: string; offpeak30: string;
+      }>(
+        `SELECT a.id, a.preset_key, a.name, a.version, a.kind, a.readonly, a.status, a.invalid_reason,
+                a.fence_bindings, a.skills, a.meta,
+                (SELECT count(*) FROM biz_events e
+                  WHERE e.workspace_id=$1 AND e.payload->'who'->>'id' = a.preset_key
+                    AND e.created_at > now() - interval '30 days') AS actions30,
+                (SELECT count(*) FROM approvals ap JOIN biz_events e ON e.event_id = ap.event_id
+                  WHERE ap.workspace_id=$1 AND e.workspace_id=$1
+                    AND e.payload->'who'->>'id' = a.preset_key
+                    AND ap.status IN ('approved','edited')
+                    AND ap.created_at > now() - interval '30 days') AS adopted30,
+                (SELECT count(*) FROM approvals ap JOIN biz_events e ON e.event_id = ap.event_id
+                  WHERE ap.workspace_id=$1 AND e.workspace_id=$1
+                    AND e.payload->'who'->>'id' = a.preset_key
+                    AND ap.status = 'rejected'
+                    AND ap.created_at > now() - interval '30 days') AS rejected30,
+                (SELECT COALESCE(sum((e.payload->'model_trace'->>'credits')::numeric), 0) FROM biz_events e
+                  WHERE e.workspace_id=$1 AND e.payload->'who'->>'id' = a.preset_key
+                    AND e.created_at > now() - interval '30 days') AS credits30,
+                (SELECT COALESCE(sum((e.payload->'model_trace'->>'credits')::numeric)
+                        FILTER (WHERE e.payload->'model_trace'->>'window' = 'off-peak'), 0) FROM biz_events e
+                  WHERE e.workspace_id=$1 AND e.payload->'who'->>'id' = a.preset_key
+                    AND e.created_at > now() - interval '30 days') AS offpeak30
+         FROM agents a WHERE a.workspace_id=$1 ORDER BY a.preset_key`,
+        [scope.workspaceId],
+      );
+
+      const nightNow = inNightWindow();
+      return {
+        nightWindow: { open: nightNow, range: "22:00–08:00" }, // M4 夜班窗口（PRD P8 页头口径）
+        humans: humans.rows.map((h) => {
+          const decided = Number(h.decided30), dispatched = Number(h.dispatched30), rules = Number(h.rules30);
+          // 舰长 XP：裁决 ×3 + 派遣 ×2 + 沉淀 ×5（手册 §3.1 人只有三件事：供给/裁决/沉淀；权重为展示层映射）
+          const xp = decided * 3 + dispatched * 2 + rules * 5;
+          return {
+            memberNo: h.member_no, name: h.name, role: h.role,
+            online: Number(h.active24h) > 0,
+            stats: { decided30: decided, dispatched30: dispatched, settled30: rules },
+            game: gameOf(xp),
+          };
+        }),
+        agents: agents.rows.map((a) => {
+          const actions = Number(a.actions30), adopted = Number(a.adopted30), rejected = Number(a.rejected30);
+          const credits = Number(a.credits30), offpeak = Number(a.offpeak30);
+          const decided = adopted + rejected;
+          // 船员 XP：动作 ×2 + 积分 ×1（展示层映射，输入均为 L6.3 事件投影）
+          const xp = actions * 2 + credits;
+          return {
+            id: a.id, presetKey: a.preset_key, name: a.name, version: a.version, kind: a.kind,
+            readonly: a.readonly, status: a.status, invalidReason: a.invalid_reason,
+            fenceBindings: a.fence_bindings, skills: a.skills,
+            nightShift: a.meta?.night_shift === true, highRisk: a.meta?.high_risk === true,
+            description: a.meta?.description ?? "",
+            // M4：夜班 preset 窗口内自动上线；其余待命；invalid=校验失败（F2.10 错误态）
+            online: a.status === "ready" && a.meta?.night_shift === true && nightNow,
+            stats: {
+              actions30: actions, adopted30: adopted, rejected30: rejected,
+              adoptionRate: decided > 0 ? adopted / decided : null,
+              credits30: credits,
+              offPeakRatio: credits > 0 ? offpeak / credits : null, // G9 峰谷投影
+            },
+            game: gameOf(xp),
+          };
+        }),
+      };
+    } finally {
+      client.release();
+    }
+  }),
+
+  /** 成员档案（p8_agent：身份与归属 / 围栏授权 F2.10 / 技能包 / 30 天战绩 L6.3 / 最近事件流） */
+  profile: protectedProcedure
+    .input(z.object({ agentId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const scope = scopeOf(ctx.identity);
+      const app = getAppPool();
+      const client = await app.connect();
+      try {
+        await client.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
+        await client.query("SELECT set_config('app.tenant_id', $1, false)", [scope.tenantId]);
+
+        const ar = await client.query<{
+          id: string; preset_key: string; name: string; version: string; kind: string;
+          readonly: boolean; status: string; invalid_reason: string | null;
+          fence_bindings: string[]; skills: string[];
+          meta: {
+            night_shift?: boolean; high_risk?: boolean; description?: string;
+            tools?: Array<{ name: string; access: string; desc: string }>;
+            write_back?: string[]; prompt?: { constraints?: string[] };
+          };
+        }>(
+          `SELECT id, preset_key, name, version, kind, readonly, status, invalid_reason, fence_bindings, skills, meta
+           FROM agents WHERE workspace_id=$1 AND id=$2`,
+          [scope.workspaceId, input.agentId],
+        );
+        const agent = ar.rows[0];
+        if (!agent) return null; // L7.1：越权/不存在一律返回空
+
+        const ws = await client.query<{ name: string }>(`SELECT name FROM workspaces WHERE id=$1`, [scope.workspaceId]);
+
+        // 航道许可：fence_bindings 逐条对账 fence_rules 当前 active 版本（缺规则=声明悬空，标红 F2.10）
+        const fences = agent.fence_bindings.length === 0 ? [] : (await client.query<{
+          rule_id: string; name: string; level: string; version: string; is_baseline: boolean;
+        }>(
+          `SELECT DISTINCT ON (rule_id) rule_id, name, level, version, is_baseline
+           FROM fence_rules
+           WHERE (workspace_id=$1 OR workspace_id='*') AND status='active' AND rule_id = ANY($2)
+           ORDER BY rule_id, created_at DESC`,
+          [scope.workspaceId, agent.fence_bindings],
+        )).rows;
+
+        // 技能包：preset 声明 skills × 技能注册表 × 本工作区安装态（F8.2 安装即绑定）
+        const skillRows = agent.skills.length === 0 ? [] : (await client.query<{
+          id: string; name: string; level: string; version: string; fence_bindings: string[]; installed: boolean;
+        }>(
+          // preset 声明为短名（revenue-manager），注册表主键带 skill- 前缀——两种形态都匹配
+          `SELECT s.id, s.name, s.level, s.version, s.fence_bindings,
+                  EXISTS(SELECT 1 FROM skill_installs si WHERE si.skill_id=s.id AND si.workspace_id=$1) AS installed
+           FROM skills s
+           WHERE s.id = ANY($2) OR s.id = ANY(ARRAY(SELECT 'skill-' || x FROM unnest($2::text[]) AS x))
+           ORDER BY s.id`,
+          [scope.workspaceId, agent.skills],
+        )).rows;
+
+        // 30 天战绩（L6.3 事件投影；驳回原因回流偏好记忆 F1.7 由 review-console 负责）
+        const st = await client.query<{
+          actions30: string; adopted30: string; rejected30: string; credits30: string; offpeak30: string;
+        }>(
+          `SELECT
+             (SELECT count(*) FROM biz_events e WHERE e.workspace_id=$1 AND e.payload->'who'->>'id'=$2
+               AND e.created_at > now() - interval '30 days') AS actions30,
+             (SELECT count(*) FROM approvals ap JOIN biz_events e ON e.event_id=ap.event_id
+               WHERE ap.workspace_id=$1 AND e.payload->'who'->>'id'=$2 AND ap.status IN ('approved','edited')
+               AND ap.created_at > now() - interval '30 days') AS adopted30,
+             (SELECT count(*) FROM approvals ap JOIN biz_events e ON e.event_id=ap.event_id
+               WHERE ap.workspace_id=$1 AND e.payload->'who'->>'id'=$2 AND ap.status='rejected'
+               AND ap.created_at > now() - interval '30 days') AS rejected30,
+             (SELECT COALESCE(sum((e.payload->'model_trace'->>'credits')::numeric),0) FROM biz_events e
+               WHERE e.workspace_id=$1 AND e.payload->'who'->>'id'=$2
+               AND e.created_at > now() - interval '30 days') AS credits30,
+             (SELECT COALESCE(sum((e.payload->'model_trace'->>'credits')::numeric)
+                     FILTER (WHERE e.payload->'model_trace'->>'window'='off-peak'),0) FROM biz_events e
+               WHERE e.workspace_id=$1 AND e.payload->'who'->>'id'=$2
+               AND e.created_at > now() - interval '30 days') AS offpeak30`,
+          [scope.workspaceId, agent.preset_key],
+        );
+        const s = st.rows[0]!;
+        const actions = Number(s.actions30), adopted = Number(s.adopted30), rejected = Number(s.rejected30);
+        const credits = Number(s.credits30), offpeak = Number(s.offpeak30);
+
+        // 最近动作事件流（P8E5：who.id 过滤投影，ts 倒序取 12 条；点击进线程 → P2）
+        const ev = await client.query<{
+          event_id: string; session_id: string | null; created_at: Date; payload: {
+            decision?: { action?: string };
+            object?: { type?: string; id?: string };
+            rule_impact?: Array<{ rule_id: string; result: string }>;
+            receipt?: { synced?: boolean };
+          };
+        }>(
+          `SELECT event_id, session_id, created_at, payload FROM biz_events
+           WHERE workspace_id=$1 AND payload->'who'->>'id'=$2
+           ORDER BY seq DESC LIMIT 12`,
+          [scope.workspaceId, agent.preset_key],
+        );
+
+        return {
+          agent: {
+            id: agent.id, presetKey: agent.preset_key, name: agent.name, version: agent.version,
+            kind: agent.kind, readonly: agent.readonly, status: agent.status, invalidReason: agent.invalid_reason,
+            description: agent.meta?.description ?? "",
+            nightShift: agent.meta?.night_shift === true, highRisk: agent.meta?.high_risk === true,
+            tools: agent.meta?.tools ?? [], writeBack: agent.meta?.write_back ?? [],
+            constraints: agent.meta?.prompt?.constraints ?? [],
+          },
+          workspaceName: ws.rows[0]?.name ?? "",
+          bundle: "workloom-hotel", // 首版唯一行业 Bundle（D2）
+          nightWindow: { open: inNightWindow(), range: "22:00–08:00" },
+          fences: agent.fence_bindings.map((ruleId) => {
+            const hit = fences.find((f) => f.rule_id === ruleId);
+            return hit
+              ? { ruleId, name: hit.name, level: hit.level, version: hit.version, isBaseline: hit.is_baseline, declared: true as const }
+              : { ruleId, declared: false as const }; // 声明悬空：preset 声明了但规则不存在 → 标红
+          }),
+          skills: skillRows,
+          stats: {
+            actions30: actions, adopted30: adopted, rejected30: rejected,
+            adoptionRate: adopted + rejected > 0 ? adopted / (adopted + rejected) : null,
+            credits30: credits, offPeakRatio: credits > 0 ? offpeak / credits : null,
+          },
+          game: gameOf(actions * 2 + credits),
+          events: ev.rows.map((e) => ({
+            eventId: e.event_id,
+            sessionId: e.session_id,
+            time: e.created_at.toISOString(),
+            action: e.payload.decision?.action ?? "",
+            objectType: e.payload.object?.type ?? "",
+            ruleResults: (e.payload.rule_impact ?? []).map((r) => `${r.rule_id}:${r.result}`),
+            receiptSynced: e.payload.receipt?.synced === true, // 无回执标未核实（E3.7）
+          })),
+        };
+      } finally {
+        client.release();
+      }
+    }),
+});
+
 export const appRouter = router({
   system: systemRouter,
   auth: authRouter,
@@ -717,6 +988,7 @@ export const appRouter = router({
   workspace: workspaceRouter,
   nightShift: nightShiftRouter,
   fence: fenceRouter,
+  roster: rosterRouter,
 });
 
 export type AppRouter = typeof appRouter;
