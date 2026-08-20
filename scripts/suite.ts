@@ -35,7 +35,7 @@ import {
 } from "@workloom/base/skills";
 import { runInspectionScan, dispatchFromAnomaly, resolveAnomaly } from "@workloom/base/inspection";
 import { route as modelRoute, currentWindow, classify, projectBill, DEFAULT_POLICY, type EventSink, type ModelProvider } from "@workloom/base/model-router";
-import { signDemoToken } from "@workloom/base/tenancy";
+import { signDemoToken, verifyToken } from "@workloom/base/tenancy";
 import { createHash } from "node:crypto";
 
 /* ================= 基础设施 ================= */
@@ -1528,6 +1528,377 @@ n("压测：审批批量 50 建 50 批", async () => {
   for (let idx = 0; idx < 50; idx++) ids.push((await mkApproval()).approvalId);
   const r = await batchApprove(app, gw, scope, boss, ids);
   eq(r.approved.length, 50, "批量全批");
+});
+
+
+/* ================= O · 店长日常场景（端到端组合流，16 条） ================= */
+const o = C("O");
+
+o("晨间问数：口语化提问路由 ask + NL 检索可达", async () => {
+  const r = ruleBasedRoute("请问上周 OCC 多少？");
+  eq(r.mode, "ask", "问数路由 ask");
+  const nl = await nlSearchEvents(app, scope, "上周的调价记录", new MockNlTranslator());
+  assert(nl.page !== undefined || nl.degraded, "NL 检索可达（正常或降级）");
+});
+o("晨会派单：一句话调价任务跑通到 completed", async () => {
+  const tid = await mkThread();
+  const r = await runQuest(app, gw, scope, { threadId: tid, goal: "把周五雅致大床房调价 5%", presetKey: "pricing-agent" });
+  eq(r.status, "completed", "调价任务完成");
+  const row = await qApp<{ status: string }>(`SELECT status FROM threads WHERE id=$1`, [tid]);
+  eq(row.rows[0]!.status, "completed", "线程状态同步");
+});
+o("待办巡阅：店长清空 3 条待审批", async () => {
+  const a1 = await mkApproval(); const a2 = await mkApproval(); const a3 = await mkApproval();
+  const q0 = await listQueue(app, scope, { status: "pending" });
+  assert(q0.length >= 3, "队列有待办");
+  for (const a of [a1, a2, a3]) await decide(app, gw, scope, boss, a.approvalId, { type: "approve" });
+  for (const a of [a1, a2, a3]) {
+    const row = await qApp<{ status: string }>(`SELECT status FROM approvals WHERE approval_id=$1`, [a.approvalId]);
+    eq(row.rows[0]!.status, "approved", "逐条批准");
+  }
+});
+o("钉钉卡片审批闭环：发卡 → 手势批准 → 状态同步", async () => {
+  const { approvalId } = await mkApproval();
+  const row = await qApp(`SELECT a.*, e.payload FROM approvals a JOIN biz_events e ON e.event_id=a.event_id WHERE a.approval_id=$1`, [approvalId]);
+  const driver = new MockChannelDriver("dingtalk");
+  await sendApprovalCard(gw, scope, driver, { conversationId: `cv-${SFX}` }, composeApprovalCard(row.rows[0] as never), "MEM-001");
+  const r = await handleGestureCallback(app, gw, scope, { channel: "dingtalk", approvalId, operatorOpenId: `ou_boss_${SFX}`, conversationId: `cv-${SFX}`, gesture: "approve" }, driver);
+  assert(!r.deduped, "手势生效");
+  const st = await qApp<{ status: string }>(`SELECT status FROM approvals WHERE approval_id=$1`, [approvalId]);
+  eq(st.rows[0]!.status, "approved", "卡片手势落库");
+});
+o("高危桌面操作授权链：无授权拒 → 审批 → 带授权放行", async () => {
+  let threw = false;
+  try {
+    await gatewayAppend(gw, { ...scope, actor: { id: "desktop-agent", type: "agent", fenceBindings: ["R2"], highRisk: true } }, draftOf("desktop.gui", "desktop-agent"));
+  } catch { threw = true; }
+  assert(threw, "无授权高危必拒");
+  const { approvalId } = await mkApproval({ highRisk: true });
+  await decide(app, gw, scope, boss, approvalId, { type: "approve" });
+  const r = await gatewayAppend(gw, { ...scope, actor: { id: "desktop-agent", type: "agent", fenceBindings: ["R2"], highRisk: true }, approvalRef: approvalId }, draftOf("desktop.gui", "desktop-agent"));
+  assert(r.eventId, "授权后放行");
+});
+o("差评 Quest 审批恢复闭环：挂起 → 批准 → 重放完成", async () => {
+  const tid = await mkThread();
+  const r1 = await runQuest(app, gw, scope, { threadId: tid, goal: "回复差评", presetKey: "review-agent" });
+  eq(r1.status, "pending_review", "越围栏挂起");
+  await decide(app, gw, scope, boss, r1.pendingApprovalId!, { type: "approve" });
+  const r2 = await runQuest(app, gw, scope, { threadId: tid, goal: "回复差评", presetKey: "review-agent" });
+  eq(r2.status, "completed", "批准后恢复完成");
+});
+o("夜班晨收：确认班次 → 取决策包给店长过目", async () => {
+  const id = await ensureReady(app, gw, scope, `2099-07-01-${SFX}`);
+  await confirmNight(app, gw, scope, id, "MEM-001", []);
+  const pkg = await deliverPackage(app, gw, scope, id, { from: "2026-08-01T00:00:00+08:00", to: new Date().toISOString() });
+  assert(pkg.stats, "决策包有统计");
+});
+o("夜班应急：店长一键熔断再恢复", async () => {
+  const id = await ensureReady(app, gw, scope, `2099-07-02-${SFX}`);
+  await confirmNight(app, gw, scope, id, "MEM-001", []);
+  await pauseAll(app, gw, scope, id, { memberNo: "MEM-001", channel: "inapp" });
+  const r0 = await qApp<{ status: string }>(`SELECT status FROM night_runs WHERE id=$1`, [id]);
+  eq(r0.rows[0]!.status, "paused", "熔断到位");
+  await resumeNight(app, gw, scope, id, "MEM-001");
+  const r1 = await qApp<{ status: string }>(`SELECT status FROM night_runs WHERE id=$1`, [id]);
+  eq(r1.rows[0]!.status, "running", "夜班恢复运行");
+});
+o("IM 下指令：钉钉文本进事件库且可路由为任务", async () => {
+  const text = `把周五雅致大床房调价 5%（店长指令 ${SFX}）`;
+  const r = await ingestInbound(app, gw, scope, { channel: "dingtalk", channelMsgId: `m-${SFX}-boss-cmd`, conversationId: `cv-${SFX}`, kind: "direct", senderOpenId: `ou_boss_${SFX}`, text });
+  assert(r.eventId, "指令落库");
+  eq(ruleBasedRoute(text).mode, "quest", "指令路由为任务");
+});
+o("访客咨询：未映射 openid 按外部访客留痕", async () => {
+  const r = await ingestInbound(app, gw, scope, { channel: "wecom", channelMsgId: `m-${SFX}-visitor-daily`, conversationId: `cv-${SFX}`, kind: "direct", senderOpenId: `ou_guest_${SFX}`, text: "请问今晚还有房吗" });
+  eq(r.identity, "visitor", "访客口径");
+});
+o("自然语言查账：店长口语检索被驳回的调价", async () => {
+  const r = await nlSearchEvents(app, scope, "被驳回的调价", new MockNlTranslator());
+  assert(r.page !== undefined || r.degraded, "查账可达");
+});
+o("店长看组织记忆：驳回校准偏好可见", async () => {
+  const { approvalId } = await mkApproval();
+  await decide(app, gw, scope, boss, approvalId, { type: "reject", reasonEnum: `daily_cal_${SFX}` });
+  const hits = await searchMemories(app, scope, { kind: "preference" });
+  assert(hits.some((h) => h.memory_id === `mem-reject-daily_cal_${SFX}`), "校准记忆可见");
+});
+o("店长看技能目录：官方可见 + team 仅本工作区", async () => {
+  const official = await listSkills(app, scope, { level: "official" });
+  assert(official.length >= 1, "官方套件可见");
+  const team = await listSkills(app, scope, { level: "team" });
+  assert(team.every((s) => s.id.startsWith(`skill-t-${scope.workspaceId}-`)), "team 隔离");
+});
+o("店长发起巡检并消解异常：扫描 → 派单 → 标记处理", async () => {
+  const scan = await runInspectionScan(app, gw, scope, { snapshot: { channels: [{ channel: "美团", our_price: 458, competitor_price: 300, parity: false }], rooms: [], reviews: [] } });
+  assert(scan.anomalies.length >= 1, "巡检发现异常");
+  const ev = scan.anomalies[0]!.eventId;
+  if (ev) {
+    const d = await dispatchFromAnomaly(app, gw, scope, { anomalyEventId: ev, presetKey: "review-agent", by: "MEM-001" });
+    await resolveAnomaly(app, gw, scope, { anomalyEventId: ev, threadId: d.threadId, ok: true, by: "MEM-001" });
+    const page = await searchEvents(app, scope, { action: "inspect.resolved" });
+    assert(page.total >= 1, "消解留痕");
+  }
+});
+o("一天收尾：本工作区哈希链自检（接龙 + 重算一致）", async () => {
+  const rows = await qApp<{ payload: unknown; prev_hash: string; hash: string }>(`SELECT payload, prev_hash, hash FROM biz_events WHERE workspace_id=$1 ORDER BY seq`, [scope.workspaceId]);
+  let prev = GENESIS_HASH;
+  for (const row of rows.rows) {
+    eq(row.prev_hash, prev, "链式接龙");
+    eq(row.hash, eventHash(prev, row.payload as never), "逐条重算");
+    prev = row.hash;
+  }
+});
+o("多成员同日操作各自留痕（who 维度可检索）", async () => {
+  for (const [member, act] of [["MEM-001", "suite.daily.owner"], ["MEM-002", "suite.daily.manager"], ["MEM-003", "suite.daily.front"]] as const) {
+    await gatewayAppend(gw, humanCtx(member), {
+      who: { type: "human", id: member },
+      context: { tenant_id: scope.tenantId, workspace_id: scope.workspaceId, time: new Date().toISOString() },
+      object: { type: "suite", id: `daily-${SFX}-${member}` },
+      decision: { action: act },
+      rule_impact: [],
+    });
+  }
+  for (const member of ["MEM-001", "MEM-002", "MEM-003"]) {
+    const page = await searchEvents(app, scope, { actor: member, action: `suite.daily.` });
+    assert(page.events.length >= 0, "检索可达"); // 维度存在即可（精确匹配见下行）
+  }
+  const page = await searchEvents(app, scope, { actor: "MEM-002", action: "suite.daily.manager" });
+  assert(page.total >= 1, "按成员+动作命中");
+});
+
+/* ================= P · 系统层（14 条） ================= */
+const p = C("P");
+
+p("迁移落位核验：0003 幂等表 + 0004/0005 触发器存在", async () => {
+  const t = await qApp<{ n: string }>(`SELECT count(*) AS n FROM information_schema.tables WHERE table_name='im_inbound_dedupe'`);
+  eq(Number(t.rows[0]!.n), 1, "幂等键表存在");
+  const trg = await qApp<{ n: string }>(`SELECT count(*) AS n FROM pg_trigger WHERE tgname ILIKE '%no_truncate%' OR tgname ILIKE '%baseline%'`);
+  assert(Number(trg.rows[0]!.n) >= 2, "加固触发器就位");
+});
+p("RLS 池卫生：未设上下文的连接读业务表 0 行", async () => {
+  const c = await app.connect();
+  try {
+    const r = await c.query(`SELECT count(*) AS c FROM members`);
+    eq(Number(r.rows[0].c), 0, "fail-closed");
+  } finally { c.release(); }
+});
+p("错误 SQL 后池连接仍可复用", async () => {
+  const c = await app.connect();
+  try { await c.query(`SELECT * FROM 不存在的表`); } catch { /* 预期 */ }
+  c.release();
+  const r = await qApp<{ c: string }>(`SELECT count(*) AS c FROM members WHERE workspace_id=$1`, [scope.workspaceId]);
+  assert(Number(r.rows[0]!.c) >= 3, "池健康");
+});
+p("事务中途出错回滚不留脏数据", async () => {
+  const tid = `T-rollback-${SFX}`;
+  const c = await app.connect();
+  try {
+    await c.query("BEGIN");
+    await c.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
+    await c.query(`INSERT INTO threads (id, tenant_id, workspace_id, title, mode, status, created_by) VALUES ($1,$2,$3,'x','quest','queued','MEM-001')`, [tid, scope.tenantId, scope.workspaceId]);
+    throw new Error("模拟中途失败");
+  } catch {
+    await c.query("ROLLBACK").catch(() => undefined);
+  } finally { c.release(); }
+  const r = await qApp<{ c: string }>(`SELECT count(*) AS c FROM threads WHERE id=$1`, [tid]);
+  eq(Number(r.rows[0]!.c), 0, "回滚干净");
+});
+p("参数化防注入：恶意参数原样当值处理", async () => {
+  const evil = `'; DROP TABLE members;--`;
+  const r = await qApp<{ c: string }>(`SELECT count(*) AS c FROM members WHERE member_no=$1`, [evil]);
+  eq(Number(r.rows[0]!.c), 0, "注入字符串按值匹配");
+  const alive = await qApp<{ c: string }>(`SELECT count(*) AS c FROM members WHERE workspace_id=$1`, [scope.workspaceId]);
+  assert(Number(alive.rows[0]!.c) >= 3, "表未被毁");
+});
+p("伪造/篡改 token 一律验签失败", async () => {
+  eq(await verifyToken("not-a-token"), null, "垃圾 token 拒");
+  const good = await signDemoToken({ memberId: "m1", memberNo: "MEM-001", name: "王店长", role: "owner", tenantId: scope.tenantId, workspaceId: scope.workspaceId, plan: "pro" });
+  const parts = good.split(".");
+  const forgedPayload = Buffer.from(JSON.stringify({ memberId: "m1", memberNo: "MEM-001", name: "王店长", role: "owner", tenantId: scope.tenantId, workspaceId: "ws-evil", plan: "pro" })).toString("base64url");
+  eq(await verifyToken(`${parts[0]}.${forgedPayload}.${parts[2]}`), null, "篡改 payload 拒");
+});
+p("大 payload 事件（1MB 文本）写读一致", async () => {
+  const big = "数据分析报告".repeat(90000); // ≈1MB+
+  const r = await gatewayAppend(gw, agentCtx(), { ...draftOf("suite.big_payload"), decision: { action: "suite.big_payload", after: { report: big } } });
+  const row = await qApp<{ payload: { decision: { after: { report: string } } } }>(`SELECT payload FROM biz_events WHERE event_id=$1`, [r.eventId]);
+  eq(row.rows[0]!.payload.decision.after.report.length, big.length, "大报文往返一致");
+});
+p("Unicode/emoji/零宽字符事件往返不失真", async () => {
+  const weird = "调价📊备注​零宽 不换行空格・テスト・تست";
+  const r = await gatewayAppend(gw, agentCtx(), { ...draftOf("suite.unicode"), decision: { action: "suite.unicode", after: { note: weird } } });
+  const row = await qApp<{ payload: { decision: { after: { note: string } } } }>(`SELECT payload FROM biz_events WHERE event_id=$1`, [r.eventId]);
+  eq(row.rows[0]!.payload.decision.after.note, weird, "Unicode 往返一致");
+});
+p("空 params / null 字段事件可写（schema 容忍最小事件）", async () => {
+  const r = await gatewayAppend(gw, agentCtx(), { ...draftOf("suite.minimal"), decision: { action: "suite.minimal" } });
+  assert(r.eventId, "最小事件落库");
+});
+p("跨 tenant 数据互不可见（L7.1 租户级隔离）", async () => {
+  const other = { tenantId: `tenant-chaos-${SFX}`, workspaceId: `ws-chaos-${SFX}` };
+  const r = await gatewayAppend(gw, { ...other, actor: { id: "pricing-agent", type: "agent", fenceBindings: ["R1"] } }, {
+    who: { type: "agent", id: "pricing-agent", version: "v2.3" },
+    context: { tenant_id: other.tenantId, workspace_id: other.workspaceId, time: new Date().toISOString() },
+    object: { type: "suite", id: `chaos-${SFX}` },
+    decision: { action: "suite.cross_tenant" },
+    rule_impact: [],
+  });
+  const page = await searchEvents(app, scope, { action: "suite.cross_tenant" });
+  assert(!page.events.some((x) => x.event_id === r.eventId), "他租户事件不可见");
+});
+p("approvals 主键重复插入被拒（PK 兜底）", async () => {
+  const { approvalId } = await mkApproval();
+  let threw = false;
+  try {
+    await qApp(`INSERT INTO approvals (approval_id, tenant_id, workspace_id, event_id, channel, status, snapshot) VALUES ($1,$2,$3,'E-8801','inapp','pending','{}')`, [approvalId, scope.tenantId, scope.workspaceId]);
+  } catch { threw = true; }
+  assert(threw, "PK 冲突必抛");
+});
+p("非法事件 draft 被 schema 拒绝（缺 who）", async () => {
+  let threw = false;
+  try { await gatewayAppend(gw, agentCtx(), { ...draftOf("suite.bad"), who: undefined } as never); } catch { threw = true; }
+  assert(threw, "缺 who 必拒");
+});
+p("池超载排队：并发 80 查询全部完成", async () => {
+  const rs = await Promise.all(Array.from({ length: 80 }, () => qApp<{ c: string }>(`SELECT count(*) AS c FROM biz_events WHERE workspace_id=$1`, [scope.workspaceId])));
+  assert(rs.every((r) => Number(r.rows[0]!.c) >= 100), "超载排队正常");
+});
+p("套件数据自我隔离：他工作区视角查不到套件事件", async () => {
+  const ev = await mkEvent("suite.isolation_probe");
+  const page = await searchEvents(app, { tenantId: scope.tenantId, workspaceId: "ws-nobody" }, { action: "suite.isolation_probe" });
+  assert(!page.events.some((x) => x.event_id === ev), "他区不可见");
+});
+
+/* ================= Q · 异常 case 与压测（15 条） ================= */
+const q = C("Q");
+
+q("审批风暴：100 审批并发 decide 全部恰好一次终态", async () => {
+  const ids: string[] = [];
+  for (let idx = 0; idx < 100; idx++) ids.push((await mkApproval()).approvalId);
+  const rs = await Promise.all(ids.map((id, idx) => decide(app, gw, scope, boss, id, { type: idx % 3 === 0 ? "reject" : "approve", reasonEnum: idx % 3 === 0 ? "storm" : undefined })));
+  eq(rs.filter((r) => !r.deduped).length, 100, "全部首次生效");
+  const left = await qApp<{ c: string }>(`SELECT count(*) AS c FROM approvals WHERE approval_id = ANY($1) AND status='pending'`, [ids]);
+  eq(Number(left.rows[0]!.c), 0, "无残留 pending");
+});
+q("入站重推风暴：同消息 50 路并发仅 1 条事件", async () => {
+  const rs = await Promise.all(Array.from({ length: 50 }, () => ingestInbound(app, gw, scope, { channel: "feishu", channelMsgId: `m-${SFX}-storm50`, conversationId: `cv-${SFX}`, kind: "direct", senderOpenId: `ou_s_${SFX}`, text: "重推风暴" })));
+  eq(rs.filter((r) => !r.deduped).length, 1, "仅 1 条写入");
+  const row = await qApp<{ c: string }>(`SELECT count(*) AS c FROM biz_events WHERE workspace_id=$1 AND payload->'decision'->'after'->>'channel_msg_id'=$2`, [scope.workspaceId, `m-${SFX}-storm50`]);
+  eq(Number(row.rows[0]!.c), 1, "事件库仅一条");
+});
+q("写风暴：200 事件分批并发后链完整", async () => {
+  for (let batch = 0; batch < 10; batch++) {
+    await Promise.all(Array.from({ length: 20 }, () => gatewayAppend(gw, agentCtx(), draftOf("suite.storm_write"))));
+  }
+  const rows = await qApp<{ prev_hash: string; hash: string }>(`SELECT prev_hash, hash FROM biz_events WHERE workspace_id=$1 ORDER BY seq`, [scope.workspaceId]);
+  let prev = GENESIS_HASH;
+  for (const row of rows.rows) { eq(row.prev_hash, prev, "风暴后接龙"); prev = row.hash; }
+});
+q("IM 巨报文（100KB 文本）按明确口径处理不炸", async () => {
+  const bigText = "房态同步报文".repeat(15000); // ≈100KB+
+  let ok = false, rejected = false;
+  try {
+    const r = await ingestInbound(app, gw, scope, { channel: "dingtalk", channelMsgId: `m-${SFX}-huge`, conversationId: `cv-${SFX}`, kind: "direct", senderOpenId: `ou_h_${SFX}`, text: bigText });
+    ok = !!r.eventId;
+  } catch { rejected = true; }
+  assert(ok || rejected, "巨报文要么落库要么明确拒绝（不崩不静默）");
+});
+q("畸形回调三连：非法手势 / 不存在审批 / 空 openid", async () => {
+  const { approvalId } = await mkApproval();
+  let t1 = false, t2 = false, t3 = false;
+  try { await handleGestureCallback(app, gw, scope, { channel: "dingtalk", approvalId, operatorOpenId: `ou_boss_${SFX}`, conversationId: `cv-${SFX}`, gesture: "bogus" as never }); } catch { t1 = true; }
+  try { await handleGestureCallback(app, gw, scope, { channel: "dingtalk", approvalId: `apr-none-${SFX}`, operatorOpenId: `ou_boss_${SFX}`, conversationId: `cv-${SFX}`, gesture: "approve" }); } catch { t2 = true; }
+  try { await handleGestureCallback(app, gw, scope, { channel: "dingtalk", approvalId, operatorOpenId: "", conversationId: `cv-${SFX}`, gesture: "approve" }); } catch { t3 = true; }
+  assert(t1 && t2 && t3, "三类畸形全部明确拒绝");
+});
+q("对象锁 10 路竞争：串行化全部完成无死锁", async () => {
+  const { withObjectLock } = await import("@workloom/base/fence-engine");
+  const order: number[] = [];
+  await Promise.all(Array.from({ length: 10 }, (_, idx) =>
+    withObjectLock(gw, `suite-race-${SFX}`, async () => {
+      await new Promise((r) => setTimeout(r, 30));
+      order.push(idx);
+    }, 15000),
+  ));
+  eq(order.length, 10, "10 路全部完成");
+});
+q("夜班并发开工：20 路 ensureReady 同日仅 1 个班次", async () => {
+  const rs = await Promise.all(Array.from({ length: 20 }, () => ensureReady(app, gw, scope, `2099-08-01-${SFX}`)));
+  eq(new Set(rs).size, 1, "班次唯一");
+});
+q("记忆风暴：50 条并发 upsert 后检索完整", async () => {
+  await Promise.all(Array.from({ length: 50 }, (_, idx) =>
+    upsertMemory(app, scope, {
+      memoryId: `mem-storm-${SFX}-${idx}`,
+      scope: "workspace", kind: "pattern",
+      content: `风暴记忆 ${idx}（套件 ${SFX}）`,
+      sourceEvents: [], confidence: 0.5,
+    }, new MockEmbedder()),
+  ));
+  const hits = await searchMemories(app, scope, { kind: "pattern", limit: 50 });
+  eq(hits.filter((h) => h.memory_id.startsWith(`mem-storm-${SFX}-`)).length, 50, "50 条全在");
+});
+q("检索风暴：30 组异构过滤并发全部返回", async () => {
+  const combos = [
+    { action: "suite.storm_write" }, { actor: "pricing-agent" }, { objectType: "suite" },
+    { actorType: "human" as const }, { ruleResult: "blocked" as const }, { sessionId: `none-${SFX}` },
+  ];
+  const rs = await Promise.all(Array.from({ length: 30 }, (_, idx) => searchEvents(app, scope, combos[idx % combos.length] as never)));
+  assert(rs.every((r) => Array.isArray(r.events)), "全部返回结构正常");
+});
+q("围栏判定压测：1000 次混合判定 < 2s", async () => {
+  const rules = await activeRules();
+  const t0 = Date.now();
+  for (let idx = 0; idx < 1000; idx++) {
+    judge({ object: { type: idx % 2 ? "order" : "room_price" }, action: idx % 3 ? "price.adjust" : "order.refund", params: { amount: idx } }, rules, "review");
+  }
+  assert(Date.now() - t0 < 2000, `耗时 ${Date.now() - t0}ms`);
+});
+q("PII 脱敏压测：1000 条混合文本 < 2s", async () => {
+  const t0 = Date.now();
+  for (let idx = 0; idx < 1000; idx++) {
+    maskText(`客人电话 1381234${String(idx).padStart(4, "0")}，身份证 110101199003074321，订单 ${20260820000 + idx}`);
+  }
+  assert(Date.now() - t0 < 2000, `耗时 ${Date.now() - t0}ms`);
+});
+q("批量审批 100 条一次批完", async () => {
+  const ids: string[] = [];
+  for (let idx = 0; idx < 100; idx++) ids.push((await mkApproval()).approvalId);
+  const r = await batchApprove(app, gw, scope, boss, ids);
+  eq(r.approved.length, 100, "批量 100 全批");
+});
+q("断链注入可检测：篡改 prev_hash 链验证立即报警（事务内构造，不污染库）", async () => {
+  const c = await gw.connect();
+  try {
+    await c.query("BEGIN");
+    await c.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
+    await c.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
+    const tail = await c.query<{ seq: string }>(`SELECT MAX(seq) AS seq FROM biz_events WHERE tenant_id=$1`, [scope.tenantId]);
+    const nextSeq = BigInt(tail.rows[0]!.seq) + 1n;
+    await c.query(
+      `INSERT INTO biz_events (seq, event_id, tenant_id, workspace_id, payload, prev_hash, hash) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+      [nextSeq.toString(), `E-forge-${SFX}`, scope.tenantId, scope.workspaceId, JSON.stringify({ marker: "forge" }), "forged-prev-hash", "forged-hash"],
+    );
+    const rows = await c.query<{ prev_hash: string; hash: string }>(`SELECT prev_hash, hash FROM biz_events WHERE workspace_id=$1 ORDER BY seq`, [scope.workspaceId]);
+    let prev = GENESIS_HASH, breaks = 0;
+    for (const row of rows.rows) { if (row.prev_hash !== prev) breaks++; prev = row.hash; }
+    assert(breaks >= 1, "断链必被检测");
+    await c.query("ROLLBACK"); // 不污染真实库
+  } catch (err) {
+    await c.query("ROLLBACK").catch(() => undefined);
+    throw err;
+  } finally { c.release(); }
+});
+q("同审批 20 路并发 decide 仅 1 路生效", async () => {
+  const { approvalId } = await mkApproval();
+  const rs = await Promise.all(Array.from({ length: 20 }, () => decide(app, gw, scope, boss, approvalId, { type: "approve" })));
+  eq(rs.filter((r) => !r.deduped).length, 1, "串行生效");
+});
+q("巡检并发 5 路：同班次幂等去重（同 runId 不重复出报告）", async () => {
+  const rs = await Promise.all(Array.from({ length: 5 }, () =>
+    runInspectionScan(app, gw, scope, { snapshot: { channels: [], rooms: [], reviews: [] } }),
+  ));
+  eq(new Set(rs.map((r) => r.runId)).size, 1, "同班次去重");
+  assert(rs.every((r) => typeof r.ok === "boolean"), "结构完整");
 });
 
 /* ================= 执行器 ================= */
