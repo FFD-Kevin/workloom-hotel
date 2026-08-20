@@ -181,6 +181,20 @@ export async function appendEventIdempotent(
     );
     await client.query("COMMIT");
     const deduped = !(res.rowCount && res.rowCount > 0);
+    if (deduped) {
+      // #4 修复：去重时返回 DB 中已存在事件的真实 hash/seq，避免调用方拿到错误 hash 断链
+      const existing = await client.query<{ seq: string; hash: string }>(
+        `SELECT seq, hash FROM biz_events WHERE tenant_id = $1 AND event_id = $2`,
+        [scope.tenantId, payload.event_id],
+      );
+      return {
+        eventId: payload.event_id,
+        seq: BigInt(existing.rows[0]?.seq ?? 0),
+        hash: existing.rows[0]?.hash ?? hash,
+        deduped,
+        piiHits: masked.hits,
+      };
+    }
     return { eventId: payload.event_id, seq: BigInt(res.rows[0]?.seq ?? 0), hash, deduped, piiHits: masked.hits };
   } catch (err) {
     await client.query("ROLLBACK").catch(() => undefined);

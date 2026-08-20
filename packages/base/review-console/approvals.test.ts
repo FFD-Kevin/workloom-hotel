@@ -153,7 +153,7 @@ d("PG 集成审批流（种子队列）", async () => {
     // 一条过期高危 + 一条过期普通
     await makePending(hr, { expires_at: new Date(Date.now() - 7200e3).toISOString(), high_risk: true });
     await makePending(normal, { expires_at: new Date(Date.now() - 7200e3).toISOString() });
-    const r = await expireSweep(appPool, scope);
+    const r = await expireSweep(appPool, gwPool, scope);
     expect(r.keptHighRisk).toContain(hr);
     expect(r.expired).toContain(normal);
   });

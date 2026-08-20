@@ -184,8 +184,8 @@ const threadsRouter = router({
     const app = getAppPool();
     const client = await app.connect();
     try {
-      await client.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
-      await client.query("SELECT set_config('app.tenant_id', $1, false)", [scope.tenantId]);
+      await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
+      await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
       const r = await client.query(
         `SELECT id, title, mode, status, progress_done, progress_total, created_by, agent_id, created_at
          FROM threads WHERE workspace_id=$1 ORDER BY created_at DESC LIMIT 50`,
@@ -229,8 +229,8 @@ const threadsRouter = router({
       const client = await app.connect();
       let threadId: string;
       try {
-        await client.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
-        await client.query("SELECT set_config('app.tenant_id', $1, false)", [scope.tenantId]);
+        await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
+        await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
         const max = await client.query<{ n: number }>(
           `SELECT COALESCE(MAX(NULLIF(regexp_replace(id, '\\D', '', 'g'), '')::int), 100) AS n
            FROM threads WHERE workspace_id=$1 AND id ~ '^T-\\d+$'`,
@@ -275,7 +275,7 @@ const threadsRouter = router({
       const app = getAppPool();
       const client = await app.connect();
       try {
-        await client.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
+        await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
         const r = await client.query(
           `SELECT id, title, mode, status, progress_done, progress_total, created_by, agent_id, created_at, updated_at
            FROM threads WHERE workspace_id=$1 AND id=$2`,
@@ -295,8 +295,8 @@ const threadsRouter = router({
       const app = getAppPool();
       const client = await app.connect();
       try {
-        await client.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
-        await client.query("SELECT set_config('app.tenant_id', $1, false)", [scope.tenantId]);
+        await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
+        await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
         const r = await client.query<{ payload: unknown }>(
           `SELECT payload FROM biz_events
            WHERE workspace_id=$1 AND session_id=$2 ORDER BY seq ASC LIMIT $3`,
@@ -332,8 +332,8 @@ async function activateFenceRuleAfterApproval(
   const app = getAppPool();
   const client = await app.connect();
   try {
-    await client.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
-    await client.query("SELECT set_config('app.tenant_id', $1, false)", [scope.tenantId]);
+    await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
+    await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
     const r = await client.query<{ payload: unknown }>(
       `SELECT e.payload FROM approvals a JOIN biz_events e ON e.event_id = a.event_id
        WHERE a.approval_id=$1 AND a.workspace_id=$2`,
@@ -434,7 +434,7 @@ const approvalsRouter = router({
 
   /** 超时升级扫描（F5.7；高危项不自动放行 L5.4）——由触发器/巡检调度调用 */
   sweep: protectedProcedure.mutation(async ({ ctx }) => {
-    return expireSweep(getAppPool(), scopeOf(ctx.identity));
+    return expireSweep(getAppPool(), getGatewayPool(), scopeOf(ctx.identity));
   }),
 });
 
@@ -501,8 +501,8 @@ const skillsRouter = router({
     const scope = scopeOf(ctx.identity);
     const client = await getAppPool().connect();
     try {
-      await client.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
-      await client.query("SELECT set_config('app.tenant_id', $1, false)", [scope.tenantId]);
+      await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
+      await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
       const skillIds = (await client.query<{ id: string }>(`SELECT id FROM skills ORDER BY id`)).rows.map((r) => r.id);
       const out: Record<string, {
         calls30: number; adopted30: number; rejected30: number; adoptionRate: number | null;
@@ -657,8 +657,8 @@ const workspaceRouter = router({
     const app = getAppPool();
     const client = await app.connect();
     try {
-      await client.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
-      await client.query("SELECT set_config('app.tenant_id', $1, false)", [scope.tenantId]);
+      await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
+      await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
       const p = await client.query<{ archive: Record<string, unknown> }>(
         `SELECT archive FROM profiles WHERE workspace_id=$1`, [scope.workspaceId],
       );
@@ -676,7 +676,7 @@ const workspaceRouter = router({
     const app = getAppPool();
     const client = await app.connect();
     try {
-      await client.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
+      await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
       const r = await client.query<{
         id: string; preset_key: string; name: string; version: string; kind: string;
         readonly: boolean; status: string; meta: { night_shift?: boolean };
@@ -738,7 +738,7 @@ const nightShiftRouter = router({
     const app = getAppPool();
     const client = await app.connect();
     try {
-      await client.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
+      await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
       const r = await client.query<{
         id: string; status: string; run_date: string; fence_snapshot_version: string | null;
         candidate_count: number; started_at: Date | null;
@@ -771,8 +771,8 @@ const nightShiftRouter = router({
       const app = getAppPool();
       const client = await app.connect();
       try {
-        await client.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
-        await client.query("SELECT set_config('app.tenant_id', $1, false)", [scope.tenantId]);
+        await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
+        await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
         const r = await client.query<{ payload: unknown }>(
           `SELECT payload FROM biz_events
            WHERE workspace_id=$1 AND payload->'context'->>'channel' = '夜班'
@@ -835,8 +835,8 @@ const fenceRouter = router({
     const app = getAppPool();
     const client = await app.connect();
     try {
-      await client.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
-      await client.query("SELECT set_config('app.tenant_id', $1, false)", [scope.tenantId]);
+      await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
+      await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
       const r = await client.query(
         `SELECT f.id, f.rule_id, f.version, f.workspace_id, f.name, f.level, f.match_spec,
                 f.is_baseline, f.status, f.created_by, f.created_at,
@@ -861,7 +861,7 @@ const fenceRouter = router({
     const app = getAppPool();
     const client = await app.connect();
     try {
-      await client.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
+      await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
       const r = await client.query(
         `SELECT version, status, count(*) AS rules, min(created_at) AS created_at
          FROM fence_rules WHERE (workspace_id=$1 OR workspace_id='*')
@@ -914,7 +914,7 @@ const fenceRouter = router({
       const app = getAppPool();
       const client = await app.connect();
       try {
-        await client.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
+        await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
         const rowId = fenceRuleRowId(input.rule.ruleId, scope.workspaceId);
         await client.query(
           `INSERT INTO fence_rules (id, rule_id, version, workspace_id, name, level, match_spec, action, is_baseline, status, created_by)
@@ -940,7 +940,7 @@ const fenceRouter = router({
       // 幂等：UNIQUE(event_id, channel) 冲突丢弃（L5.3 同口径）
       const client2 = await app.connect();
       try {
-        await client2.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
+        await client2.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
         await client2.query(
           `INSERT INTO approvals (approval_id, tenant_id, workspace_id, event_id, channel, status, snapshot)
            VALUES ($1,$2,$3,$4,'inapp','pending',$5)
@@ -985,8 +985,8 @@ const rosterRouter = router({
     const app = getAppPool();
     const client = await app.connect();
     try {
-      await client.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
-      await client.query("SELECT set_config('app.tenant_id', $1, false)", [scope.tenantId]);
+      await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
+      await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
 
       // 人类成员 + 近 24h 活动信号推导在线（事件留痕为唯一事实源，不伪造 presence）
       const humans = await client.query<{
@@ -1097,8 +1097,8 @@ const rosterRouter = router({
       const app = getAppPool();
       const client = await app.connect();
       try {
-        await client.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
-        await client.query("SELECT set_config('app.tenant_id', $1, false)", [scope.tenantId]);
+        await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
+        await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
 
         const ar = await client.query<{
           id: string; preset_key: string; name: string; version: string; kind: string;
@@ -1290,8 +1290,8 @@ const imRouter = router({
       const scope = scopeOf(ctx.identity);
       const client = await getAppPool().connect();
       try {
-        await client.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
-        await client.query("SELECT set_config('app.tenant_id', $1, false)", [scope.tenantId]);
+        await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
+        await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
         const r = await client.query<{
           approval_id: string;
           event_id: string;

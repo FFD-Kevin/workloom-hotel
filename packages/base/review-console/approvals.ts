@@ -93,8 +93,8 @@ async function scoped<T>(
 ): Promise<T> {
   const client = await pool.connect();
   try {
-    await client.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
-    await client.query("SELECT set_config('app.tenant_id', $1, false)", [scope.tenantId]);
+    await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
+    await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
     return await fn(client);
   } finally {
     client.release();
@@ -267,25 +267,44 @@ export async function batchApprove(
 
 export async function expireSweep(
   app: pg.Pool,
+  gateway: pg.Pool,
   scope: { tenantId: string; workspaceId: string },
 ): Promise<{ expired: string[]; keptHighRisk: string[] }> {
-  return scoped(app, scope, async (c) => {
-    const pend = await c.query<ApprovalRow>(
+  const pend = await scoped(app, scope, async (c) => {
+    const r = await c.query<ApprovalRow>(
       `SELECT * FROM approvals WHERE workspace_id=$1 AND status='pending'`,
       [scope.workspaceId],
     );
-    const expired: string[] = [];
-    const keptHighRisk: string[] = [];
-    for (const row of pend.rows) {
-      const exp = row.snapshot?.expires_at ? new Date(row.snapshot.expires_at) : null;
-      if (!exp || exp.getTime() >= Date.now()) continue;
-      if (row.snapshot?.high_risk) {
-        keptHighRisk.push(row.approval_id); // L5.4：高危项超时标提醒但不放行不expired跳过
-        continue;
-      }
-      await c.query(`UPDATE approvals SET status='expired' WHERE approval_id=$1`, [row.approval_id]);
-      expired.push(row.approval_id);
-    }
-    return { expired, keptHighRisk };
+    return r.rows;
   });
+  const expired: string[] = [];
+  const keptHighRisk: string[] = [];
+  for (const row of pend) {
+    const exp = row.snapshot?.expires_at ? new Date(row.snapshot.expires_at) : null;
+    if (!exp || exp.getTime() >= Date.now()) continue;
+    if (row.snapshot?.high_risk) {
+      keptHighRisk.push(row.approval_id); // L5.4：高危项超时标提醒但不放行不expired跳过
+      continue;
+    }
+    await scoped(app, scope, async (c) => {
+      await c.query(`UPDATE approvals SET status='expired' WHERE approval_id=$1`, [row.approval_id]);
+    });
+    // 铁律 1：状态变更必经网关写事件（#10 修复；此前 expireSweep 只改表不写事件，违反 F1.2）
+    await gatewayAppend(gateway, {
+      tenantId: scope.tenantId, workspaceId: scope.workspaceId,
+      actor: { id: "review-console", type: "system" },
+    }, {
+      who: { type: "system", id: "review-console" },
+      context: { tenant_id: scope.tenantId, workspace_id: scope.workspaceId, time: new Date().toISOString(), channel: "inapp" },
+      object: { type: "approval", id: row.approval_id },
+      decision: {
+        action: "approval.expired",
+        after: { approval_id: row.approval_id, event_id: row.event_id, expires_at: row.snapshot?.expires_at },
+        basis: ["超时未审批，系统标记 expired（F5.7/E5.3；高危项不自动放行 L5.4）"],
+      },
+      rule_impact: [],
+    });
+    expired.push(row.approval_id);
+  }
+  return { expired, keptHighRisk };
 }
