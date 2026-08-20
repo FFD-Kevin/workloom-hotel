@@ -2,6 +2,21 @@
 
 本文件记录 WorkLoom IM 底座的变更历史。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/)。
 
+## [1.3.0] - 2026-08-21 · industry 上架门禁五机制（审计第 9 轮）
+
+### 新特性
+
+- **D15 五机制落地**：industry 技能上架门禁——①上架脱敏扫描（PII+敏感词强制检测）②审核流水线（双人复核/禁止自批/全程留痕）③供应链注入评估（四类注入模式拦截）④全局吊销 kill switch（安装与装配双点排除）⑤版本通道（安装版本快照+更新提示）。配套 0006 迁移（skill_publish_reviews / skill_revocations / skill_installs.installed_version）。
+- **industry 白名单开口**：desensitized 的 industry 技能可安装（D15 前置机制就位后的既定动作）。
+
+### 测试
+
+- suite 371→390：H 域 D15 回归 16 条 + expire 并发边界 2 条 + 前后端契约对账 1 条（实测零悬空）。
+
+### 门禁验证
+
+- ✅ suite 390/390 ×2 连跑 · base 152/152 · typecheck 全绿 · 干净库 6 迁移 + seed + verify-chain 100/100
+
 ## [1.2.1] - 2026-08-21 · 文档同步与 industry 层安全评估（审计第 8 轮）
 
 ### 文档

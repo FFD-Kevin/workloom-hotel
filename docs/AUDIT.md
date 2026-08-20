@@ -5,6 +5,36 @@
 
 ---
 
+## 第 9 轮 · 2026-08-21（基线 01f720d → 399c25d）· D15 五机制落地 + B-5 走查清零
+
+### dsh 版本检查
+npm latest=rc.7 / next=rc.8，与锁定 rc.8 一致——无新版本，无需升级。
+
+### 交付
+- **D15 五机制全部落地**（commit `e26efa3`，0006 迁移 + skills/publish.ts 新域）：
+  ① 上架脱敏扫描（maskText PII + 敏感凭据词，命中即拒——提案门禁前置，扫描不过连提案都进不了）；
+  ② 审核流水线（提案 → 两名不同成员复核[禁止自批/重复复核拒/驳回必填原因/终态幂等] → 完成置 industry+desensitized，全程事件留痕）；
+  ③ 供应链注入评估（覆盖指令/窃取泄露/数据外发/越权诱导四类模式）；
+  ④ 全局吊销 kill switch（installSkill 拒装留痕 + resolveAgentFenceBindings 装配排除，幂等）；
+  ⑤ 版本通道（installed_version 快照 vs 当前版本，listSkillUpdates 列示不自动升级）。
+- **industry 白名单开口**（isSignedSource：industry=desensitized 放行）——D15 前置机制全部就位后的既定动作。
+- **B-5 走查清零**（commit `399c25d`）：expire 并发边界 2 用例（5 路 sweep 一致 / decide-sweep 竞态终态恰其一）；前后端契约对账入套件（40 调用点 vs 64 挂载点，实测零悬空）；apps/desktop 启动器走查无问题。
+- suite 371→**390**（H 域 +16 / E 域 +2 / P 域 +1）。
+
+### 踩坑与回填
+- 迁移按文件名幂等：已应用文件追加 GRANT 不会重跑（0006 初版漏授权，手动补 + 文件修正，干净库验证通过）；
+- suite H-33 初版用 R2 断言被种子安装行（skill-revenue-manager 快照含 R1/R2）干扰——断言绑定改用 R5；
+- PublishError 本地错误类规避 registry↔publish 循环依赖。
+
+### 门禁结果（干净库从零实测）
+- 迁移 0001–0006 + seed H-1 100% + verify-chain 100/100；typecheck 6 项目绿；base 152/152 · **suite 390/390 ×2 连跑**。
+
+### 当前游标 → 下一轮
+- 剩余待办仅剩：#1/A Outbox（架构性改造，真实部署前立项走 ADR）；A 类 3 项「确认不修」维持登记。
+- 建议：industry 层首个真实技能走一遍完整上架流水线做端到端演练（提案→复核→上架→安装→吊销→恢复）。
+
+---
+
 ## 第 8 轮 · 2026-08-21（基线 v1.2.0 → 8a5a57b）· 英文 README 同步 + 官网核对 + industry 层安全评估
 
 ### dsh 版本检查
