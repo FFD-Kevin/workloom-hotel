@@ -42,8 +42,10 @@ export interface SearchPage {
   total: number;
 }
 
-/** 防注入底线：过滤值只允许安全字符（值本身仍走参数化，双保险） */
-const SAFE_VALUE = /^[\w.\-:*\u4e00-\u9fa5 ]{1,80}$/u;
+/** 防注入底线：过滤值只允许安全字符（值本身仍走参数化，双保险）
+ *  #36 修复：白名单补 `+`——ISO 时间带时区偏移（如 2026-08-20T00:00:00+08:00）
+ *  此前被误拒，from/to 时间检索在东八区时区格式下不可用 */
+const SAFE_VALUE = /^[\w.\-:*+\u4e00-\u9fa5 ]{1,80}$/u;
 
 function assertSafe(v: string, field: string): void {
   if (!SAFE_VALUE.test(v)) throw new Error(`检索字段 ${field} 含非法字符`);
