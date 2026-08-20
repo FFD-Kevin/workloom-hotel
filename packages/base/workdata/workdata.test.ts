@@ -8,8 +8,8 @@ import { maskDeep, maskText } from "./pii.js";
 import { checkHighRiskAuthorization, checkPermission, GatewayReject, isWriteAction } from "./gateway.js";
 import { canonicalJson, eventHash, GENESIS_HASH } from "./events.js";
 
-const draft = (action: string) => ({
-  who: { type: "agent" as const, id: "pricing-agent", version: "v2.3" },
+const draft = (action: string, whoId = "pricing-agent") => ({
+  who: { type: "agent" as const, id: whoId, version: "v2.3" },
   context: { tenant_id: "tenant-demo", workspace_id: "ws-yunqi", time: "2026-08-16T22:10:00+08:00" },
   object: { type: "room_price", id: "RT-DLX-KING" },
   decision: { action },
@@ -43,13 +43,13 @@ describe("PII 脱敏（瀑布段②）", () => {
 describe("权限段①（F2.10/L9.1 复查位）", () => {
   it("未声明 fence_bindings 的 Agent 写动作被拒", () => {
     expect(() =>
-      checkPermission({ id: "rogue", type: "agent", fenceBindings: [] }, draft("price.adjust")),
+      checkPermission({ id: "rogue", type: "agent", fenceBindings: [] }, draft("price.adjust", "rogue")),
     ).toThrow(GatewayReject);
   });
 
   it("只读 preset 写动作被拒（L9.1）", () => {
     expect(() =>
-      checkPermission({ id: "inspection-agent", type: "agent", readonly: true, fenceBindings: [] }, draft("price.adjust")),
+      checkPermission({ id: "inspection-agent", type: "agent", readonly: true, fenceBindings: [] }, draft("price.adjust", "inspection-agent")),
     ).toThrow(/L9\.1/);
   });
 
@@ -57,15 +57,15 @@ describe("权限段①（F2.10/L9.1 复查位）", () => {
     expect(() =>
       checkPermission({ id: "pricing-agent", type: "agent", fenceBindings: ["R1", "R2"] }, draft("price.adjust")),
     ).not.toThrow();
-    expect(() => checkPermission({ id: "inspection-agent", type: "agent", readonly: true }, draft("inspection.scan"))).not.toThrow();
+    expect(() => checkPermission({ id: "inspection-agent", type: "agent", readonly: true }, draft("inspection.scan", "inspection-agent"))).not.toThrow();
   });
 });
 
 describe("高风险授权段③（L3.5）", () => {
   it("高危 Agent 写动作缺授权引用被拒，带引用放行", () => {
     const desktop = { id: "desktop-agent", type: "agent" as const, highRisk: true, fenceBindings: ["R2"] };
-    expect(() => checkHighRiskAuthorization(desktop, draft("desktop.gui"))).toThrow(/L3\.5/);
-    expect(() => checkHighRiskAuthorization(desktop, draft("desktop.gui"), "apr-e-8888")).not.toThrow();
+    expect(() => checkHighRiskAuthorization(desktop, draft("desktop.gui", "desktop-agent"))).toThrow(/L3\.5/);
+    expect(() => checkHighRiskAuthorization(desktop, draft("desktop.gui", "desktop-agent"), "apr-e-8888")).not.toThrow();
   });
 });
 
@@ -182,6 +182,21 @@ d("PG 集成（H-2/L1.4：幂等丢弃、哈希链序）", async () => {
     expect(r.eventId).toBe(occupiedId);
     expect(r.deduped).toBe(true);
     expect(r.hash).toBe(sentinelHash); // #26：此前会返回按本 payload 新算的 hash（断链风险）
+  });
+
+  it("#35 actor 与 who 身份分叉被拒（防伪造留痕），且不落库", async () => {
+    const forged = draft("price.adjust");
+    (forged.who as { id: string }).id = "MEM-999"; // who 伪造他人归因，actor 仍是 pricing-agent
+    await expect(gatewayAppend(pool, ctx, forged)).rejects.toThrow(/身份不一致/);
+    const c = await pool.connect();
+    try {
+      await c.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
+      const n = await c.query<{ c: string }>(
+        `SELECT count(*) AS c FROM biz_events WHERE workspace_id=$1 AND payload->'who'->>'id'='MEM-999'`,
+        [scope.workspaceId],
+      );
+      expect(Number(n.rows[0]!.c)).toBe(0); // 伪造事件未落库
+    } finally { c.release(); }
   });
 
   it("脱敏落库：事件库无明文手机号（F1.10 机制位）", async () => {

@@ -85,6 +85,14 @@ export type { EventDraft } from "./events.js";
 
 /** 段①：权限校验（纯函数，可单测） */
 export function checkPermission(actor: ActorInfo, event: EventDraft): void {
+  // #35 身份一致性：操作者声明（actor）与事件归因（who）必须同一主体——
+  // 此前仅约定（全仓 26 处调用点人工保持一致），无机制防止分叉伪造留痕
+  if (actor.id !== event.who.id || actor.type !== event.who.type) {
+    throw new GatewayReject(
+      "permission",
+      `身份不一致：actor=${actor.type}:${actor.id} vs who=${event.who.type}:${event.who.id}，拒绝（防身份伪造留痕，G8 归因可信前提）`,
+    );
+  }
   const action = event.decision.action;
   if (actor.type !== "agent") return; // 人类/系统权限矩阵在 B5（tenancy+鉴权）落地
   if (!isWriteAction(action)) return; // 只读动作放行
