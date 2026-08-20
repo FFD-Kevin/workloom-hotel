@@ -13,6 +13,7 @@
  */
 import type pg from "pg";
 import { gatewayAppend } from "../workdata/gateway.js";
+import { isSkillRevoked } from "./publish.js";
 
 
 interface Scope { tenantId: string; workspaceId: string }
@@ -35,7 +36,9 @@ export class SkillError extends Error {
   constructor(
     public readonly code:
       | "NOT_FOUND" | "NOT_DESENSITIZED" | "NOT_SIGNED"
-      | "FENCE_CONFLICT" | "NEED_DRY_RUN" | "NOT_INSTALLED",
+      | "FENCE_CONFLICT" | "NEED_DRY_RUN" | "NOT_INSTALLED"
+      | "SKILL_REVOKED" | "PUBLISH_SCAN_FAILED" | "SELF_REVIEW_FORBIDDEN"
+      | "DUPLICATE_REVIEW" | "EMPTY_REASON" | "NOT_APPROVED",
     message: string,
   ) {
     super(message);
@@ -184,6 +187,15 @@ export async function installSkill(
   if (skill.level === "industry" && !skill.desensitized) {
     throw new SkillError("NOT_DESENSITIZED", `行业共享技能「${skill.name}」未脱敏（desensitized=false），拦截安装（L8.1/E8.4 禁止降级）`);
   }
+  // D15-④：全局吊销（kill switch）——任何级别吊销技能禁止新安装，并留痕
+  if (await isSkillRevoked(app, skill.id)) {
+    const evId = await emit(gateway, scope, input.by, {
+      action: "skill.install.blocked",
+      after: { skillId: skill.id, name: skill.name, reason: "SKILL_REVOKED", level: skill.level },
+      basis: ["全局吊销技能禁止安装（D15-④ kill switch）"],
+    });
+    throw new SkillError("SKILL_REVOKED", `技能「${skill.name}」已被全局吊销（D15-④），已拦截并留痕 ${evId}`);
+  }
   // #23：team 技能仅限本工作区自建（skill-t-<workspaceId>- 命名空间），他区技能按未签名拦截
   if (!isOwnWorkspaceSkill(skill, scope)) {
     const evId = await emit(gateway, scope, input.by, {
@@ -252,11 +264,12 @@ export async function installSkill(
     // 事务级 RLS 上下文必须在显式事务内设置：autocommit 下 set_config(...,true) 语句结束即失效
     await client.query("BEGIN");
     await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
+    // D15-⑤：安装时记录版本快照（installed_version），供 listSkillUpdates 版本通道对比
     const r = await client.query(
-      `INSERT INTO skill_installs (skill_id, workspace_id, installed_by, fence_bindings_snapshot)
-       VALUES ($1,$2,$3,$4)
+      `INSERT INTO skill_installs (skill_id, workspace_id, installed_by, fence_bindings_snapshot, installed_version)
+       VALUES ($1,$2,$3,$4,$5)
        ON CONFLICT (skill_id, workspace_id) DO NOTHING`,
-      [skill.id, scope.workspaceId, input.by, JSON.stringify(bindings)],
+      [skill.id, scope.workspaceId, input.by, JSON.stringify(bindings), skill.version],
     );
     deduped = r.rowCount === 0;
   } catch (err) {
@@ -342,9 +355,11 @@ export async function resolveAgentFenceBindings(
     const base = ag.rows[0]?.fence_bindings ?? [];
     // #17 修复：读 skill_installs.fence_bindings_snapshot（安装时快照），而非 skills.fence_bindings（实时值）
     // 防止技能作者在安装后更新 skills.fence_bindings 绕过 E8.1 冲突检测
+    // D15-④：全局吊销的技能不再并入装配围栏（kill switch）
     const sk = await client.query<{ fence_bindings_snapshot: string[] }>(
       `SELECT i.fence_bindings_snapshot FROM skill_installs i
-       WHERE i.workspace_id=$1`,
+       WHERE i.workspace_id=$1
+         AND NOT EXISTS (SELECT 1 FROM skill_revocations r WHERE r.skill_id = i.skill_id)`,
       [scope.workspaceId],
     );
     const union = new Set<string>(base);

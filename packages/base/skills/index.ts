@@ -7,3 +7,4 @@
 export * from "./registry.js";
 export * from "./forge.js";
 export * from "./awareness.js";
+export * from "./publish.js";
