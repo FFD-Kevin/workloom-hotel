@@ -63,8 +63,8 @@ export async function createDryRun(
 ): Promise<{ dryRunId: string; report: DryRunReport }> {
   const client = await app.connect();
   try {
-    await client.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
-    await client.query("SELECT set_config('app.tenant_id', $1, false)", [scope.tenantId]);
+    await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
+    await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
     const rows = await client.query<{ payload: BusinessEvent }>(
       `SELECT payload FROM biz_events WHERE tenant_id=$1 AND workspace_id=$2
        ORDER BY seq DESC LIMIT $3`,
@@ -127,7 +127,7 @@ export async function confirmDryRun(
 ): Promise<void> {
   const client = await app.connect();
   try {
-    await client.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
+    await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
     const r = await client.query(
       `UPDATE fence_dry_runs SET status='confirmed' WHERE id=$1 AND workspace_id=$2 AND status='pending'`,
       [dryRunId, scope.workspaceId],
@@ -181,7 +181,9 @@ export class ObjectLockTimeout extends Error {
 }
 
 /**
- * 对象写锁：pg advisory try-lock（租户+对象键）+ 轮询至超时。
+ * 对象写锁：pg advisory 阻塞锁（64位 key，碰撞概率可忽略）+ statement_timeout 超时。
+ * #14/#15 修复：改用 pg_advisory_xact_lock（阻塞版，内核管理等待队列）+ 64位 hash key，
+ * 避免轮询占用 gateway 连接 5 秒（#15）和 hashtext 32位碰撞（#14）。
  * 锁随事务释放；超时抛 ObjectLockTimeout（调用方写「需介入」事件，L4.2）。
  */
 export async function withObjectLock<T>(
@@ -193,22 +195,26 @@ export async function withObjectLock<T>(
   const client = await gateway.connect();
   const lockKey = `obj:${objectKey}`;
   try {
+    // 用 statement_timeout 控制锁等待超时，超时后 PG 自动 abort 当前语句
+    await client.query(`SET LOCAL statement_timeout = ${timeoutMs}`);
     await client.query("BEGIN");
-    const deadline = Date.now() + timeoutMs;
-    for (;;) {
-      const r = await client.query<{ ok: boolean }>(`SELECT pg_try_advisory_xact_lock(hashtext($1)) AS ok`, [lockKey]);
-      if (r.rows[0]?.ok) break;
-      if (Date.now() > deadline) {
-        await client.query("ROLLBACK").catch(() => undefined);
-        throw new ObjectLockTimeout(objectKey);
-      }
-      await new Promise((r2) => setTimeout(r2, 100));
-    }
+    // 64位确定性 hash key：md5 前 16 位转 bigint，碰撞概率远低于 hashtext 32位
+    const r = await client.query<{ k: string }>(
+      `SELECT ('x' || substr(md5($1), 1, 16))::bit(64)::bigint AS k`,
+      [lockKey],
+    );
+    const lockKeyBig = r.rows[0]?.k;
+    // 阻塞版 advisory lock：拿不到锁时 PG 内核排队等待，不占用 Node 侧连接轮询
+    await client.query("SELECT pg_advisory_xact_lock($1)", [lockKeyBig]);
     const result = await fn(client);
     await client.query("COMMIT");
     return result;
   } catch (err) {
     await client.query("ROLLBACK").catch(() => undefined);
+    // PG 错误码 57014 = query_canceled（statement_timeout 触发）
+    if (err instanceof Error && /statement timeout|canceling statement/i.test(err.message)) {
+      throw new ObjectLockTimeout(objectKey);
+    }
     throw err;
   } finally {
     client.release();

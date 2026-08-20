@@ -66,7 +66,7 @@ export function planQuest(goal: string, preset: AssembledPreset): QuestStep[] {
 async function loadActiveRules(app: pg.Pool, scope: { tenantId: string; workspaceId: string }): Promise<{ rules: RuntimeRule[]; defaultLevel: "auto" | "review" | "block" }> {
   const client = await app.connect();
   try {
-    await client.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
+    await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
     const r = await client.query<{
       rule_id: string; version: string; name: string; level: "auto" | "review" | "block";
       is_baseline: boolean; match_spec: { object_types: string[]; actions: string[]; when: string };
@@ -106,16 +106,22 @@ export interface QuestRunResult {
 async function existingStepIds(gateway: pg.Pool, scope: { tenantId: string; workspaceId: string }, threadId: string): Promise<Set<string>> {
   const client = await gateway.connect();
   try {
-    await client.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
-    await client.query("SELECT set_config('app.tenant_id', $1, false)", [scope.tenantId]);
+    await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
+    await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
     const r = await client.query<{ payload: BusinessEvent }>(
       `SELECT payload FROM biz_events WHERE tenant_id=$1 AND workspace_id=$2 AND session_id=$3`,
       [scope.tenantId, scope.workspaceId, threadId],
     );
     const set = new Set<string>();
     for (const row of r.rows) {
-      const sid = (row.payload.decision as Record<string, unknown>).step_id;
-      if (typeof sid === "string") set.add(sid);
+      const decision = row.payload.decision as Record<string, unknown>;
+      const sid = decision.step_id;
+      // #11 修复：只收录真正执行完成（auto）的步骤，排除 block/review 事件
+      // block/review 事件的 basis 以「熔断：」或「越围栏挂起：」开头，从未真正执行
+      const basis = Array.isArray(decision.basis) ? decision.basis as string[] : [];
+      const isBlocked = basis.some((b) => b.startsWith("熔断："));
+      const isReview = basis.some((b) => b.startsWith("越围栏挂起："));
+      if (typeof sid === "string" && !isBlocked && !isReview) set.add(sid);
     }
     return set;
   } finally {
@@ -126,7 +132,7 @@ async function existingStepIds(gateway: pg.Pool, scope: { tenantId: string; work
 async function updateThread(app: pg.Pool, scope: { tenantId: string; workspaceId: string }, threadId: string, patch: Record<string, unknown>): Promise<void> {
   const client = await app.connect();
   try {
-    await client.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
+    await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
     const sets: string[] = ["updated_at = now()"];
     const params: unknown[] = [threadId, scope.workspaceId];
     for (const [k, v] of Object.entries(patch)) {
@@ -206,8 +212,8 @@ export async function runQuest(
       const appClient = await app.connect();
       let approvalId = `apr-${ev.eventId.toLowerCase()}`;
       try {
-        await appClient.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
-        await appClient.query("SELECT set_config('app.tenant_id', $1, false)", [scope.tenantId]);
+        await appClient.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
+        await appClient.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
         await appClient.query(
           `INSERT INTO approvals (approval_id, tenant_id, workspace_id, event_id, channel, status, snapshot)
            VALUES ($1,$2,$3,$4,'inapp','pending',$5)

@@ -66,7 +66,7 @@ export async function ensureReady(
   const id = `nr-${runDate}`;
   const client = await app.connect();
   try {
-    await client.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
+    await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
     await client.query(
       `INSERT INTO night_runs (id, workspace_id, run_date, status) VALUES ($1,$2,$3,'ready')
        ON CONFLICT (id) DO NOTHING`,
@@ -99,8 +99,11 @@ export async function confirmNight(
     const from = cur.rows[0]?.status ?? "unconfigured";
     assertTransition(from, "running");
     // F2.6：围栏版本快照（取当前生效基线包版本）
+    // #6 修复：限定 is_baseline=true + DESC 确定性排序；断言最多一条 active baseline
     const fr = await client.query<{ version: string }>(
-      `SELECT DISTINCT version FROM fence_rules WHERE (workspace_id=$1 OR workspace_id='*') AND status='active' ORDER BY version LIMIT 1`,
+      `SELECT version FROM fence_rules
+       WHERE (workspace_id=$1 OR workspace_id='*') AND status='active' AND is_baseline=true
+       ORDER BY version DESC, created_at DESC LIMIT 1`,
       [scope.workspaceId],
     );
     fenceVersion = fr.rows[0]?.version ?? null;
@@ -152,8 +155,9 @@ export async function pauseAll(
     const from = cur.rows[0]?.status;
     if (from) assertTransition(from, "paused");
     // 挂起工作区全部 running 线程（断点挂起，恢复续跑 E4.2/E3.3）
+    // #13 修复：标记 paused_by='night-shift'，resumeNight 只恢复该标记的线程，不覆盖手动暂停
     const th = await client.query(
-      `UPDATE threads SET status='paused', updated_at=now()
+      `UPDATE threads SET status='paused', paused_by='night-shift', updated_at=now()
        WHERE workspace_id=$1 AND status='running'`,
       [scope.workspaceId],
     );
@@ -203,7 +207,12 @@ export async function resumeNight(
     );
     assertTransition(cur.rows[0]?.status ?? "unconfigured", "running");
     await client.query(`UPDATE night_runs SET status='running' WHERE id=$1 AND workspace_id=$2`, [runId, scope.workspaceId]);
-    await client.query(`UPDATE threads SET status='queued', updated_at=now() WHERE workspace_id=$1 AND status='paused'`, [scope.workspaceId]);
+    // #13 修复：只恢复 paused_by='night-shift' 的线程，不覆盖用户手动暂停的线程
+    await client.query(
+      `UPDATE threads SET status='queued', paused_by=NULL, updated_at=now()
+       WHERE workspace_id=$1 AND status='paused' AND paused_by='night-shift'`,
+      [scope.workspaceId],
+    );
     await client.query("COMMIT");
   } catch (err) {
     await client.query("ROLLBACK").catch(() => undefined);
