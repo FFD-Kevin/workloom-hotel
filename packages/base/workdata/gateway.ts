@@ -27,8 +27,29 @@ const WRITE_ACTION_PREFIXES = [
   "trigger.",
 ] as const;
 
+/**
+ * #5 修复：运行时可注册额外写类动作前缀（由围栏规则包装载时调用 registerWriteActions）。
+ * 这样行业 Bundle 新增写类动作（如 inventory.adjust）后，网关段①权限校验能识别，
+ * 不会因硬编码前缀未覆盖而放行未声明 fence_bindings 的 Agent 写动作（F2.10）。
+ */
+const extraWriteActions: Set<string> = new Set();
+const extraWritePrefixes: string[] = [];
+
+export function registerWriteActions(actions: string[]): void {
+  for (const a of actions) {
+    if (a.endsWith(".")) {
+      extraWritePrefixes.push(a);
+    } else {
+      extraWriteActions.add(a);
+    }
+  }
+}
+
 export function isWriteAction(action: string): boolean {
-  return WRITE_ACTION_PREFIXES.some((p) => action === p || action.startsWith(p));
+  if (WRITE_ACTION_PREFIXES.some((p) => action === p || action.startsWith(p))) return true;
+  if (extraWriteActions.has(action)) return true;
+  if (extraWritePrefixes.some((p) => action.startsWith(p))) return true;
+  return false;
 }
 
 export class GatewayReject extends Error {

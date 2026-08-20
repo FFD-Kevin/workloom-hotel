@@ -12,14 +12,16 @@ export type PiiKind = "PHONE" | "IDCARD" | "EMAIL" | "BANKCARD" | "QQ";
 interface PiiRule {
   kind: PiiKind;
   pattern: RegExp;
+  /** 可选二次校验（如银行卡 Luhn），返回 false 则不替换 */
+  verify?: (raw: string) => boolean;
 }
 
 /** 规则表（只可加严不可删除；命中即替换） */
 const RULES: PiiRule[] = [
   // 身份证号（18 位，末位可 X）优先于手机号（避免 11 位子串误伤）
   { kind: "IDCARD", pattern: /\b\d{6}(?:19|20)\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])\d{3}[\dXx]\b/g },
-  // 银行卡（13–19 位连续数字，排除已命中的身份证位）
-  { kind: "BANKCARD", pattern: /\b(?:\d[ -]?){13,19}\b/g },
+  // 银行卡（13–19 位连续数字，排除已命中的身份证位；Luhn 二次确认避免误伤订单号/时间戳）
+  { kind: "BANKCARD", pattern: /\b(?:\d[ -]?){13,19}\b/g, verify: luhnValid },
   // 大陆手机号
   { kind: "PHONE", pattern: /\b1[3-9]\d{9}\b/g },
   // 邮箱
@@ -27,6 +29,26 @@ const RULES: PiiRule[] = [
   // QQ 号（5–11 位，带「QQ」语境才命中，避免误伤纯数字价格/订单号）
   { kind: "QQ", pattern: /(?<=[QqＱｑ]{2}[:：\s]?)\d{5,11}\b/g },
 ];
+
+/** Luhn 校验（银行卡标准校验算法，过滤订单号/时间戳等非卡数字） */
+function luhnValid(raw: string): boolean {
+  const digits = raw.replace(/[\s-]/g, "");
+  if (digits.length < 13 || digits.length > 19) return false;
+  let sum = 0;
+  let alt = false;
+  for (let i = digits.length - 1; i >= 0; i--) {
+    const n = Number(digits[i]);
+    if (!Number.isInteger(n)) return false;
+    if (alt) {
+      const double = n * 2;
+      sum += double > 9 ? double - 9 : double;
+    } else {
+      sum += n;
+    }
+    alt = !alt;
+  }
+  return sum % 10 === 0;
+}
 
 function placeholder(kind: PiiKind, raw: string): string {
   const digest = createHash("sha256").update(raw, "utf-8").digest("hex").slice(0, 8);
@@ -37,8 +59,9 @@ function placeholder(kind: PiiKind, raw: string): string {
 export function maskText(input: string): { text: string; hits: number } {
   let text = input;
   let hits = 0;
-  for (const { kind, pattern } of RULES) {
+  for (const { kind, pattern, verify } of RULES) {
     text = text.replace(pattern, (raw) => {
+      if (verify && !verify(raw)) return raw; // 二次校验不过则保留原文
       hits += 1;
       return placeholder(kind, raw);
     });
