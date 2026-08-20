@@ -20,8 +20,8 @@ import {
   type Gesture,
   type MemberRole,
 } from "@workloom/shared";
-import { gatewayAppend } from "../workdata/gateway.js";
-import { upsertMemory, MockEmbedder, type Embedder } from "../workdata/memory.js";
+import { gatewayAppend, gatewayAppendOnClient } from "../workdata/gateway.js";
+import { upsertMemory, upsertMemoryInTx, MockEmbedder, type Embedder } from "../workdata/memory.js";
 
 /* ================= 类型 ================= */
 
@@ -200,20 +200,11 @@ export async function decide(
         actor.memberNo,
       ],
     );
-    return { kind: "decided" as const, row, status };
-  });
 
-  if (txResult.kind === "deduped") {
-    return { approvalId, status: txResult.row.status, deduped: true };
-  }
-  if (txResult.kind === "expired") {
-    throw new ApprovalError("EXPIRED", `快照已过期（${txResult.expiresAt.toISOString()}），审批标记 expired（E5.3/F5.7）`);
-  }
-  const { row, status } = txResult;
-
-  {
+    // D16（#1/A）：状态变更、手势事件、校准记忆全部在同一事务同一 COMMIT——
+    // 不再存在「状态已改、事件/记忆未落」的崩溃孤儿窗口
     // F5.5 手势回写：事件库（经安全网关；人类手势动作）
-    const gres = await gatewayAppend(gateway, {
+    const gres = await gatewayAppendOnClient(c, {
       ...scope,
       actor: { id: actor.memberNo, type: "human" },
     }, {
@@ -237,7 +228,7 @@ export async function decide(
 
     // F1.7 校准闭环：驳回原因枚举 → 偏好模式记忆（机制位；权重衰减在数据大脑侧）
     if (gesture.type === "reject" && gesture.reasonEnum) {
-      await upsertMemory(app, scope, {
+      await upsertMemoryInTx(c, scope, {
         memoryId: `mem-reject-${gesture.reasonEnum}`,
         scope: "workspace",
         kind: "preference",
@@ -245,16 +236,21 @@ export async function decide(
         sourceEvents: [gres.eventId],
         confidence: 0.6,
       }, embedder);
-      await scoped(app, scope, (c) =>
-        c.query(
-          `INSERT INTO memory_usage (memory_id, event_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`,
-          [`mem-reject-${gesture.reasonEnum}`, gres.eventId],
-        ),
+      await c.query(
+        `INSERT INTO memory_usage (memory_id, event_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`,
+        [`mem-reject-${gesture.reasonEnum}`, gres.eventId],
       );
     }
+    return { kind: "decided" as const, row, status, gestureEventId: gres.eventId };
+  });
 
-    return { approvalId, status, deduped: false, gestureEventId: gres.eventId };
+  if (txResult.kind === "deduped") {
+    return { approvalId, status: txResult.row.status, deduped: true };
   }
+  if (txResult.kind === "expired") {
+    throw new ApprovalError("EXPIRED", `快照已过期（${txResult.expiresAt.toISOString()}），审批标记 expired（E5.3/F5.7）`);
+  }
+  return { approvalId, status: txResult.status, deduped: false, gestureEventId: txResult.gestureEventId };
 }
 
 /* ================= 批量采纳（F5.2；仅非高危，P4 原型口径） ================= */
@@ -310,23 +306,24 @@ export async function expireSweep(
       keptHighRisk.push(row.approval_id); // L5.4：高危项超时标提醒但不放行不expired跳过
       continue;
     }
+    // 铁律 1：状态变更必经网关写事件（#10 修复；此前 expireSweep 只改表不写事件，违反 F1.2）
+    // D16（#1/A）：expired 状态与过期事件同一事务提交——不再存在状态已变、事件未落的孤儿窗口
     await scoped(app, scope, async (c) => {
       await c.query(`UPDATE approvals SET status='expired' WHERE approval_id=$1`, [row.approval_id]);
-    });
-    // 铁律 1：状态变更必经网关写事件（#10 修复；此前 expireSweep 只改表不写事件，违反 F1.2）
-    await gatewayAppend(gateway, {
-      tenantId: scope.tenantId, workspaceId: scope.workspaceId,
-      actor: { id: "review-console", type: "system" },
-    }, {
-      who: { type: "system", id: "review-console" },
-      context: { tenant_id: scope.tenantId, workspace_id: scope.workspaceId, time: new Date().toISOString(), channel: "inapp" },
-      object: { type: "approval", id: row.approval_id },
-      decision: {
-        action: "approval.expired",
-        after: { approval_id: row.approval_id, event_id: row.event_id, expires_at: row.snapshot?.expires_at },
-        basis: ["超时未审批，系统标记 expired（F5.7/E5.3；高危项不自动放行 L5.4）"],
-      },
-      rule_impact: [],
+      await gatewayAppendOnClient(c, {
+        tenantId: scope.tenantId, workspaceId: scope.workspaceId,
+        actor: { id: "review-console", type: "system" },
+      }, {
+        who: { type: "system", id: "review-console" },
+        context: { tenant_id: scope.tenantId, workspace_id: scope.workspaceId, time: new Date().toISOString(), channel: "inapp" },
+        object: { type: "approval", id: row.approval_id },
+        decision: {
+          action: "approval.expired",
+          after: { approval_id: row.approval_id, event_id: row.event_id, expires_at: row.snapshot?.expires_at },
+          basis: ["超时未审批，系统标记 expired（F5.7/E5.3；高危项不自动放行 L5.4）"],
+        },
+        rule_impact: [],
+      });
     });
     expired.push(row.approval_id);
   }

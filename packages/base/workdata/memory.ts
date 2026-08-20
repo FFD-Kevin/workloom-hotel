@@ -100,6 +100,37 @@ async function withScope<T>(
   }
 }
 
+/** 事务内写入/更新记忆（D16：调用方持有事务；与业务状态/事件同一 COMMIT） */
+export async function upsertMemoryInTx(
+  client: pg.PoolClient,
+  scope: { tenantId: string; workspaceId: string },
+  input: MemoryInput,
+  embedder: Embedder,
+): Promise<{ memoryId: string; piiHits: number }> {
+  const masked = maskText(input.content);
+  const embedding = await embedder.embed(masked.text);
+  const vecLiteral = `[${embedding.map((x) => x.toFixed(8)).join(",")}]`;
+  await client.query(
+    `INSERT INTO org_memory (memory_id, tenant_id, workspace_id, scope, kind, content, embedding, source_events, confidence)
+     VALUES ($1,$2,$3,$4,$5,$6,$7::vector,$8,$9)
+     ON CONFLICT (memory_id) DO UPDATE
+       SET content = EXCLUDED.content, embedding = EXCLUDED.embedding,
+           source_events = EXCLUDED.source_events, status = 'active'`,
+    [
+      input.memoryId,
+      scope.tenantId,
+      scope.workspaceId,
+      input.scope,
+      input.kind,
+      masked.text,
+      vecLiteral,
+      input.sourceEvents,
+      input.confidence ?? MEMORY_DEFAULT_CONFIDENCE,
+    ],
+  );
+  return { memoryId: input.memoryId, piiHits: masked.hits };
+}
+
 /** 写入/更新记忆（脱敏后落库；embedding 由 Embedder 产出） */
 export async function upsertMemory(
   app: pg.Pool,
