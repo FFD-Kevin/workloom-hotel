@@ -152,9 +152,10 @@ export default function P1() {
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
-      setDispatchState(draft ? "typing" : "empty");
+      // #18 修复：用 text.trim() 判断而非闭包旧值 draft（setDraft 异步，闭包内 draft 未更新）
+      setDispatchState(text.trim() ? "typing" : "empty");
     }
-  }, [draft, load]);
+  }, [load]);
 
   /* ---------- 状态变体 ---------- */
   const isLoading = demo === "p1_loading" || !ready;
