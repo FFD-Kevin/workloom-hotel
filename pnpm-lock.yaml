@@ -11,6 +11,9 @@ importers:
       '@workloom/base':
         specifier: workspace:*
         version: link:packages/base
+      '@workloom/runtime':
+        specifier: workspace:*
+        version: link:packages/runtime
       '@workloom/shared':
         specifier: workspace:*
         version: link:packages/shared

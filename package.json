@@ -11,7 +11,8 @@
     "@workloom/shared": "workspace:*",
     "pg": "8.23.0",
     "yaml": "2.9.0",
-    "@workloom/base": "workspace:*"
+    "@workloom/base": "workspace:*",
+    "@workloom/runtime": "workspace:*"
   },
   "scripts": {
     "dev": "concurrently -k -n server,web \"pnpm -C apps/server dev\" \"pnpm -C apps/web dev\"",
@@ -21,7 +22,8 @@
     "doctor": "bash scripts/doctor.sh",
     "typecheck": "pnpm -r --if-present typecheck",
     "test": "pnpm -r --if-present test",
-    "db:verify-chain": "tsx --env-file=.env scripts/verify-chain.ts"
+    "db:verify-chain": "tsx --env-file=.env scripts/verify-chain.ts",
+    "suite": "tsx --env-file=.env scripts/suite.ts"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
