@@ -79,7 +79,7 @@ export async function listSkills(app: pg.Pool, opts: { level?: SkillLevel } = {}
 export async function listInstalls(app: pg.Pool, scope: Scope): Promise<Array<{ skill_id: string; installed_by: string; installed_at: Date }>> {
   const client = await app.connect();
   try {
-    await client.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
+    await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
     const r = await client.query<{ skill_id: string; installed_by: string; installed_at: Date }>(
       `SELECT skill_id, installed_by, installed_at FROM skill_installs WHERE workspace_id=$1 ORDER BY installed_at`,
       [scope.workspaceId],
@@ -108,7 +108,7 @@ export function detectFenceConflicts(
 async function activeRuleIds(app: pg.Pool, scope: Scope): Promise<Set<string>> {
   const client = await app.connect();
   try {
-    await client.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
+    await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
     const r = await client.query<{ rule_id: string }>(
       `SELECT DISTINCT rule_id FROM fence_rules WHERE (workspace_id=$1 OR workspace_id='*') AND status='active'`,
       [scope.workspaceId],
@@ -123,7 +123,7 @@ async function activeRuleIds(app: pg.Pool, scope: Scope): Promise<Set<string>> {
 async function hasDryRunTrace(app: pg.Pool, scope: Scope, skillId: string): Promise<boolean> {
   const client = await app.connect();
   try {
-    await client.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
+    await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
     const r = await client.query<{ c: string }>(
       `SELECT count(*) AS c FROM biz_events
        WHERE workspace_id=$1 AND payload->'decision'->>'action'='skill.dry_run'
@@ -176,8 +176,8 @@ export async function installSkill(
       });
       const client = await app.connect();
       try {
-        await client.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
-        await client.query("SELECT set_config('app.tenant_id', $1, false)", [scope.tenantId]);
+        await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
+        await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
         await client.query(
           `INSERT INTO approvals (approval_id, tenant_id, workspace_id, event_id, channel, status, snapshot)
            VALUES ($1,$2,$3,$4,'inapp','pending',$5)`,
@@ -194,14 +194,16 @@ export async function installSkill(
   }
 
   // 落安装（幂等 L1.4 同源：重复安装不报错）
+  // #17 修复：安装时快照 fence_bindings，运行时读快照而非实时值，防止技能作者更新绑定绕过冲突检测
   const client = await app.connect();
   let deduped = false;
   try {
-    await client.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
+    await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
     const r = await client.query(
-      `INSERT INTO skill_installs (skill_id, workspace_id, installed_by) VALUES ($1,$2,$3)
+      `INSERT INTO skill_installs (skill_id, workspace_id, installed_by, fence_bindings_snapshot)
+       VALUES ($1,$2,$3,$4)
        ON CONFLICT (skill_id, workspace_id) DO NOTHING`,
-      [skill.id, scope.workspaceId, input.by],
+      [skill.id, scope.workspaceId, input.by, JSON.stringify(bindings)],
     );
     deduped = r.rowCount === 0;
   } finally {
@@ -229,7 +231,7 @@ export async function uninstallSkill(
   const client = await app.connect();
   let removed = 0;
   try {
-    await client.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
+    await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
     const r = await client.query(
       `DELETE FROM skill_installs WHERE skill_id=$1 AND workspace_id=$2`,
       [skill.id, scope.workspaceId],
@@ -259,20 +261,21 @@ export async function resolveAgentFenceBindings(
 ): Promise<string[]> {
   const client = await app.connect();
   try {
-    await client.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
+    await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
     const ag = await client.query<{ fence_bindings: string[] }>(
       `SELECT fence_bindings FROM agents WHERE id=$1 AND workspace_id=$2`,
       [agentId, scope.workspaceId],
     );
     const base = ag.rows[0]?.fence_bindings ?? [];
-    const sk = await client.query<{ fence_bindings: string[] }>(
-      `SELECT s.fence_bindings FROM skills s
-       JOIN skill_installs i ON i.skill_id=s.id
+    // #17 修复：读 skill_installs.fence_bindings_snapshot（安装时快照），而非 skills.fence_bindings（实时值）
+    // 防止技能作者在安装后更新 skills.fence_bindings 绕过 E8.1 冲突检测
+    const sk = await client.query<{ fence_bindings_snapshot: string[] }>(
+      `SELECT i.fence_bindings_snapshot FROM skill_installs i
        WHERE i.workspace_id=$1`,
       [scope.workspaceId],
     );
     const union = new Set<string>(base);
-    for (const row of sk.rows) for (const b of row.fence_bindings ?? []) union.add(b);
+    for (const row of sk.rows) for (const b of row.fence_bindings_snapshot ?? []) union.add(b);
     return [...union].sort();
   } finally {
     client.release();

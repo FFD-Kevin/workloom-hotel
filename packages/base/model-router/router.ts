@@ -30,7 +30,13 @@ export function currentWindow(now = new Date()): Window {
   const t = hh * 60 + mm;
   const start = sh! * 60 + sm!;
   const end = eh! * 60 + em!;
-  return t >= start || t < end ? "off-peak" : "peak"; // 跨午夜窗口 22:00–08:00
+  // #19 修复：支持跨午夜（start > end，如 22:00-08:00）和非跨午夜（start < end，如 09:00-17:00）两种窗口
+  if (start > end) {
+    // 跨午夜窗口：t >= start 或 t < end 时为 off-peak
+    return t >= start || t < end ? "off-peak" : "peak";
+  }
+  // 非跨午夜窗口：start <= t < end 时为 off-peak
+  return t >= start && t < end ? "off-peak" : "peak";
 }
 
 /* ================= 分级路由（F6.2 确定性分类） ================= */
@@ -111,6 +117,8 @@ export interface RouteResult {
   modelTrace?: { model_id: string; tier: Tier; window: Window; credits: number };
   reusedMemoryId?: string;
   degraded?: Array<{ from: string; to: string | null; reason: string }>;
+  /** #12 修复：熔断时仍返回已产出的答案，避免白烧 token */
+  budgetExceeded?: boolean;
 }
 
 export async function route(
@@ -160,10 +168,10 @@ export async function route(
         : mockCredits(modelId, result);
       const trace = { model_id: modelId, tier, window, credits, action: task.action };
       await sink.recordModelTrace(trace); // F6.5 逐事件计量
-      // 熔断复检：本次消耗后超限 → 任务挂起（答案已产出但标记熔断，调用方转需介入）
+      // 熔断复检：本次消耗后超限 → 标记熔断但仍返回已产出答案（#12 修复：不丢弃已付费产出）
       if (used + credits >= policy.taskCreditLimit) {
         await sink.recordCircuitBreak({ action: task.action, creditsUsed: used + credits, limit: policy.taskCreditLimit });
-        return { kind: "circuit_broken", modelTrace: trace, degraded };
+        return { kind: "circuit_broken", text: result.text, modelTrace: trace, degraded, budgetExceeded: true };
       }
       return { kind: "answered", text: result.text, modelTrace: trace, degraded };
     } catch (err) {

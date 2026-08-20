@@ -77,11 +77,17 @@ export async function handleGestureCallback(
     operator: member.memberNo,
   };
   // 手势回执回写通道（F5.5 手势回写口径；重复回调明示「已处理过」）
+  // #21 修复：回执发送是 best-effort，失败不应让成功的审批操作「看起来失败」
   if (driver) {
     const text = r.deduped
       ? `审批 ${r.approvalId} 已处理过（当前状态 ${r.status}，L5.3 幂等），本次回调不重复生效`
       : `审批 ${r.approvalId} 已${r.status === "approved" ? "采纳" : r.status === "edited" ? "编辑后采纳" : "驳回"}（操作人 ${member.name}，通道手势与端内同权 F5.6）`;
-    await driver.sendText({ conversationId: cb.conversationId }, text);
+    try {
+      await driver.sendText({ conversationId: cb.conversationId }, text);
+    } catch (err) {
+      // 回执发送失败（IM 平台抖动）只记录日志，不影响审批操作结果
+      console.warn(`[im-channels] 回执发送失败（审批 ${r.approvalId}，通道 ${cb.channel}）：`, err instanceof Error ? err.message : err);
+    }
   }
   return result;
 }

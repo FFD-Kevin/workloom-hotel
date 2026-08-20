@@ -23,19 +23,32 @@ const ok = (result: Record<string, unknown>): ToolResult => ({
   receipt: { synced: true, snapshot_uri: `data/snapshots/${Date.now().toString(36)}.png`, verified_at: new Date().toISOString() },
 });
 
+/**
+ * 架构 K 修复：mock 工具随机返回 synced:false，让 E3.7 回执校验路径在开发阶段就被走到。
+ * 通过环境变量 TOOL_UNVERIFIED_RATE 控制比例（默认 0.1 = 10%）；设为 0 关闭。
+ * 仅作用于 demo 工具，不影响真实适配器。
+ */
+const UNVERIFIED_RATE = Number(process.env.TOOL_UNVERIFIED_RATE ?? "0.1");
+function maybeUnverified(result: Record<string, unknown>): ToolResult {
+  if (Math.random() < UNVERIFIED_RATE) {
+    return { result, receipt: { synced: false } }; // 无回执=未核实（E3.7）
+  }
+  return ok(result);
+}
+
 /** 确定性剧本工具表（云栖酒店演示口径；数字与种子剧本一致） */
 export const DEMO_TOOLS: Record<string, ToolFn> = {
-  "pms.price.read": async (p) => ok({ room_type: p.room_type ?? "RT-DLX-KING", current: 458, occ_7d: 0.78 }),
-  "pms.price.write": async (p) => ok({ room_type: p.room_type, price: p.price, applied: true }),
-  "ota.price.write": async (p) => ok({ channel: p.channel ?? "美团", price: p.price, applied: true }),
-  "competitor.fetch": async () => ok({ card: "西湖云舍酒店", price: 472, ts: new Date().toISOString() }),
-  "review.list": async () => ok({ fresh: [{ id: "RV-66413", rating: 2, channel: "携程", text: "空调异响影响睡眠" }] }),
-  "review.reply": async (p) => ok({ review_id: p.review_id, published: true }),
-  "order.list": async () => ok({ count: 37, total: 18234.5 }),
-  "order.reconcile": async () => ok({ diff: 0, rounds: 3 }),
-  "refund.apply": async (p) => ok({ order_id: p.order_id, amount: p.amount, refunded: true }),
-  "content.draft": async (p) => ok({ title: p.title ?? "秋日云栖套餐", draft_id: `CT-${Date.now().toString(36)}` }),
-  "content.publish": async (p) => ok({ title: p.title, published: true }),
+  "pms.price.read": async (p) => maybeUnverified({ room_type: p.room_type ?? "RT-DLX-KING", current: 458, occ_7d: 0.78 }),
+  "pms.price.write": async (p) => maybeUnverified({ room_type: p.room_type, price: p.price, applied: true }),
+  "ota.price.write": async (p) => maybeUnverified({ channel: p.channel ?? "美团", price: p.price, applied: true }),
+  "competitor.fetch": async () => maybeUnverified({ card: "西湖云舍酒店", price: 472, ts: new Date().toISOString() }),
+  "review.list": async () => maybeUnverified({ fresh: [{ id: "RV-66413", rating: 2, channel: "携程", text: "空调异响影响睡眠" }] }),
+  "review.reply": async (p) => maybeUnverified({ review_id: p.review_id, published: true }),
+  "order.list": async () => maybeUnverified({ count: 37, total: 18234.5 }),
+  "order.reconcile": async () => maybeUnverified({ diff: 0, rounds: 3 }),
+  "refund.apply": async (p) => maybeUnverified({ order_id: p.order_id, amount: p.amount, refunded: true }),
+  "content.draft": async (p) => maybeUnverified({ title: p.title ?? "秋日云栖套餐", draft_id: `CT-${Date.now().toString(36)}` }),
+  "content.publish": async (p) => maybeUnverified({ title: p.title, published: true }),
 };
 
 export async function executeTool(name: string, params: Record<string, unknown>): Promise<ToolResult> {
