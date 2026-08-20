@@ -16,7 +16,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import pg from "pg";
 import YAML from "yaml";
-import { gatewayAppend } from "../workdata/gateway.js";
+import { gatewayAppend, gatewayAppendOnClient } from "../workdata/gateway.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 /** 仓库 bundles/ 根（packages/base/bundles → 上三级）；测试可用 BUNDLES_ROOT 指到临时目录 */
@@ -390,12 +390,28 @@ export async function activateBundle(
     );
   }
   const client = await app.connect();
+  let actEventId = "";
   try {
     // 事务级 RLS 上下文必须在显式事务内设置：autocommit 下 set_config(...,true) 语句结束即失效
     await client.query("BEGIN");
     await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
     await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
     await client.query(`UPDATE workspaces SET industry=$2 WHERE id=$1`, [scope.workspaceId, slug]);
+    // D16（#1/A）：profile 切换与激活事件同一事务同一 COMMIT
+    actEventId = (await gatewayAppendOnClient(client, {
+      tenantId: scope.tenantId, workspaceId: scope.workspaceId,
+      actor: { id: by, type: "human" },
+    }, {
+      who: { type: "human", id: by },
+      context: { tenant_id: scope.tenantId, workspace_id: scope.workspaceId, time: new Date().toISOString(), channel: "inapp" },
+      object: { type: "bundle", id: slug },
+      decision: {
+        action: "bundle.activate",
+        after: { slug, version: profile.version, checks: profile.checks.map((c) => ({ key: c.key, ok: c.ok })) },
+        basis: ["F2.10 起飞前检查单五项全通过", "§2.3 profile 切换=整套皮肤+通讯录+群规生效"],
+      },
+      rule_impact: [],
+    })).eventId;
   } catch (err) {
     await client.query("ROLLBACK").catch(() => undefined);
     throw err;
@@ -412,21 +428,7 @@ export async function activateBundle(
       writeFileSync(bjPath, `${JSON.stringify(bj, null, 2)}\n`, "utf-8");
     }
   }
-  const r = await gatewayAppend(gateway, {
-    tenantId: scope.tenantId, workspaceId: scope.workspaceId,
-    actor: { id: by, type: "human" },
-  }, {
-    who: { type: "human", id: by },
-    context: { tenant_id: scope.tenantId, workspace_id: scope.workspaceId, time: new Date().toISOString(), channel: "inapp" },
-    object: { type: "bundle", id: slug },
-    decision: {
-      action: "bundle.activate",
-      after: { slug, version: profile.version, checks: profile.checks.map((c) => ({ key: c.key, ok: c.ok })) },
-      basis: ["F2.10 起飞前检查单五项全通过", "§2.3 profile 切换=整套皮肤+通讯录+群规生效"],
-    },
-    rule_impact: [],
-  });
-  return { eventId: r.eventId, profile: { ...profile, status: "active" } };
+  return { eventId: actEventId, profile: { ...profile, status: "active" } };
 }
 
 /** 重跑校验并留痕（P7E3：校验记录留痕可查；数据活算，重算即重跑） */

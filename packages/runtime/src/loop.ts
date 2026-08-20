@@ -12,7 +12,29 @@
  */
 import type pg from "pg";
 import { judge, type RuntimeRule } from "@workloom/base/fence-engine";
-import { gatewayAppend } from "@workloom/base/workdata";
+import { gatewayAppend, gatewayAppendOnClient } from "@workloom/base/workdata";
+
+/** D16（#1/A）：步骤内「事件 + 线程状态」单事务封装（双 GUC 齐备） */
+async function inTx<T>(
+  app: pg.Pool,
+  scope: { tenantId: string; workspaceId: string },
+  fn: (c: pg.PoolClient) => Promise<T>,
+): Promise<T> {
+  const client = await app.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
+    await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
+    const r = await fn(client);
+    await client.query("COMMIT");
+    return r;
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw err;
+  } finally {
+    client.release();
+  }
+}
 import type { BusinessEvent } from "@workloom/shared";
 import { executeTool } from "./tools.js";
 import { assemblePreset, type AssembledPreset } from "./assembly.js";
@@ -233,18 +255,24 @@ export async function runQuest(
 
     if (verdict.level === "block") {
       // block：熔断告警（只写事件 + 线程暂停，不执行）
-      await gatewayAppend(gateway, {
-        ...scope,
-        actor: { id: preset.presetKey, type: "agent", fenceBindings: preset.fenceBindings },
-        sessionId: threadId,
-      }, {
-        who: { type: "agent", id: preset.presetKey, version: preset.version },
-        context: { tenant_id: scope.tenantId, workspace_id: scope.workspaceId, time: new Date().toISOString() },
-        object: { type: step.objectType, id: step.objectId },
-        decision: { action: step.action, step_id: step.stepId, params: step.params, basis: [`熔断：${verdict.triggeredBy.join("、")}`] },
-        rule_impact: verdict.impacts,
+      // D16（#1/A）：熔断事件与线程暂停同一事务——不再存在事件已留痕但线程未暂停的中间态
+      await inTx(app, scope, async (c) => {
+        await gatewayAppendOnClient(c, {
+          ...scope,
+          actor: { id: preset.presetKey, type: "agent", fenceBindings: preset.fenceBindings },
+          sessionId: threadId,
+        }, {
+          who: { type: "agent", id: preset.presetKey, version: preset.version },
+          context: { tenant_id: scope.tenantId, workspace_id: scope.workspaceId, time: new Date().toISOString() },
+          object: { type: step.objectType, id: step.objectId },
+          decision: { action: step.action, step_id: step.stepId, params: step.params, basis: [`熔断：${verdict.triggeredBy.join("、")}`] },
+          rule_impact: verdict.impacts,
+        });
+        await c.query(
+          `UPDATE threads SET status='paused', error=$3, updated_at=now() WHERE id=$1 AND workspace_id=$2`,
+          [threadId, scope.workspaceId, `围栏熔断：${verdict.triggeredBy.join("、")}`],
+        );
       });
-      await updateThread(app, scope, threadId, { status: "paused", error: `围栏熔断：${verdict.triggeredBy.join("、")}` });
       return { threadId, status: "paused", stepsDone: done.size, stepsTotal: steps.length, unverified, blockedBy: verdict.triggeredBy.join("、") };
     }
 
@@ -253,39 +281,33 @@ export async function runQuest(
 
     if (verdict.level === "review" && !approvalRef) {
       // review：挂起进审批（事件 + approvals 行；线程 pending_review）
-      const ev = await gatewayAppend(gateway, {
-        ...scope,
-        actor: { id: preset.presetKey, type: "agent", fenceBindings: preset.fenceBindings },
-        sessionId: threadId,
-      }, {
-        who: { type: "agent", id: preset.presetKey, version: preset.version },
-        context: { tenant_id: scope.tenantId, workspace_id: scope.workspaceId, time: new Date().toISOString() },
-        object: { type: step.objectType, id: step.objectId },
-        decision: { action: step.action, step_id: step.stepId, params: step.params, basis: [`越围栏挂起：${verdict.triggeredBy.join("、")}`] },
-        rule_impact: verdict.impacts,
-      });
-      const appClient = await app.connect();
-      let approvalId = `apr-${ev.eventId.toLowerCase()}`;
-      try {
-        // 事务级 RLS 上下文必须在显式事务内设置：autocommit 下 set_config(...,true) 语句结束即失效
-        await appClient.query("BEGIN");
-        await appClient.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
-        await appClient.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
-        await appClient.query(
+      // D16（#1/A）：挂起事件、审批行、线程状态同一事务——事件 ID 派生审批 ID 在同事务内闭环
+      const { approvalId } = await inTx(app, scope, async (c) => {
+        const ev = await gatewayAppendOnClient(c, {
+          ...scope,
+          actor: { id: preset.presetKey, type: "agent", fenceBindings: preset.fenceBindings },
+          sessionId: threadId,
+        }, {
+          who: { type: "agent", id: preset.presetKey, version: preset.version },
+          context: { tenant_id: scope.tenantId, workspace_id: scope.workspaceId, time: new Date().toISOString() },
+          object: { type: step.objectType, id: step.objectId },
+          decision: { action: step.action, step_id: step.stepId, params: step.params, basis: [`越围栏挂起：${verdict.triggeredBy.join("、")}`] },
+          rule_impact: verdict.impacts,
+        });
+        const aprId = `apr-${ev.eventId.toLowerCase()}`;
+        await c.query(
           `INSERT INTO approvals (approval_id, tenant_id, workspace_id, event_id, channel, status, snapshot)
            VALUES ($1,$2,$3,$4,'inapp','pending',$5)
            ON CONFLICT (event_id, channel) DO NOTHING`,
-          [approvalId, scope.tenantId, scope.workspaceId, ev.eventId,
+          [aprId, scope.tenantId, scope.workspaceId, ev.eventId,
             JSON.stringify({ before: null, after: step.params, expires_at: new Date(Date.now() + 24 * 3600e3).toISOString() })],
         );
-      } catch (err) {
-        await appClient.query("ROLLBACK").catch(() => undefined);
-        throw err;
-      } finally {
-        await appClient.query("COMMIT").catch(() => undefined);
-        appClient.release();
-      }
-      await updateThread(app, scope, threadId, { status: "pending_review" });
+        await c.query(
+          `UPDATE threads SET status='pending_review', updated_at=now() WHERE id=$1 AND workspace_id=$2`,
+          [threadId, scope.workspaceId],
+        );
+        return { approvalId: aprId };
+      });
       return { threadId, status: "pending_review", stepsDone: done.size, stepsTotal: steps.length, unverified, pendingApprovalId: approvalId };
     }
 
@@ -293,25 +315,31 @@ export async function runQuest(
     const out = await executeTool(step.tool, step.params);
     const verified = out.receipt.synced === true;
     if (!verified) unverified.push(step.stepId);
-    await gatewayAppend(gateway, {
-      ...scope,
-      actor: { id: preset.presetKey, type: "agent", fenceBindings: preset.fenceBindings },
-      approvalRef, // #34：已批准步骤携带审批引用（L3.5 授权留痕）
-      sessionId: threadId,
-    }, {
-      who: { type: "agent", id: preset.presetKey, version: preset.version },
-      context: { tenant_id: scope.tenantId, workspace_id: scope.workspaceId, time: new Date().toISOString() },
-      object: { type: step.objectType, id: step.objectId },
-      decision: {
-        action: step.action, step_id: step.stepId, params: step.params, before: step.before,
-        after: { ...(typeof step.after === "object" && step.after !== null ? step.after as Record<string, unknown> : {}), result: out.result },
-        basis: approvalRef ? [`经审批 ${approvalRef} 批准执行（E3.3 恢复闭环）`] : undefined,
-      },
-      rule_impact: verdict.impacts,
-      receipt: verified ? out.receipt : undefined, // 无回执=未核实（E3.7），不写 receipt 位
-      model_trace: { model_id: "mock-hotel-001", tier: "standard", window: undefined, credits: 1 },
+    // D16（#1/A）：执行事件与线程进度同一事务——步骤级原子提交（replay 幂等锚点不漂移）
+    await inTx(app, scope, async (c) => {
+      await gatewayAppendOnClient(c, {
+        ...scope,
+        actor: { id: preset.presetKey, type: "agent", fenceBindings: preset.fenceBindings },
+        approvalRef, // #34：已批准步骤携带审批引用（L3.5 授权留痕）
+        sessionId: threadId,
+      }, {
+        who: { type: "agent", id: preset.presetKey, version: preset.version },
+        context: { tenant_id: scope.tenantId, workspace_id: scope.workspaceId, time: new Date().toISOString() },
+        object: { type: step.objectType, id: step.objectId },
+        decision: {
+          action: step.action, step_id: step.stepId, params: step.params, before: step.before,
+          after: { ...(typeof step.after === "object" && step.after !== null ? step.after as Record<string, unknown> : {}), result: out.result },
+          basis: approvalRef ? [`经审批 ${approvalRef} 批准执行（E3.3 恢复闭环）`] : undefined,
+        },
+        rule_impact: verdict.impacts,
+        receipt: verified ? out.receipt : undefined, // 无回执=未核实（E3.7），不写 receipt 位
+        model_trace: { model_id: "mock-hotel-001", tier: "standard", window: undefined, credits: 1 },
+      });
+      await c.query(
+        `UPDATE threads SET progress_done=$3, updated_at=now() WHERE id=$1 AND workspace_id=$2`,
+        [threadId, scope.workspaceId, done.size + 1],
+      );
     });
-    await updateThread(app, scope, threadId, { progress_done: done.size + 1 });
     done.add(step.stepId);
   }
 

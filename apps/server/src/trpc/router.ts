@@ -17,7 +17,7 @@ import {
   signDemoToken,
   type Identity,
 } from "@workloom/base/tenancy";
-import { gatewayAppend } from "@workloom/base/workdata";
+import { gatewayAppend, gatewayAppendOnClient } from "@workloom/base/workdata";
 import { makeReadableId } from "@workloom/shared";
 import { capabilityWriteProcedure, protectedProcedure, publicProcedure, router, scopeOf, writeProcedure } from "./context.js";
 import {
@@ -142,23 +142,36 @@ const authRouter = router({
         throw new TRPCError({ code: "FORBIDDEN", message: "仅 owner 可切换租户版本（F7.1/E2.6，服务端 403）" });
       }
       const before = ctx.identity.plan;
-      await getOwnerPool().query(`UPDATE tenants SET plan=$2 WHERE id=$1`, [ctx.identity.tenantId, input.plan]);
-      await gatewayAppend(getGatewayPool(), {
-        tenantId: ctx.identity.tenantId, workspaceId: ctx.identity.workspaceId,
-        actor: { id: ctx.identity.memberNo, type: "human" },
-      }, {
-        who: { type: "human", id: ctx.identity.memberNo },
-        context: {
-          tenant_id: ctx.identity.tenantId, workspace_id: ctx.identity.workspaceId,
-          time: new Date().toISOString(), channel: "inapp",
-        },
-        object: { type: "tenant", id: ctx.identity.tenantId },
-        decision: {
-          action: "plan.switch", before: { plan: before }, after: { plan: input.plan },
-          basis: ["F7.2 版本能力矩阵即时生效", "F12 权限态演示"],
-        },
-        rule_impact: [],
-      });
+      // D16（#1/A）：版本切换与事件同一事务（owner 通道单连接；函数 EXECUTE 对 owner 无限制）
+      const ownerClient = await getOwnerPool().connect();
+      try {
+        await ownerClient.query("BEGIN");
+        await ownerClient.query("SELECT set_config('app.tenant_id', $1, true)", [ctx.identity.tenantId]);
+        await ownerClient.query("SELECT set_config('app.workspace_id', $1, true)", [ctx.identity.workspaceId]);
+        await ownerClient.query(`UPDATE tenants SET plan=$2 WHERE id=$1`, [ctx.identity.tenantId, input.plan]);
+        await gatewayAppendOnClient(ownerClient, {
+          tenantId: ctx.identity.tenantId, workspaceId: ctx.identity.workspaceId,
+          actor: { id: ctx.identity.memberNo, type: "human" },
+        }, {
+          who: { type: "human", id: ctx.identity.memberNo },
+          context: {
+            tenant_id: ctx.identity.tenantId, workspace_id: ctx.identity.workspaceId,
+            time: new Date().toISOString(), channel: "inapp",
+          },
+          object: { type: "tenant", id: ctx.identity.tenantId },
+          decision: {
+            action: "plan.switch", before: { plan: before }, after: { plan: input.plan },
+            basis: ["F7.2 版本能力矩阵即时生效", "F12 权限态演示"],
+          },
+          rule_impact: [],
+        });
+        await ownerClient.query("COMMIT");
+      } catch (err) {
+        await ownerClient.query("ROLLBACK").catch(() => undefined);
+        throw err;
+      } finally {
+        ownerClient.release();
+      }
       const identity: Identity = { ...ctx.identity, plan: input.plan };
       return { token: await signDemoToken(identity), plan: input.plan };
     }),
@@ -250,6 +263,18 @@ const threadsRouter = router({
            VALUES ($1,$2,$3,$4,$5,'queued',$6)`,
           [threadId, scope.tenantId, scope.workspaceId, input.title, intent.mode, ctx.identity.memberNo],
         );
+        // D16（#1/A）：建线程与派遣事件同一事务（G8 留痕不再独立于状态）
+        await gatewayAppendOnClient(client, {
+          ...scope,
+          actor: { id: ctx.identity.memberNo, type: "human" },
+          sessionId: threadId,
+        }, {
+          who: { type: "human", id: ctx.identity.memberNo },
+          context: { tenant_id: scope.tenantId, workspace_id: scope.workspaceId, time: new Date().toISOString(), channel: "inapp" },
+          object: { type: "thread", id: threadId },
+          decision: { action: "thread.dispatch", after: { threadId, title: input.title, mode: intent.mode, rationale: intent.rationale } },
+          rule_impact: [],
+        });
       } catch (err) {
         await client.query("ROLLBACK").catch(() => undefined);
         throw err;
@@ -257,18 +282,7 @@ const threadsRouter = router({
         await client.query("COMMIT").catch(() => undefined);
         client.release();
       }
-      // 派遣事件留痕（G8：经网关三段瀑布；人类派遣为只读动作类，不触发写禁）
-      await gatewayAppend(getGatewayPool(), {
-        ...scope,
-        actor: { id: ctx.identity.memberNo, type: "human" },
-        sessionId: threadId,
-      }, {
-        who: { type: "human", id: ctx.identity.memberNo },
-        context: { tenant_id: scope.tenantId, workspace_id: scope.workspaceId, time: new Date().toISOString(), channel: "inapp" },
-        object: { type: "store", id: scope.workspaceId },
-        decision: { action: "thread.dispatch", after: { threadId, title: input.title, mode: intent.mode, via: intent.via } },
-        rule_impact: [],
-      });
+      // 派遣事件已随建线程同事务落库（D16；G8 三段瀑布同口径）
       // 演示驱动：立即执行 Quest 循环（生产由调度器拉取，B9）
       if (input.runImmediately && intent.mode === "quest") {
         const r = await runQuest(app, getGatewayPool(), scope, {
@@ -983,12 +997,14 @@ const fenceRouter = router({
       const scope = scopeOf(ctx.identity);
       await confirmDryRun(getAppPool(), scope, input.dryRunId);
       // 规则草稿进 pending_approval（激活须审批事件 ID，activateRuleVersion 在 P4 手势后调用——E1 已接线，见下方 decide/batchApprove）
+      // D16（#1/A）：规则草稿行、提案事件、审批行三者同一事务同一 COMMIT
       const app = getAppPool();
       const client = await app.connect();
+      let ev: { eventId: string };
       try {
-        // 事务级 RLS 上下文必须在显式事务内设置：autocommit 下 set_config(...,true) 语句结束即失效
         await client.query("BEGIN");
         await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
+        await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
         const rowId = fenceRuleRowId(input.rule.ruleId, scope.workspaceId);
         await client.query(
           `INSERT INTO fence_rules (id, rule_id, version, workspace_id, name, level, match_spec, action, is_baseline, status, created_by)
@@ -998,44 +1014,32 @@ const fenceRouter = router({
            JSON.stringify({ object_types: input.rule.objectTypes, actions: input.rule.actions, when: input.rule.when }),
            JSON.stringify({ result: input.rule.level }), ctx.identity.memberNo],
         );
-      } catch (err) {
-        await client.query("ROLLBACK").catch(() => undefined);
-        throw err;
-      } finally {
-        await client.query("COMMIT").catch(() => undefined);
-        client.release();
-      }
-      const ev = await gatewayAppend(getGatewayPool(), {
-        ...scope, actor: { id: ctx.identity.memberNo, type: "human" },
-      }, {
-        who: { type: "human", id: ctx.identity.memberNo },
-        context: { tenant_id: scope.tenantId, workspace_id: scope.workspaceId, time: new Date().toISOString(), channel: "inapp" },
-        object: { type: "staff", id: input.rule.ruleId },
-        decision: { action: "fence.rule.propose", after: { ...input.rule, dryRunId: input.dryRunId } },
-        rule_impact: [],
-      });
-      // E1 联调接线（PF.5/F2.4）：围栏变更提案进 P4 决断队列——高危（不可批量采纳，须逐条手势，F5.4/G6）
-      // 幂等：UNIQUE(event_id, channel) 冲突丢弃（L5.3 同口径）
-      const client2 = await app.connect();
-      try {
-        // 事务级 RLS 上下文必须在显式事务内设置：autocommit 下 set_config(...,true) 语句结束即失效
-        await client2.query("BEGIN");
-        await client2.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
-        await client2.query(
+        ev = await gatewayAppendOnClient(client, {
+          ...scope, actor: { id: ctx.identity.memberNo, type: "human" },
+        }, {
+          who: { type: "human", id: ctx.identity.memberNo },
+          context: { tenant_id: scope.tenantId, workspace_id: scope.workspaceId, time: new Date().toISOString(), channel: "inapp" },
+          object: { type: "staff", id: input.rule.ruleId },
+          decision: { action: "fence.rule.propose", after: { ...input.rule, dryRunId: input.dryRunId } },
+          rule_impact: [],
+        });
+        // E1 联调接线（PF.5/F2.4）：围栏变更提案进 P4 决断队列——高危（不可批量采纳，须逐条手势，F5.4/G6）
+        // 幂等：UNIQUE(event_id, channel) 冲突丢弃（L5.3 同口径）
+        await client.query(
           `INSERT INTO approvals (approval_id, tenant_id, workspace_id, event_id, channel, status, snapshot)
            VALUES ($1,$2,$3,$4,'inapp','pending',$5)
            ON CONFLICT (event_id, channel) DO NOTHING`,
           [`apr-${ev.eventId.toLowerCase()}`, scope.tenantId, scope.workspaceId, ev.eventId,
            JSON.stringify({ after: input.rule, high_risk: true })],
         );
+        await client.query("COMMIT");
       } catch (err) {
-        await client2.query("ROLLBACK").catch(() => undefined);
+        await client.query("ROLLBACK").catch(() => undefined);
         throw err;
       } finally {
-        await client2.query("COMMIT").catch(() => undefined);
-        client2.release();
+        client.release();
       }
-      return { proposed: true, eventId: ev.eventId };
+      return { proposed: true, eventId: ev!.eventId };
     }),
 });
 
