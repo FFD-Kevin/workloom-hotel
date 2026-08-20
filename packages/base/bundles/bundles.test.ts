@@ -113,7 +113,9 @@ describe.runIf(RUN_DB)("行业装配 PG 集成（F2.10 铁律）", async () => {
   it("H-15 第三行业五要素填充即可运行：填满五槽 → 6/6 全绿 → 激活切换 → 底座代码零改动（§2.3/§2.4）", async () => {
     const root = mkdtempSync(join(tmpdir(), "wl-bundles-h15-"));
     // 五要素填充 = 复制 hotel 实物资产作为第三行业草稿内容（演示口径：资产由行业方提供，非底座代码）
-    cpSync(join(process.cwd(), "..", "..", "bundles", "hotel"), join(root, "copycat"), { recursive: true });
+    // #25 修复：用 import.meta.url 定位仓库根（原 process.cwd() 相对路径仅在包目录下跑测试才成立）
+    const hotelDir = new URL("../../../bundles/hotel", import.meta.url).pathname;
+    cpSync(hotelDir, join(root, "copycat"), { recursive: true });
     const bjPath = join(root, "copycat", "bundle.json");
     const bj = JSON.parse(readFileSync(bjPath, "utf-8"));
     bj.name = "@workloom/copycat"; bj.workloom.industry = "copycat"; bj.workloom.status = "draft";
