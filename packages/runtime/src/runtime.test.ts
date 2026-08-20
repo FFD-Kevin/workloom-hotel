@@ -138,6 +138,37 @@ d("PG 集成 Quest 循环（种子库）", async () => {
     } finally { c.release(); }
   });
 
+  it("#34 审批通过 → replay 恢复执行：挂起步骤带授权引用完成，Quest 闭环 completed", async () => {
+    const { decide } = await import("@workloom/base/review-console");
+    const tid = await newThread("回复差评求恢复");
+    const r1 = await runQuest(app, gw, scope, { threadId: tid, goal: "回复差评", presetKey: "review-agent" });
+    expect(r1.status).toBe("pending_review");
+    const approvalId = r1.pendingApprovalId!;
+    // 修复前：审批通过后 replay 会再次挂起（死循环，Quest 永远卡 pending_review）
+    await decide(app, gw, scope, { memberNo: "MEM-001", role: "owner" }, approvalId, { type: "approve" });
+    const r2 = await runQuest(app, gw, scope, { threadId: tid, goal: "回复差评", presetKey: "review-agent" });
+    expect(r2.status).toBe("completed");
+    expect(r2.stepsDone).toBe(2); // s1（已完成跳过）+ s2（批准执行）
+    const evs = await threadEvents(tid);
+    const resumed = evs.find((e) => e.decision.action === "review.reply" && Array.isArray(e.decision.basis) && (e.decision.basis as string[]).some((b) => b.includes("经审批")));
+    expect(resumed).toBeTruthy(); // 执行事件带「经审批 <id> 批准执行」留痕
+    expect((resumed!.decision.basis as string[])[0]).toContain(approvalId);
+    // 恢复执行不产生新审批行（同线程审批数不变）
+    const c = await app.connect();
+    try {
+      await c.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
+      const n = await c.query<{ c: string }>(
+        `SELECT count(*) AS c FROM approvals a JOIN biz_events e ON e.event_id=a.event_id WHERE e.session_id=$1`,
+        [tid],
+      );
+      expect(Number(n.rows[0]!.c)).toBe(1); // 仅最初挂起产生的那一条
+    } finally { c.release(); }
+    // 再次 replay 幂等：不产生新事件
+    const n1 = evs.length;
+    await runQuest(app, gw, scope, { threadId: tid, goal: "回复差评", presetKey: "review-agent" });
+    expect((await threadEvents(tid)).length).toBe(n1);
+  });
+
   it("H-5 replay 断点续跑幂等：重复运行不产生重复事件", async () => {
     const tid = await newThread("对账任务");
     const r1 = await runQuest(app, gw, scope, { threadId: tid, goal: "夜间对账", presetKey: "reconcile-agent" });

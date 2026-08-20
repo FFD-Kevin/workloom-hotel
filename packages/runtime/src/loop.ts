@@ -164,6 +164,39 @@ async function updateThread(app: pg.Pool, scope: { tenantId: string; workspaceId
 }
 
 /**
+ * #34 已批准挂起步骤查询（Quest 恢复闭环）：
+ * 本线程内「越围栏挂起」事件对应的审批，凡 status ∈ (approved, edited) 的，
+ * 视为该 step 已获人工授权——replay 时不再二次挂起，携带 approvalRef 直接执行
+ * （授权语义与网关段③高风险授权引用同构 L3.5；审批事件 links 溯源留痕）。
+ */
+async function approvedStepIds(
+  app: pg.Pool,
+  scope: { tenantId: string; workspaceId: string },
+  threadId: string,
+): Promise<Map<string, string>> {
+  const client = await app.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
+    await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
+    const r = await client.query<{ step_id: string; approval_id: string }>(
+      `SELECT e.payload->'decision'->>'step_id' AS step_id, a.approval_id
+       FROM approvals a JOIN biz_events e ON e.event_id = a.event_id
+       WHERE a.workspace_id=$1 AND e.session_id=$2 AND a.status IN ('approved','edited')
+         AND e.payload->'decision'->>'step_id' IS NOT NULL`,
+      [scope.workspaceId, threadId],
+    );
+    await client.query("COMMIT");
+    return new Map(r.rows.map((x) => [x.step_id, x.approval_id]));
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+/**
  * 运行 Quest（可重入 = replay 断点续跑，E3.3/H-5）
  * @param goal 任务目标（三要素之一）；@param presetKey 装配的 preset
  */
@@ -179,6 +212,7 @@ export async function runQuest(
   const { rules, defaultLevel } = await loadActiveRules(app, scope);
   const steps = planQuest(input.goal, preset);
   const done = await existingStepIds(gateway, scope, threadId); // replay 续跑锚点
+  const approved = await approvedStepIds(app, scope, threadId); // #34 已批准挂起步骤（恢复闭环）
   const unverified: string[] = [];
 
   await updateThread(app, scope, threadId, { status: "running", progress_total: steps.length, agent_id: preset.agentId });
@@ -214,7 +248,10 @@ export async function runQuest(
       return { threadId, status: "paused", stepsDone: done.size, stepsTotal: steps.length, unverified, blockedBy: verdict.triggeredBy.join("、") };
     }
 
-    if (verdict.level === "review") {
+    // #34：review 级别但已获人工批准（approved/edited）→ 不二次挂起，携带授权引用执行
+    const approvalRef = verdict.level === "review" ? approved.get(step.stepId) : undefined;
+
+    if (verdict.level === "review" && !approvalRef) {
       // review：挂起进审批（事件 + approvals 行；线程 pending_review）
       const ev = await gatewayAppend(gateway, {
         ...scope,
@@ -252,19 +289,24 @@ export async function runQuest(
       return { threadId, status: "pending_review", stepsDone: done.size, stepsTotal: steps.length, unverified, pendingApprovalId: approvalId };
     }
 
-    // auto：执行工具 → 回执校验（E3.7）→ 写事件
+    // auto（或 #34 已批准 review）：执行工具 → 回执校验（E3.7）→ 写事件
     const out = await executeTool(step.tool, step.params);
     const verified = out.receipt.synced === true;
     if (!verified) unverified.push(step.stepId);
     await gatewayAppend(gateway, {
       ...scope,
       actor: { id: preset.presetKey, type: "agent", fenceBindings: preset.fenceBindings },
+      approvalRef, // #34：已批准步骤携带审批引用（L3.5 授权留痕）
       sessionId: threadId,
     }, {
       who: { type: "agent", id: preset.presetKey, version: preset.version },
       context: { tenant_id: scope.tenantId, workspace_id: scope.workspaceId, time: new Date().toISOString() },
       object: { type: step.objectType, id: step.objectId },
-      decision: { action: step.action, step_id: step.stepId, params: step.params, before: step.before, after: { ...(typeof step.after === "object" && step.after !== null ? step.after as Record<string, unknown> : {}), result: out.result } },
+      decision: {
+        action: step.action, step_id: step.stepId, params: step.params, before: step.before,
+        after: { ...(typeof step.after === "object" && step.after !== null ? step.after as Record<string, unknown> : {}), result: out.result },
+        basis: approvalRef ? [`经审批 ${approvalRef} 批准执行（E3.3 恢复闭环）`] : undefined,
+      },
       rule_impact: verdict.impacts,
       receipt: verified ? out.receipt : undefined, // 无回执=未核实（E3.7），不写 receipt 位
       model_trace: { model_id: "mock-hotel-001", tier: "standard", window: undefined, credits: 1 },
