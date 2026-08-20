@@ -5,7 +5,8 @@
  */
 import { describe, expect, it } from "vitest";
 import { routeIntent, ruleBasedRoute, LlmIntentClassifier, type IntentClassifier } from "./intent.js";
-import { planQuest } from "./loop.js";
+// 注意：loop.js（经 tools.js 模块级常量读 TOOL_UNVERIFIED_RATE）禁止静态 import——
+// 否则模块在 env 设置前加载，E3.7 随机扰动无法关闭（#25 flaky 根因）。一律动态 import。
 
 describe("意图路由（F3.2）", () => {
   it("含糊指令反问澄清，不建任务", () => {
@@ -53,7 +54,9 @@ describe("意图路由（F3.2）", () => {
   });
 });
 
-describe("计划模板（演示剧本）", () => {
+describe("计划模板（演示剧本）", async () => {
+  process.env.TOOL_UNVERIFIED_RATE = "0"; // 见文件头注释：须在 loop.js 首次加载前设置
+  const { planQuest } = await import("./loop.js");
   const fakePreset = { fenceBindings: [], tools: [], essentials: { archive: {}, stage: "stable", goal: "g" }, agentId: "a", presetKey: "pricing-agent", version: "v2.3", prompt: null };
   it("调价目标 → 3 步（采集/读取/调价）", () => {
     const steps = planQuest("周五调价 5%", fakePreset);
