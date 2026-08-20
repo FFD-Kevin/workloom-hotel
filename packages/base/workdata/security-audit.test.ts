@@ -150,4 +150,18 @@ describe.runIf(RUN_DB)("安全审计 PG 集成（附录 H）", async () => {
       leaked.release();
     }
   });
+
+  it("#30 append-only 第三道防线：TRUNCATE 全角色被拒（含 owner）", async () => {
+    // owner（迁移/种子账号）此前可 TRUNCATE 清空事件库——行级触发器不拦 TRUNCATE；
+    // 0004 迁移后语句级触发器对全角色生效
+    const owner = new pg.default.Pool({ connectionString: process.env.DATABASE_URL ?? "postgres://postgres:workloom@localhost:5432/workloom" });
+    try {
+      await expect(owner.query("TRUNCATE biz_events")).rejects.toThrow(/append-only/);
+    } finally {
+      await owner.end();
+    }
+    // 事件库完好（种子 100 条仍在）
+    const n = await qApp<{ c: string }>(`SELECT count(*) AS c FROM biz_events WHERE workspace_id=$1`, [scope.workspaceId]);
+    expect(Number(n.rows[0]!.c)).toBeGreaterThanOrEqual(100);
+  });
 });
