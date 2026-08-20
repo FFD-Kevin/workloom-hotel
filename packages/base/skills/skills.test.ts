@@ -46,8 +46,8 @@ describe("SKILL.md 渲染与 ID（F8.3/F8.1）", () => {
     expect(md).toContain("## 边界（什么不做）\n不破保底价");
   });
   it("team 技能 ID 落 skill-t- 命名空间（白名单标识）", () => {
-    expect(teamSkillId("差评跟进 SOP")).toBe("skill-t-差评跟进-sop");
-    expect(teamSkillId("  ")).toBe("skill-t-unnamed");
+    expect(teamSkillId("差评跟进 SOP", "ws-yunqi")).toBe("skill-t-ws-yunqi-差评跟进-sop");
+    expect(teamSkillId("  ", "ws-yunqi")).toBe("skill-t-ws-yunqi-unnamed");
   });
 });
 
@@ -102,7 +102,7 @@ describe.runIf(RUN_DB)("技能/意识 PG 集成（M8 铁律）", async () => {
   const gw = new pg.Pool({ connectionString: process.env.DATABASE_GATEWAY_URL });
   const scope = { tenantId: "tenant-demo", workspaceId: "ws-yunqi" };
   /** app 池断言查询辅助：事务内设 RLS 上下文（与生产口径一致；池直查在 RLS 下恒 0 行） */
-  const qApp = async <T = unknown>(sql: string, params: unknown[] = []) => {
+  const qApp = async <T extends Record<string, any> = Record<string, any>>(sql: string, params: unknown[] = []) => {
     const c = await app.connect();
     try {
       await c.query("BEGIN");
@@ -132,7 +132,7 @@ describe.runIf(RUN_DB)("技能/意识 PG 集成（M8 铁律）", async () => {
   };
 
   it("F8.2/L8.3 安装即绑定→并集生效；卸载即撤销；重复安装幂等", async () => {
-    const skills = await listSkills(app, { level: "official" });
+    const skills = await listSkills(app, scope, { level: "official" });
     const revenue = skills.find((s) => s.name === "revenue-manager");
     expect(revenue).toBeTruthy();
 
@@ -188,7 +188,7 @@ describe.runIf(RUN_DB)("技能/意识 PG 集成（M8 铁律）", async () => {
       triplet: { trigger: "出现 ≤3 分差评", steps: ["归因", "起草回复", "挂审批"], boundary: "不承诺档案外补偿" },
       fenceBindings: ["R6"], by: "MEM-002",
     });
-    expect(draft.skillId).toBe(`skill-t-差评跟进打法-${RUN}`.toLowerCase());
+    expect(draft.skillId).toBe(`skill-t-ws-yunqi-差评跟进打法-${RUN}`.toLowerCase());
     expect(draft.version).toMatch(/^\d+\.\d+\.0$/); // 同名再生成版本递增（重跑安全）
 
     await expect(installSkill(app, gw, scope, { skillId: draft.skillId, by: "MEM-002" }))
@@ -201,6 +201,33 @@ describe.runIf(RUN_DB)("技能/意识 PG 集成（M8 铁律）", async () => {
     const ok = await installSkill(app, gw, scope, { skillId: draft.skillId, by: "MEM-002" });
     expect(ok.installed).toBe(true);
     await uninstallSkill(app, gw, scope, { skillId: draft.skillId, by: "MEM-002" }); // 清理
+  });
+
+  it("#23 跨工作区隔离：同名技能不互覆盖 / 列表隔离 / 他区技能安装拦截", async () => {
+    const scopeB = { tenantId: scope.tenantId, workspaceId: `ws-other-${RUN}` };
+    const name = `同名跟进 SOP-${RUN}`;
+    // 两工作区各建同名技能 → ID 不同、skills 表两行、互不影响
+    const a = await createSkillDraft(app, gw, scope, {
+      name, description: "A 区方法论", triplet: { trigger: "t", steps: ["s"], boundary: "b" }, fenceBindings: [], by: "MEM-001",
+    });
+    const b = await createSkillDraft(app, gw, scopeB, {
+      name, description: "B 区方法论", triplet: { trigger: "t", steps: ["s"], boundary: "b" }, fenceBindings: [], by: "MEM-001",
+    });
+    expect(a.skillId).not.toBe(b.skillId);
+    expect(a.skillId).toContain(scope.workspaceId);
+    expect(b.skillId).toContain(scopeB.workspaceId);
+    const both = await qApp<{ id: string; description: string }>(`SELECT id, description FROM skills WHERE name=$1`, [name]);
+    expect(both.rows.length).toBe(2);
+    expect(new Set(both.rows.map((r) => r.description)).size).toBe(2); // 无互相覆盖
+    // 列表隔离：各自只看见本工作区 team 技能
+    const listA = await listSkills(app, scope, { level: "team" });
+    expect(listA.some((s) => s.id === a.skillId)).toBe(true);
+    expect(listA.some((s) => s.id === b.skillId)).toBe(false);
+    // 他区技能安装拦截（NOT_SIGNED 留痕）
+    await expect(installSkill(app, gw, scope, { skillId: b.skillId, by: "MEM-001" }))
+      .rejects.toMatchObject({ code: "NOT_SIGNED" });
+    // 清理（直接删行：演示技能无 RLS，避免污染后续用例的版本递增断言）
+    await qApp(`DELETE FROM skills WHERE id = ANY($1)`, [[a.skillId, b.skillId]]);
   });
 
   it("F8.4 高频检测建议 → 一键确认生成触发器 → 不再重复建议；E8.3 驳回后阈值 ×2", async () => {

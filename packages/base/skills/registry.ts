@@ -69,10 +69,21 @@ export async function getSkill(app: pg.Pool, skillId: string): Promise<SkillRow 
   return r.rows[0] ?? null;
 }
 
-export async function listSkills(app: pg.Pool, opts: { level?: SkillLevel } = {}): Promise<SkillRow[]> {
+/**
+ * 技能列表（#23 修复：team 级按工作区隔离——skills 是无 RLS 的全局表，
+ * team 技能 ID 内嵌 workspaceId，他区自建技能对本工作区不可见）
+ */
+export async function listSkills(app: pg.Pool, scope: Scope, opts: { level?: SkillLevel } = {}): Promise<SkillRow[]> {
+  const teamPrefix = `skill-t-${scope.workspaceId}-%`;
   const r = opts.level
-    ? await app.query<SkillRow>(`SELECT * FROM skills WHERE level=$1 ORDER BY id`, [opts.level])
-    : await app.query<SkillRow>(`SELECT * FROM skills ORDER BY id`);
+    ? await app.query<SkillRow>(
+        `SELECT * FROM skills WHERE level=$1 AND (level <> 'team' OR id LIKE $2) ORDER BY id`,
+        [opts.level, teamPrefix],
+      )
+    : await app.query<SkillRow>(
+        `SELECT * FROM skills WHERE level <> 'team' OR id LIKE $1 ORDER BY id`,
+        [teamPrefix],
+      );
   return r.rows;
 }
 
@@ -101,6 +112,11 @@ export function isSignedSource(skill: SkillRow, scope: Scope): boolean {
   if (skill.level === "official") return true; // 随行业 Bundle 分发的官方套件
   if (skill.level === "team") return skill.id.startsWith(`skill-t-`); // 本工作区零代码自建（forge.ts 命名空间）
   return false; // industry 共享层须另走白名单签发（首版不放行）
+}
+
+/** team 技能本工作区归属校验（#23：skill-t-<workspaceId>- 前缀才视为「本工作区自建」） */
+export function isOwnWorkspaceSkill(skill: SkillRow, scope: Scope): boolean {
+  return skill.level !== "team" || skill.id.startsWith(`skill-t-${scope.workspaceId}-`);
 }
 
 /** E8.1 冲突检测（纯函数）：绑定围栏 vs 当前生效规则集 → 缺失/未生效即冲突 */
@@ -167,6 +183,15 @@ export async function installSkill(
   // L8.1：industry 共享层必须脱敏
   if (skill.level === "industry" && !skill.desensitized) {
     throw new SkillError("NOT_DESENSITIZED", `行业共享技能「${skill.name}」未脱敏（desensitized=false），拦截安装（L8.1/E8.4 禁止降级）`);
+  }
+  // #23：team 技能仅限本工作区自建（skill-t-<workspaceId>- 命名空间），他区技能按未签名拦截
+  if (!isOwnWorkspaceSkill(skill, scope)) {
+    const evId = await emit(gateway, scope, input.by, {
+      action: "skill.install.blocked",
+      after: { skillId: skill.id, name: skill.name, reason: "NOT_OWN_WORKSPACE", level: skill.level },
+      basis: ["team 技能仅限本工作区自建命名空间（#23：skill-t-<workspaceId>-），他区技能拦截留痕"],
+    });
+    throw new SkillError("NOT_SIGNED", `技能「${skill.name}」非本工作区自建（#23 命名空间隔离），已拦截并留痕 ${evId}`);
   }
   // L8.2：签名白名单
   if (!isSignedSource(skill, scope)) {

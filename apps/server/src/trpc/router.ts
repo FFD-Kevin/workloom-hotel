@@ -521,7 +521,7 @@ function assertSkillManage(role: string): void {
 const skillsRouter = router({
   list: protectedProcedure
     .input(z.object({ level: z.enum(["official", "team", "industry"]).optional() }).optional())
-    .query(async ({ input }) => listSkills(getAppPool(), { level: input?.level })),
+    .query(async ({ ctx, input }) => listSkills(getAppPool(), scopeOf(ctx.identity), { level: input?.level })),
   installs: protectedProcedure.query(async ({ ctx }) => {
     return listInstalls(getAppPool(), scopeOf(ctx.identity));
   }),

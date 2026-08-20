@@ -58,7 +58,7 @@ d("PG 集成审批流（种子队列）", async () => {
   const gwPool = new pg.Pool({ connectionString: process.env.DATABASE_GATEWAY_URL });
   const scope = { tenantId: "tenant-demo", workspaceId: "ws-yunqi" };
   /** app 池断言查询辅助：事务内设 RLS 上下文（与生产口径一致；池直查在 RLS 下恒 0 行） */
-  const qApp = async <T = unknown>(sql: string, params: unknown[] = []) => {
+  const qApp = async <T extends Record<string, any> = Record<string, any>>(sql: string, params: unknown[] = []) => {
     const c = await appPool.connect();
     try {
       await c.query("BEGIN");
@@ -153,7 +153,7 @@ d("PG 集成审批流（种子队列）", async () => {
     expect(r.status).toBe("rejected");
     const mem = await qApp("SELECT kind, content FROM org_memory WHERE memory_id='mem-reject-amount_too_large'");
     expect(mem.rows.length).toBe(1);
-    expect(mem.rows[0].kind).toBe("preference");
+    expect(mem.rows[0]!.kind).toBe("preference");
   });
 
   it("快照过期：手势被拒并标 expired（E5.3/F5.7）", async () => {

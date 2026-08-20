@@ -41,10 +41,14 @@ ${triplet.boundary}
 `;
 }
 
-/** 名称 → 团队技能 ID（skill-t- 命名空间即 L8.2 白名单内「本工作区自建」标识） */
-export function teamSkillId(name: string): string {
+/**
+ * 名称 → 团队技能 ID（skill-t-<workspaceId>- 命名空间即 L8.2 白名单内「本工作区自建」标识）
+ * 修复（#23）：ID 内嵌 workspaceId——skills 是无 RLS 的全局表，原纯名称派生 ID
+ * 会让两个工作区的同名技能 ON CONFLICT 互相覆盖（跨工作区数据污染）
+ */
+export function teamSkillId(name: string, workspaceId: string): string {
   const slug = name.trim().toLowerCase().replace(/[^a-z0-9一-鿿]+/g, "-").replace(/^-+|-+$/g, "");
-  return `skill-t-${slug || "unnamed"}`;
+  return `skill-t-${workspaceId}-${slug || "unnamed"}`;
 }
 
 async function nextVersion(app: pg.Pool, id: string): Promise<string> {
@@ -63,7 +67,7 @@ export async function createSkillDraft(
   scope: Scope,
   input: { name: string; description: string; triplet: SkillTriplet; fenceBindings?: string[]; by: string },
 ): Promise<{ skillId: string; version: string }> {
-  const skillId = teamSkillId(input.name);
+  const skillId = teamSkillId(input.name, scope.workspaceId);
   const version = await nextVersion(app, skillId);
   const body = renderSkillMarkdown(input.name, input.description, input.triplet);
   const client = await app.connect();

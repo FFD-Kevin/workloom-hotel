@@ -15,7 +15,7 @@ describe.runIf(RUN_DB)("安全审计 PG 集成（附录 H）", async () => {
   const scope = { tenantId: "tenant-demo", workspaceId: "ws-yunqi" };
 
   /** 断言查询辅助：事务内设 RLS 上下文（与生产口径一致；池直查在 RLS 下恒 0 行，断言会假绿/假红） */
-  const qApp = async <T = unknown>(sql: string, params: unknown[] = []) => {
+  const qApp = async <T extends Record<string, any> = Record<string, any>>(sql: string, params: unknown[] = []) => {
     const c = await app.connect();
     try {
       await c.query("BEGIN");
@@ -31,7 +31,7 @@ describe.runIf(RUN_DB)("安全审计 PG 集成（附录 H）", async () => {
       c.release();
     }
   };
-  const qGw = async <T = unknown>(sql: string, params: unknown[] = []) => {
+  const qGw = async <T extends Record<string, any> = Record<string, any>>(sql: string, params: unknown[] = []) => {
     const c = await gw.connect();
     try {
       await c.query("BEGIN");

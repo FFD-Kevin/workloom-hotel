@@ -88,7 +88,7 @@ describe.runIf(RUN_DB)("巡检 PG 集成（M9 铁律）", async () => {
   const gw = new pg.Pool({ connectionString: process.env.DATABASE_GATEWAY_URL });
   const scope = { tenantId: "tenant-demo", workspaceId: "ws-yunqi" };
   /** app 池断言查询辅助：事务内设 RLS 上下文（与生产口径一致；池直查在 RLS 下恒 0 行） */
-  const qApp = async <T = unknown>(sql: string, params: unknown[] = []) => {
+  const qApp = async <T extends Record<string, any> = Record<string, any>>(sql: string, params: unknown[] = []) => {
     const c = await app.connect();
     try {
       await c.query("BEGIN");
