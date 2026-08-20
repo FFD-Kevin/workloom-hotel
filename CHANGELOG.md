@@ -2,6 +2,23 @@
 
 本文件记录 WorkLoom IM 底座的变更历史。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/)。
 
+## [0.1.4] - 2026-08-20 · 深度对抗测试批次（审计第 3 轮）
+
+### 安全修复
+
+- **#32 种子哈希链与生产口径不一致（P1）**：seed 用 JSON.stringify 键序算哈希 vs 生产 canonicalJson——种子 100 条用生产口径重算全部不符（同链两种算法混杂）。seed 统一导入 eventHash（zod parse 后对象），新增 `pnpm db:verify-chain` 全库链验证工具。
+- **#33 写操作统一角色守卫（P1）**：readonly 实测可派遣 Quest 等 14 个写操作无服务端校验（前端隐藏未配服务端强制）。新增 writeProcedure / capabilityWriteProcedure 统一接入。
+- **#35 网关 actor/who 身份一致性**：分叉伪造归因留痕无机制兜底，段①新增一致性校验。
+
+### 功能正确性修复
+
+- **#34 Quest 挂起审批通过后可恢复执行（P1）**：此前审批通过线程永卡 pending_review（replay 死循环）。runQuest 加载已批准挂起步骤映射，批准即带 approvalRef 执行（basis 留痕「经审批 \<id\> 批准执行」），Quest 生命周期闭环。
+
+### 门禁验证
+
+- ✅ base 152/152 · runtime 12/12 · shared 4/4 · typecheck 全绿 · web build 绿 · E6 dsh-gate 全绿
+- ✅ verify-chain 100/100 一致 · 权限实测 readonly 全 403 / manager 正常 · PII/DSL 对抗 20 项全过
+
 ## [0.1.3] - 2026-08-20 · dsh rc.8 升级 + 安全加固批次（审计第 2 轮）
 
 ### 变更

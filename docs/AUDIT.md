@@ -5,6 +5,38 @@
 
 ---
 
+## 第 3 轮 · 2026-08-20（基线 be7d768 → 6ca5592）· 深度对抗测试
+
+### 方法
+- 新增 DB 哈希链全库重算验证（此前无任何工具验过链自洽性）；router.ts 全量 24 个 mutation 权限矩阵逐一核对；Quest 生命周期链路推演；PII/围栏 DSL 对抗性输入 20 项；网关调用点 actor/who 静态比对 26 处。
+
+### 已修复（逐点增量提交）
+
+| 编号 | 级别 | 问题 | 根因 | commit |
+|---|---|---|---|---|
+| #32 | **P1** | 种子 100 条事件哈希用生产口径重算**全部不符** | seed 用 JSON.stringify（构造键序）算哈希 vs 生产 canonicalJson（字典序）+ zod parse 后对象——同链两种算法混杂，审计锚点事实源不一致 | `90225ac` |
+| #33 | **P1** | readonly 可直接调 API 派遣 Quest（实测创建线程成功）等 14 个写操作无角色校验 | 权限校验靠各 router 自觉；前端隐藏（E2.6）服务端未强制 | `80f54ca` |
+| #34 | **P1** | Quest 挂起审批通过后永远卡 pending_review | decide 副作用只有围栏激活；replay 对已批准步骤再次挂起（死循环） | `84c1c4f` |
+| #35 | P2→修 | 网关不校验 actor/who 一致性，可伪造他人归因留痕 | 两身份独立传入，26 处调用点靠人工约定 | `6ca5592` |
+
+### 对抗测试结论（验证通过，无需修复）
+- **PII 脱敏 14 项**：手机号/身份证(含末位 X)/Luhn 有效卡必脱；13 位时间戳/订单号不误脱；占位符不被二次命中；混合计数准确。
+- **围栏 DSL 6 项**：5000 层括号嵌套（RangeError 按 block 兜底）、除零、未知根标识符、__proto__ 路径、超大数字、引号注入——全部按 block 或正确未命中，无注入面。
+- **verify-chain 工具入库**（`pnpm db:verify-chain`）：干净库 100/100 条逐条重算一致，纳入门禁。
+
+### 门禁结果（干净库全流程实测）
+- 迁移 0001–0005 + seed H-1 100% + 复跑幂等 + verify-chain 100/100 一致；typecheck 6 项目绿。
+- base **152/152**、runtime **12/12**、shared 4/4、web build 绿、E6 dsh-gate 全绿。
+- 权限实测：readonly 调 dispatch/inspection.run/sweep/nightShift.note/fence.dryRun 全部 403；manager 正常 SUCCESS。
+
+### P3 清单剩余
+- 哈希链粒度 ADR（tenant 锁 vs workspace 链）；JWT 无吊销；PII 占位符无盐；uninstallSkill revokedBindings 实时值；created_at 客户端可控；#1/A Outbox。
+
+### 当前游标 → 下一轮
+- 哈希链粒度 ADR 评估；expireSweep/expire 并发边界压测；apps/web 与 server 契约一致性抽查（前端调用的 procedure 名与后端挂载对账）。
+
+---
+
 ## 第 2 轮 · 2026-08-20（基线 c595348 → be7d768）
 
 ### 范围
