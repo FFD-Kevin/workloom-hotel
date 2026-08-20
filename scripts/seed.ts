@@ -15,10 +15,13 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { createHash } from "node:crypto";
 import pg from "pg";
 import YAML from "yaml";
 import { safeParseBusinessEvent } from "@workloom/shared";
+// #32 修复：哈希链统一生产口径（events.ts 的 canonicalJson/eventHash）——
+// 此前种子用 JSON.stringify 键序算哈希，与生产 canonicalJson 口径不一致，
+// 种子 100 条事件用生产验证器重算全部不符（链上两种算法混杂）
+import { eventHash } from "@workloom/base/workdata";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(__dirname, "..");
@@ -64,10 +67,6 @@ function mulberry32(seed: number): () => number {
 const rand = mulberry32(20260816);
 const pick = <T>(arr: readonly T[]): T => arr[Math.floor(rand() * arr.length)] as T;
 const int = (min: number, max: number): number => min + Math.floor(rand() * (max - min + 1));
-
-function sha256(s: string): string {
-  return createHash("sha256").update(s, "utf-8").digest("hex");
-}
 
 function iso(d: Date): string {
   return d.toISOString();
@@ -673,8 +672,9 @@ async function main(): Promise<void> {
     if (!checked.success) {
       throw new Error(`种子事件 ${ev.event_id} 未过附录 E 校验：${checked.error.message}`);
     }
-    const payload = JSON.stringify(ev);
-    const hash = sha256(prevHash + payload);
+    // #32：哈希输入与存库 payload 均为 zod parse 后的 checked.data（与 appendEvent 逐字节一致）
+    const payload = JSON.stringify(checked.data);
+    const hash = eventHash(prevHash, checked.data);
     const res = await gw.query(
       `INSERT INTO biz_events (event_id, tenant_id, workspace_id, session_id, payload, prev_hash, hash, created_at)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8)

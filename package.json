@@ -10,7 +10,8 @@
   "dependencies": {
     "@workloom/shared": "workspace:*",
     "pg": "8.23.0",
-    "yaml": "2.9.0"
+    "yaml": "2.9.0",
+    "@workloom/base": "workspace:*"
   },
   "scripts": {
     "dev": "concurrently -k -n server,web \"pnpm -C apps/server dev\" \"pnpm -C apps/web dev\"",
@@ -19,7 +20,8 @@
     "demo": "tsx --env-file=.env scripts/demo.ts",
     "doctor": "bash scripts/doctor.sh",
     "typecheck": "pnpm -r --if-present typecheck",
-    "test": "pnpm -r --if-present test"
+    "test": "pnpm -r --if-present test",
+    "db:verify-chain": "tsx --env-file=.env scripts/verify-chain.ts"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@workloom/base':
+        specifier: workspace:*
+        version: link:packages/base
       '@workloom/shared':
         specifier: workspace:*
         version: link:packages/shared

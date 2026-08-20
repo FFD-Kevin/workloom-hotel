@@ -115,6 +115,31 @@ d("PG 集成（H-2/L1.4：幂等丢弃、哈希链序）", async () => {
     expect(row.hash).toBe(r.hash);
   });
 
+  it("#32 链可重算：网关写入与种子同口径（canonicalJson 生产口径逐条复验）", async () => {
+    const { canonicalJson, eventHash, GENESIS_HASH } = await import("./events.js");
+    const { createHash } = await import("node:crypto");
+    const sha256 = (s: string) => createHash("sha256").update(s, "utf-8").digest("hex");
+    // 种子链首条必须从 GENESIS 起且可重算（#32 前：种子 stringify 口径重算全部不符）
+    const c = await pool.connect();
+    try {
+      await c.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
+      const rows = await c.query<{ event_id: string; payload: unknown; prev_hash: string; hash: string }>(
+        `SELECT event_id, payload, prev_hash, hash FROM biz_events WHERE tenant_id=$1 AND workspace_id=$2 ORDER BY seq LIMIT 10`,
+        [scope.tenantId, scope.workspaceId],
+      );
+      expect(rows.rows.length).toBeGreaterThan(0);
+      let prev = GENESIS_HASH;
+      for (const row of rows.rows) {
+        expect(row.prev_hash).toBe(prev);
+        expect(row.hash).toBe(sha256(prev + canonicalJson(row.payload)));
+        expect(row.hash).toBe(eventHash(prev, row.payload)); // 与生产 eventHash 同结果
+        prev = row.hash;
+      }
+    } finally {
+      c.release();
+    }
+  });
+
   it("重复 event_id 写入幂等丢弃不报错（L1.4）", async () => {
     const ev = { ...draft("price.adjust"), event_id: "E-8801" } as const;
     // E-8801 为种子事件，重复写入必须 deduped=true 且不抛错
