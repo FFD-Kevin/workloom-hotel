@@ -2,6 +2,38 @@
 
 本文件记录 WorkLoom IM 底座的变更历史。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/)。
 
+## [0.1.2] - 2026-08-20 · 审计修复批次（首轮独立审计，详见 docs/AUDIT.md）
+
+### 安全修复
+
+- **#22 RLS 事务级上下文失效（P0）**：#2/#20 把 `set_config(...,false)` 改事务级 `true`，但 15 个文件 40+ 封装无显式事务，autocommit 下设置语句结束即失效 → RLS 恒 NULL → 登录/审批/夜班/巡检/技能/召回 fail-closed 全不可用（此前 DB 集成测试全部 skip 未暴露，实测 37/144 红）。统一改为 BEGIN→set_config→fn→COMMIT/ROLLBACK；decide() 重构消除事务嵌套；测试断言池直查统一事务封装（原断言恒 0 行假绿/假红）。
+- **#23 team 技能跨工作区互覆盖（P1）**：skills 全局表无 RLS，teamSkillId 仅名称派生，同名技能 ON CONFLICT 互覆盖。ID 内嵌 workspaceId（`skill-t-<ws>-<slug>`）；listSkills 按 scope 隔离；installSkill 追加本工作区归属校验（他区按 NOT_SIGNED 拦截留痕）。
+
+### 功能正确性修复
+
+- **#24 技能围栏绑定运行时不生效（P1）**：resolveAgentFenceBindings 无消费点，装配只读 preset 声明。assemblePreset 同事务并入 skill_installs 安装时快照（安装即生效、卸载即收缩）。
+- **#26 appendEvent 幂等丢弃返回错误 hash/seq**：#4 只修了 appendEventIdempotent，主路径同根残留；去重时同事务回读 DB 真实值。
+- **#27 routeIntent 超时未取消 LLM 调用**：classify 签名无 signal，AbortController 只赢 race；signal 接线到分类器（#7 名不副实补正）。
+- **#28 冲突审批 approval_id 同毫秒碰撞**：makeReadableId("AP", Date.now()%100000) 熵不足，改事件派生 apr-e-\<eventId\>（同 loop.ts 口径）。
+- **#29 IM 入站并发重推双写（TOCTOU）**：查重与写事件非原子；新增 im_inbound_dedupe 幂等键表（0003 迁移）原子占位，事件写失败补偿删占位。
+- **顺带**：withObjectLock 的 SET LOCAL statement_timeout 挪到 BEGIN 后（事务外无效果，锁等待无超时兜底）；dispatch 并发上限检查移入事务（原池直查 fail-open 恒 0 行）。
+
+### 测试健壮性
+
+- **#25 runtime 全流程测试 flaky（~27% 失败率）**：静态 import 使 TOOL_UNVERIFIED_RATE=0 设置被击穿（模块级常量提前定型）；loop.js 改动态 import。H-15 测试 hotel 资产路径改 import.meta.url 定位（原 cwd 敏感）+ finally 还原 industry（防污染残留）。
+- security-audit 增 #22 回归用例（autocommit 反例 fail-closed + 池连接卫生）。
+
+### 数据库迁移
+
+- 新增 `packages/db/migrations/0003_im_inbound_dedupe.sql`：`im_inbound_dedupe` 幂等键表（PK(workspace_id,channel,channel_msg_id)，RLS 同口径）。
+
+### 门禁验证
+
+- ✅ typecheck 全绿（6 个项目）
+- ✅ shared 4/4 · **base 148/148（含 54 个原 skip 的 DB 集成测试，×3 连跑）** · runtime 11/11（×5 连跑）
+- ✅ 安全门禁 6/6（append-only 双保险 / 旁路直写防控 / RLS 隔离）· seed 幂等复跑
+- ✅ server `/health` + `/trpc/system.health` 200（db:up）· web build 绿 · 端到端 loginAs→members/threads/approvals 实测通过
+
 ## [0.1.1] - 2026-08-20 · Bug 修复批次
 
 ### 安全修复
