@@ -2,6 +2,22 @@
 
 本文件记录 WorkLoom IM 底座的变更历史。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/)。
 
+## [0.1.3] - 2026-08-20 · dsh rc.8 升级 + 安全加固批次（审计第 2 轮）
+
+### 变更
+
+- **dsh 升级 0.1.0-rc.6 → 0.1.0-rc.8**：vendor/dsh 全量替换（integrity 与 registry 逐字符一致）；dsh-gate pin rc.8 + node-pty rebuild。rc.8 新能力：Codex / Claude Code 作为按需安装的 subagent Profile Bundle（web profile 已装 `@deepseek-ai/dsh-subagent-claude-code` / `@deepseek-ai/dsh-subagent-codex`）；SQLite 新存储格式不向下兼容（升级前备份 DSH_HOME 数据目录）。**升级策略变更（项目所有者 2026-08-20 决策）：官方任何新版本（含 rc/beta/alpha）即升，不再等稳定版。**
+
+### 安全加固
+
+- **#30 biz_events TRUNCATE 触发器**（0004 迁移）：行级触发器不拦 TRUNCATE，表 owner 此前可清空事件库；语句级触发器对全角色生效，清库只能 DROP+重迁移。
+- **#31 fence_rules 全局基线写入收口**（0005 迁移）：app/gateway 角色禁写 `workspace_id='*'` 行（原 RLS WITH CHECK 放行，任何工作区上下文可污染全租户基线），仅 owner 可写。
+
+### 门禁验证
+
+- ✅ base 150/150 · runtime 11/11 · shared 4/4 · typecheck 全绿 · web build 绿 · E6 dsh-gate 全绿（rc.8）
+- ✅ 安全门禁 7/7（新增 TRUNCATE 拒 / fence `*` 写拒）· 迁移 0001–0005 + seed 幂等复跑
+
 ## [0.1.2] - 2026-08-20 · 审计修复批次（首轮独立审计，详见 docs/AUDIT.md）
 
 ### 安全修复

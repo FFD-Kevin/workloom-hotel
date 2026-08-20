@@ -5,6 +5,35 @@
 
 ---
 
+## 第 2 轮 · 2026-08-20（基线 c595348 → be7d768）
+
+### 范围
+- dsh rc.8 强制升级（见上方「dsh 升级登记」）+ P3 清单前 2 项 DB 层加固 + apps/web 前端九大页走查。
+
+### 已修复（逐点增量提交）
+
+| 编号 | 级别 | 问题 | 根因 | commit |
+|---|---|---|---|---|
+| #30 | P3→修 | 表 owner 可 TRUNCATE 清空事件库 | 行级触发器不拦 TRUNCATE；0004 增语句级触发器（全角色生效） | `9c07416` |
+| #31 | P3→修 | fence_rules 全局基线 `*` 行可被 app/gateway 写入 | RLS WITH CHECK 放行 `workspace_id='*'`；0005 增触发器仅 owner 可写 | `be7d768` |
+
+### 前端走查结论（无新问题）
+- 铁律 4「隐藏非置灰」执行到位（P1/P2/P3/P6 显式口径 + DevMatrix 专项用例）；disabled 用法均为功能性不可用（空文本/busy/无批量项），非权限置灰。
+- 无 XSS 面（无 dangerouslySetInnerHTML/eval）；轮询定时器全部有 useEffect 清理；#18 修复点（text.trim() 判定）正确；无凭据硬编码（演示 JWT 存 localStorage，口径已在注释声明）。
+
+### 门禁结果（干净库全流程实测）
+- 迁移 0001–0005 + seed H-1 100% + 复跑幂等（0 写 100 弃）；typecheck 6 项目绿。
+- base **150/150**（含 #30/#31 新回归）、runtime 11/11、shared 4/4、web build 绿、E6 dsh-gate 全绿（rc.8）。
+- 安全门禁 7/7：append-only  UPDATE/DELETE 拒、旁路 INSERT 拒、RLS 不设/错设 0 行、**TRUNCATE 全角色拒（新）**、**fence `*` 基线写拒（新）**。
+
+### P3 清单剩余（下轮评估）
+- 哈希链粒度（tenant 锁 vs workspace 链）——方案级，走 ADR；JWT 无吊销；PII 占位符无盐；uninstallSkill revokedBindings 读实时值；created_at 客户端可控；#1/A Outbox（沿用）。
+
+### 当前游标 → 下一轮
+- 哈希链粒度 ADR 评估；apps/server router.ts 剩余 procedure 深读（本轮抽查）；P3 余量逐项收口。
+
+---
+
 ## dsh 升级登记 · 2026-08-20（rc.6 → rc.8，commit 9b7a8d0）
 
 - **触发**：官方 rc.7（08-17）/ rc.8（08-19）发布；项目所有者当日新决策——**任何新版本（含 rc/beta/alpha）即升，不得等稳定版**（取代 VENDOR.md 原「稳定 1.x 才升级」旧口径，决策已同步回填 VENDOR.md 与审计技能）。
