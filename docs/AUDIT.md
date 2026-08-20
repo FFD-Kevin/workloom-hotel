@@ -5,6 +5,32 @@
 
 ---
 
+## 第 5 轮 · 2026-08-21（基线 e7085e4 → cd9ee1d）· CI 门禁接入 + P3 收口
+
+### dsh 版本检查
+npm 最新 rc.7（latest）/ rc.8（next），与锁定 rc.8 一致——**无新版本，无需升级**。
+
+### 已交付（逐点增量提交）
+
+| 项 | 内容 | commit |
+|---|---|---|
+| CI 门禁 | `.github/workflows/ci.yml`：push/PR 触发，PG17+pgvector service → migrate/seed 双跑幂等 → verify-chain → typecheck → 三包测试（RUN_DB_TESTS=1 全开）→ suite 326 用例 → web build → dsh-gate E6。**GitHub 实测三次运行全部 success**（62162a1/4ddd1c7/cd9ee1d） | `62162a1` |
+| D13 ADR | 补建 docs/DECISIONS.md；事件编号锁与哈希链粒度论证（tenant 锁+workspace 链为有意设计：锁降级会致跨区编号碰撞→事件静默丢弃；tenant 单链需 RLS 开口） | `4ddd1c7` |
+| #40 | uninstallSkill 撤销清单读安装时快照（与 #17 口径对齐） | `cd9ee1d` |
+
+### P3 余量最终评估（登记不修，附理由）
+- **JWT 无吊销**：演示口径（登录即选种子成员），生产 IdP 对接（停车场项）时一并解决。
+- **PII 占位符无盐 sha256(8)**：低熵可枚举但以 DB 读权限为前提；加盐会破坏「同值同占位可关联」的 F1.4 归因口径，权衡后维持。
+- **appendEvent created_at 取声明时间**：种子演示剧本依赖剧本时间渲染曲线；事件时间与接收时间分离属语义增强，收益低于迁移成本，登记待真实部署再议。
+
+### 门禁结果
+- base 152/152 · runtime 12/12 · shared 4/4 · suite 326/326 · typecheck 全绿 · **CI（ci-gate）GitHub 实测 success ×3**。
+
+### 当前游标 → 下一轮
+- D1–D12 从 README/VENDOR/注释回收进 DECISIONS.md；suite 用例随新功能滚动扩充（每新能力至少 +5 用例）；release tag 打版流程演练（v0.2.0 候选）。
+
+---
+
 ## 第 4 轮 · 2026-08-21（基线 e7085e4 → b70ea6e）· 全场景测试套件
 
 ### 方法

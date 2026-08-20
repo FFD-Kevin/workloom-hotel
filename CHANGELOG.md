@@ -2,6 +2,21 @@
 
 本文件记录 WorkLoom IM 底座的变更历史。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/)。
 
+## [0.1.6] - 2026-08-21 · CI 门禁 + 决策记录批次（审计第 5 轮）
+
+### 基建
+
+- **CI 质量门禁**（.github/workflows/ci.yml）：push/PR to main 触发——PG17+pgvector service、迁移种子幂等双跑、verify-chain、typecheck、三包测试（DB 集成全开）、suite 326 用例、web build、dsh-gate E6。GitHub 实测 success。
+- **docs/DECISIONS.md 补建**：ADR 从此入库；D13 登记事件编号锁与哈希链粒度决策（tenant 锁 + workspace 链为有意设计，附三方案否决论证）。
+
+### 修复
+
+- **#40** uninstallSkill 撤销清单读安装时快照（与 #17 口径对齐，作者改绑定后留痕不再失真）。
+
+### 门禁验证
+
+- ✅ CI ci-gate success ×3（GitHub 实测）· base 152/152 · runtime 12/12 · suite 326/326 · typecheck 全绿
+
 ## [0.1.5] - 2026-08-21 · 全场景测试套件批次（审计第 4 轮）
 
 ### 测试基建
