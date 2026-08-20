@@ -31,10 +31,12 @@ async function emit(
   decision: Record<string, unknown>,
   object: { type: string; id?: string },
   links?: string[],
+  sessionId?: string | null,
 ): Promise<string> {
   const r = await gatewayAppend(gateway, {
     tenantId: scope.tenantId, workspaceId: scope.workspaceId,
     actor: { id: actorId, type: actorType },
+    sessionId: sessionId ?? null,
   }, {
     who: { type: actorType, id: actorId },
     context: { tenant_id: scope.tenantId, workspace_id: scope.workspaceId, time: new Date().toISOString(), channel: "inapp" },
@@ -174,7 +176,9 @@ export async function dispatchFromAnomaly(
     action: "inspect.dispatch",
     after: { threadId, anomalyEventId: input.anomalyEventId, presetKey: input.presetKey, severity: anomaly.severity },
     basis: ["一键派单：以异常事件为输入唤起业务 Agent（F9.3）", "处理结果将回链异常事件（F9.3/E9.3）"],
-  }, { type: anomaly.objectType, id: anomaly.objectId }, [input.anomalyEventId]);
+    // #38 修复：派单事件挂 sessionId=threadId——此前仅 links 回链，
+    // threads.events（按 session_id 投影线程事件流）看不到派单事件，P2 行动消息流缺环
+  }, { type: anomaly.objectType, id: anomaly.objectId }, [input.anomalyEventId], threadId);
   return { threadId, eventId, deduped: false };
 }
 
