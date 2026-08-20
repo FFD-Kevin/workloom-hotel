@@ -164,4 +164,22 @@ describe.runIf(RUN_DB)("安全审计 PG 集成（附录 H）", async () => {
     const n = await qApp<{ c: string }>(`SELECT count(*) AS c FROM biz_events WHERE workspace_id=$1`, [scope.workspaceId]);
     expect(Number(n.rows[0]!.c)).toBeGreaterThanOrEqual(100);
   });
+
+  it("#31 fence_rules 全局基线（workspace_id='*'）仅 owner 可写（F2.3 DB 收口）", async () => {
+    // app 角色经工作区上下文 INSERT '*' 全局基线行 → 触发器拒（影响面=全部租户）
+    await expect(
+      qApp(
+        `INSERT INTO fence_rules (id, rule_id, version, workspace_id, name, level, match_spec, action, created_by)
+         VALUES ('fr-evil-${Date.now().toString(36)}','R9','v1','*','evil','block','{}','{}','attacker')`,
+      ),
+    ).rejects.toThrow(/仅 owner 可写/);
+    // 工作区级行写入不受影响
+    const okId = `fr-ok-${Date.now().toString(36)}`;
+    await qApp(
+      `INSERT INTO fence_rules (id, rule_id, version, workspace_id, name, level, match_spec, action, created_by)
+       VALUES ($1,'R9','v99',$2,'ok','block','{}','{}','tester')`,
+      [okId, scope.workspaceId],
+    );
+    await qApp(`DELETE FROM fence_rules WHERE id=$1`, [okId]);
+  });
 });
