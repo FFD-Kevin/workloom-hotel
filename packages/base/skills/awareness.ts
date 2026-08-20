@@ -81,8 +81,8 @@ async function emit(
 async function loadRecentEvents(app: pg.Pool, scope: Scope, days: number): Promise<BusinessEvent[]> {
   const client = await app.connect();
   try {
-    await client.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
-    await client.query("SELECT set_config('app.tenant_id', $1, false)", [scope.tenantId]);
+    await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
+    await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
     const since = new Date(Date.now() - days * 24 * 3600 * 1000);
     const r = await client.query<{ payload: BusinessEvent }>(
       `SELECT payload FROM biz_events WHERE workspace_id=$1 AND created_at >= $2 ORDER BY seq`,
@@ -98,7 +98,7 @@ async function loadRecentEvents(app: pg.Pool, scope: Scope, days: number): Promi
 async function loadFeedbackKeys(app: pg.Pool, scope: Scope): Promise<{ rejected: Set<string>; confirmed: Set<string> }> {
   const client = await app.connect();
   try {
-    await client.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
+    await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
     const since = new Date(Date.now() - 30 * 24 * 3600 * 1000);
     const r = await client.query<{ payload: { decision: { action: string; after?: { key?: string } } } }>(
       `SELECT payload FROM biz_events

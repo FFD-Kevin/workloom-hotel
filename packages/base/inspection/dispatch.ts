@@ -54,8 +54,8 @@ async function getAnomalyEvent(
 ): Promise<{ eventId: string; summary: string; severity: Severity; objectType: string; objectId?: string } | null> {
   const client = await app.connect();
   try {
-    await client.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
-    await client.query("SELECT set_config('app.tenant_id', $1, false)", [scope.tenantId]);
+    await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
+    await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
     const r = await client.query<{
       event_id: string;
       payload: { decision: { after?: { summary?: string; severity?: Severity } }; object: { type: string; id?: string } };
@@ -82,7 +82,7 @@ async function getAnomalyEvent(
 async function findExisting(app: pg.Pool, scope: Scope, anomalyEventId: string, action: string): Promise<string | null> {
   const client = await app.connect();
   try {
-    await client.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
+    await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
     const r = await client.query<{ event_id: string }>(
       `SELECT event_id FROM biz_events
        WHERE workspace_id=$1 AND payload->'decision'->>'action' = $2 AND payload->'links' @> $3::jsonb
@@ -114,7 +114,7 @@ export async function dispatchFromAnomaly(
   if (existing) {
     const client = await app.connect();
     try {
-      await client.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
+      await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
       const ev = await client.query<{ payload: { decision: { after?: { threadId?: string } } } }>(
         `SELECT payload FROM biz_events WHERE workspace_id=$1 AND event_id=$2`,
         [scope.workspaceId, existing],
@@ -129,8 +129,8 @@ export async function dispatchFromAnomaly(
   const client = await app.connect();
   let threadId: string;
   try {
-    await client.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
-    await client.query("SELECT set_config('app.tenant_id', $1, false)", [scope.tenantId]);
+    await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
+    await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
     const max = await client.query<{ n: number }>(
       `SELECT COALESCE(MAX(NULLIF(regexp_replace(id, '\\D', '', 'g'), '')::int), 100) AS n
        FROM threads WHERE workspace_id=$1 AND id ~ '^T-\\d+$'`,

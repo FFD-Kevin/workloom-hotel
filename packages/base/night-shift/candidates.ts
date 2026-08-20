@@ -38,8 +38,8 @@ export async function buildCandidateList(
 ): Promise<CandidateItem[]> {
   const client = await app.connect();
   try {
-    await client.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
-    await client.query("SELECT set_config('app.tenant_id', $1, false)", [scope.tenantId]);
+    await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
+    await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
     // 夜班型 preset（meta.night_shift=true 且 ready）
     const ag = await client.query<{ preset_key: string }>(
       `SELECT preset_key FROM agents WHERE workspace_id=$1 AND status='ready'

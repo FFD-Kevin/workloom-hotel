@@ -96,8 +96,8 @@ export async function deliverPackage(
   const client = await app.connect();
   let events: BusinessEvent[];
   try {
-    await client.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
-    await client.query("SELECT set_config('app.tenant_id', $1, false)", [scope.tenantId]);
+    await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
+    await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
     const r = await client.query<{ payload: BusinessEvent }>(
       `SELECT payload FROM biz_events
        WHERE tenant_id=$1 AND workspace_id=$2 AND created_at >= $3::timestamptz AND created_at <= $4::timestamptz
@@ -114,7 +114,7 @@ export async function deliverPackage(
   // 状态机 → package_generated + 统计回写（F4.4/F4.8）
   const c2 = await app.connect();
   try {
-    await c2.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
+    await c2.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
     await c2.query(
       `UPDATE night_runs SET status='package_generated', stats=$3 WHERE id=$1 AND workspace_id=$2 AND status IN ('running','paused','ready')`,
       [runId, scope.workspaceId, JSON.stringify(pkg.stats)],

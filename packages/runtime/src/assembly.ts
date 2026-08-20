@@ -39,8 +39,8 @@ export async function assemblePreset(
 ): Promise<AssembledPreset> {
   const client = await app.connect();
   try {
-    await client.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
-    await client.query("SELECT set_config('app.tenant_id', $1, false)", [scope.tenantId]);
+    await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
+    await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
 
     const ag = await client.query<{
       id: string; preset_key: string; version: string; fence_bindings: string[];

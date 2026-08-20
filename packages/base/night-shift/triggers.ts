@@ -53,7 +53,7 @@ export async function upsertTrigger(
 ): Promise<void> {
   const client = await app.connect();
   try {
-    await client.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
+    await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
     await client.query(
       `INSERT INTO triggers (id, workspace_id, name, kind, schedule, action, enabled, created_by)
        VALUES ($1,$2,$3,$4,$5,$6,true,$7)
@@ -85,7 +85,7 @@ export async function setTriggerEnabled(
 ): Promise<void> {
   const client = await app.connect();
   try {
-    await client.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
+    await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
     const r = await client.query(
       `UPDATE triggers SET enabled=$3, updated_at=now() WHERE id=$1 AND workspace_id=$2`,
       [id, scope.workspaceId, enabled],
@@ -124,7 +124,7 @@ export async function tickTriggers(
   const client = await app.connect();
   let rows: Array<{ id: string; name: string; schedule: string; action: Record<string, unknown> }>;
   try {
-    await client.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
+    await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
     const r = await client.query<typeof rows[number]>(
       `SELECT id, name, schedule, action FROM triggers WHERE workspace_id=$1 AND enabled=true AND kind='cron'`,
       [scope.workspaceId],

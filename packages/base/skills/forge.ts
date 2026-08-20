@@ -116,8 +116,8 @@ export async function dryRunSkill(
   let events: BusinessEvent[] = [];
   let rules: RuntimeRule[] = [];
   try {
-    await client.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
-    await client.query("SELECT set_config('app.tenant_id', $1, false)", [scope.tenantId]);
+    await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
+    await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
     const ev = await client.query<{ payload: BusinessEvent }>(
       `SELECT payload FROM biz_events WHERE workspace_id=$1 ORDER BY seq DESC LIMIT $2`,
       [scope.workspaceId, DRY_RUN_REPLAY_LIMIT],

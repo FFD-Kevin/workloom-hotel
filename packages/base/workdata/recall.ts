@@ -90,8 +90,8 @@ export async function searchEvents(
   const { sql, params } = buildWhere(filter, scope, opts.cursor);
   const client = await app.connect();
   try {
-    await client.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
-    await client.query("SELECT set_config('app.tenant_id', $1, false)", [scope.tenantId]);
+    await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
+    await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
     const rows = await client.query<{ seq: string; payload: BusinessEvent }>(
       `SELECT seq, payload FROM biz_events WHERE ${sql} ORDER BY seq DESC LIMIT ${limit + 1}`,
       params,

@@ -77,7 +77,7 @@ async function emit(
 export async function assertReadonlyPreset(app: pg.Pool, scope: Scope, presetKey = "inspection-agent"): Promise<void> {
   const client = await app.connect();
   try {
-    await client.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
+    await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
     const r = await client.query<{ readonly: boolean; meta: { tools?: Array<{ name: string; access: string }> } }>(
       `SELECT readonly, meta FROM agents WHERE workspace_id=$1 AND preset_key=$2`,
       [scope.workspaceId, presetKey],
@@ -98,7 +98,7 @@ export async function assertReadonlyPreset(app: pg.Pool, scope: Scope, presetKey
 export async function loadSnapshot(app: pg.Pool, scope: Scope): Promise<InspectionSnapshot> {
   const client = await app.connect();
   try {
-    await client.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
+    await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
     const r = await client.query<{ archive: Record<string, unknown> }>(
       `SELECT archive FROM profiles WHERE workspace_id=$1`,
       [scope.workspaceId],
@@ -119,8 +119,8 @@ export function anomalyDedupeKey(f: Finding): string {
 export async function listOpenAnomalyKeys(app: pg.Pool, scope: Scope, day: Date): Promise<Set<string>> {
   const client = await app.connect();
   try {
-    await client.query("SELECT set_config('app.workspace_id', $1, false)", [scope.workspaceId]);
-    await client.query("SELECT set_config('app.tenant_id', $1, false)", [scope.tenantId]);
+    await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
+    await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
     const dayStart = new Date(day); dayStart.setHours(0, 0, 0, 0);
     const anomalies = await client.query<{ event_id: string; payload: { decision: { after?: { dedupeKey?: string } } } }>(
       `SELECT event_id, payload FROM biz_events
