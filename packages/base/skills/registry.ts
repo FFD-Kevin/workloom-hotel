@@ -312,8 +312,9 @@ export async function uninstallSkill(
 }
 
 /**
- * 运行时唯一消费点（L8.3/F8.2）：Agent 生效围栏 = preset 声明 ∪ 已装技能绑定
- * runtime 装配（B8 assembly）/网关复查位应改走本函数取并集。
+ * 运行时并集口径（L8.3/F8.2）：Agent 生效围栏 = preset 声明 ∪ 已装技能绑定（安装时快照）。
+ * 消费点：runtime 装配（B8 assembly.ts，#24 已接线取并集，同一事务内直查快照）；
+ * 本函数供查询/测试与后续消费点复用。
  */
 export async function resolveAgentFenceBindings(
   app: pg.Pool,

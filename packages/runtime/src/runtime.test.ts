@@ -50,6 +50,9 @@ const RUN_DB = process.env.RUN_DB_TESTS === "1" && !!process.env.DATABASE_APP_UR
 const d = RUN_DB ? describe : describe.skip;
 
 d("PG 集成 Quest 循环（种子库）", async () => {
+  // #25 修复：demo 工具 10% 随机 synced:false 会让全流程测试概率性转 failed（E3.7 未核实），
+  // 集成测试关闭随机扰动保证可重跑；须在动态 import loop.js（链至 tools.js 模块级常量）之前设置
+  process.env.TOOL_UNVERIFIED_RATE = "0";
   const pg = (await import("pg")).default;
   const { runQuest } = await import("./loop.js");
   const { assemblePreset, AssemblyReject } = await import("./assembly.js");
@@ -125,5 +128,22 @@ d("PG 集成 Quest 循环（种子库）", async () => {
     const n2 = (await threadEvents(tid)).length;
     expect(n2).toBe(n1); // 幂等：零新增事件
     expect(r2.stepsDone).toBe(r1.stepsDone);
+  });
+
+  it("#24 装配围栏并集：安装技能绑定进装配声明（F8.2/L8.3），卸载即收缩", async () => {
+    const { installSkill, uninstallSkill, listSkills } = await import("@workloom/base/skills");
+    const revenue = (await listSkills(app, scope, { level: "official" })).find((s) => s.name === "revenue-manager")!;
+    // 从「未安装」态开始（重跑安全）
+    await uninstallSkill(app, gw, scope, { skillId: revenue.id, by: "MEM-001" }).catch(() => undefined);
+    const before = await assemblePreset(app, scope, { workspaceId: scope.workspaceId, presetKey: "content-agent", goal: "装配并集探针" });
+    expect(before.fenceBindings).toEqual(["R3"]); // preset 自身声明（content-agent 仅 R3）
+    // 安装即绑定：装配声明并入技能 fence_bindings 快照
+    await installSkill(app, gw, scope, { skillId: revenue.id, by: "MEM-001" });
+    const after = await assemblePreset(app, scope, { workspaceId: scope.workspaceId, presetKey: "content-agent", goal: "装配并集探针" });
+    expect(after.fenceBindings).toEqual(["R1", "R2", "R3"]); // preset 声明 ∪ 技能快照
+    // 卸载即撤销：并集收缩
+    await uninstallSkill(app, gw, scope, { skillId: revenue.id, by: "MEM-001" });
+    const revoked = await assemblePreset(app, scope, { workspaceId: scope.workspaceId, presetKey: "content-agent", goal: "装配并集探针" });
+    expect(revoked.fenceBindings).toEqual(["R3"]);
   });
 });

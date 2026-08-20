@@ -73,11 +73,21 @@ export async function assemblePreset(
       throw new AssemblyReject(missing, `三要素缺失（${missing.join("、")}），拒绝执行（L3.7）`);
     }
 
+    // #24 修复：装配围栏声明 = preset 声明 ∪ 已装技能 fence_bindings 安装时快照（F8.2/L8.3）。
+    // 此前只读 agents.fence_bindings，resolveAgentFenceBindings 的并集从未接线——
+    // 技能「安装即绑定」在网关段①复查位不生效（安装的技能绑定形同虚设）。
+    const sk = await client.query<{ fence_bindings_snapshot: string[] }>(
+      `SELECT fence_bindings_snapshot FROM skill_installs WHERE workspace_id=$1`,
+      [scope.workspaceId],
+    );
+    const bindingsUnion = new Set<string>(agent.fence_bindings ?? []);
+    for (const row of sk.rows) for (const b of row.fence_bindings_snapshot ?? []) bindingsUnion.add(b);
+
     return {
       agentId: agent.id,
       presetKey: agent.preset_key,
       version: agent.version,
-      fenceBindings: agent.fence_bindings,
+      fenceBindings: [...bindingsUnion].sort(),
       tools: agent.meta.tools ?? [],
       prompt: agent.meta.prompt ?? null,
       essentials: { archive: prof.rows[0]!.archive, stage: ws.rows[0]!.stage!, goal: input.goal! },
