@@ -1,7 +1,31 @@
 # DECISIONS.md · WorkLoom IM 底座架构决策记录（ADR）
 
 > 追加不改旧。本文件于审计第 5 轮补建（第 1 轮登记的事实源偏差：远程 main 此前无治理文档）。
-> D1–D12 散见于 README/VENDOR/各文件头注释引用，尚未回收进本文件（下轮整理）；自 D13 起在此追加。
+> D1–D12 已于第 7 轮回收（见下方「历史决策回收」节，仅登记代码/文档中有明确出处者）；自 D13 起在此追加。
+
+---
+
+## 历史决策回收（D1–D14，2026-08-21 第 7 轮整理）
+
+> 出处为代码注释/VENDOR 文档中的 `(D<n>)` 引用。无出处者不臆造，如实标注「待考」。
+
+| 编号 | 决策 | 出处 |
+|---|---|---|
+| D1 | 待考（仓库内无引用） | — |
+| D2 | 首版唯一行业 Bundle = `bundles/hotel`（workloom-hotel） | `apps/server/src/trpc/router.ts` |
+| D3 | 待考（仓库内无引用） | — |
+| D4 | LLM 默认 mock provider 全流程可跑（OpenAI 兼容网关 + 内置确定性 Mock；无真实凭据可开发可测试） | `packages/base/model-router/providers.ts`、`im-channels/cards.ts` |
+| D5 | DDL 事实源 = migrations 手写 SQL；`schema.ts` 仅类型镜像，不生 DDL | `packages/db/src/schema.ts` |
+| D6 | 待考（仓库内无引用） | — |
+| D7 | 首版审批/通道仅 inapp 本地回环；外部 IM 连接器进停车场；手势回调后由回调侧回发结果卡（原地更新简化语义） | `review-console/index.ts`、`im-channels/registry.ts`、`cards.ts` |
+| D8 | 待考（仓库内无引用） | — |
+| D9 | 待考（仓库内无引用） | — |
+| D10 | 待考（引用点已不可考） | — |
+| D11 | 待考（仓库内无引用） | — |
+| D12 | dsh（DeepSeek Harness）作 L1 运行时地基：vendor 锁定 + integrity 核验 + seam 精确对接（plugins 薄壳适配），九域护城河自研 | `vendor/dsh/VENDOR.md`、`packages/runtime/plugins/README.md` |
+| D14 | 审批卡片从 inapp 升级为多通道（dingtalk/wecom/feishu 经 dsh-im；未启用通道拒绝并留痕） | `im-channels/callback.ts`、`cards.ts` |
+
+> D13 起为审计期新决策，见下。D 编号有缺（D13 前无 D13 前史可考者）不影响使用——新决策顺延编号即可。
 
 ---
 

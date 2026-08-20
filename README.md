@@ -16,8 +16,8 @@
 [![Release](https://img.shields.io/github/v/release/geniusdapeng-collab/workloom-im?display_name=tag&color=1B2A4E)](https://github.com/geniusdapeng-collab/workloom-im/releases)
 [![License](https://img.shields.io/badge/license-Apache--2.0-9A7B2D)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-macOS%2013%2B%20%C2%B7%20Apple%20Silicon-black)](https://github.com/geniusdapeng-collab/workloom-im/releases)
-[![Runtime](https://img.shields.io/badge/runtime%20foundation-DeepSeek%20Harness-4C6FFF)](https://github.com/deepseek-ai/dsh)
-[![Tests](https://img.shields.io/badge/tests-157%20unit%20%2B%2044%20E2E%20%2B%20dsh--gate-green)]()
+[![Runtime](https://img.shields.io/badge/runtime%20foundation-DeepSeek%20Harness-4C6FFF)](https://www.npmjs.com/package/@deepseek-ai/dsh)
+[![Tests](https://img.shields.io/badge/tests-168%20vitest%20%2B%20371%20suite%20%2B%20dsh--gate-green)]()
 [![Data](https://img.shields.io/badge/data%20sovereignty-local--first%20PG17-blueviolet)]()
 [![Website](https://img.shields.io/badge/website-workloom.ok.kimi.link-e8b96a)](https://workloom.ok.kimi.link)
 
@@ -41,6 +41,52 @@ WorkLoom 的答案是：**大模型是蒸汽机，企业 Agent IM 是织机。**
   <img src="apps/site/shots/p1.jpg" alt="WorkLoom 舰桥主界面" width="46%"/>
   <img src="apps/site/shots/p9.jpg" alt="WorkLoom 夜班战报" width="46%"/>
 </p>
+
+---
+
+## ⚡ 给 AI 助手的 60 秒速览（开发者/Agent 上手指引）
+
+> 如果你是刚克隆本仓库的 AI 助手：读完本节即可上手，无需通读全文。
+
+**一句话定位**：企业级 Agent IM 底座——人类员工与 AI Agent 班组在同一 workspace 协作；一切业务动作以「五元事件」写入 append-only 事件库（哈希链），经安全网关三段瀑布（权限→脱敏→高风险授权）收口。运行时地基是 DeepSeek Harness（`@deepseek-ai/dsh`，vendor 锁定 rc.8）。
+
+**仓库地图**（pnpm monorepo）：
+
+| 路径 | 职责 |
+|---|---|
+| `packages/base/workdata` | **核心底座**：安全网关 / 五元事件库 / PII 脱敏 / 组织记忆与检索 |
+| `packages/base/{fence-engine,review-console,im-channels,night-shift,inspection,skills,tenancy,bundles,model-router}` | 九域能力：围栏判定 / 审批流 / IM 通道 / 夜班调度 / 巡检 / 技能市场 / 多租户与演示 JWT / 行业 Bundle / 模型路由 |
+| `packages/runtime` | dsh seam 适配：意图路由（Ask/Agent/Quest 三模式）、Quest 循环（replay 断点续跑）、装配 |
+| `packages/{shared,db}` | 五元 zod schema / 手写 SQL 迁移（DDL 事实源） |
+| `apps/{server,web,site,desktop}` | Hono+tRPC 服务 / 舰桥前端 / 官网 / Mac 桌面包 |
+| `vendor/{dsh,dsh-im}` | dsh rc.8 审计基线（只读）/ dsh IM 通道插件（MIT 回馈） |
+| `scripts/` | migrate / seed / demo / verify-chain / **suite（371 场景用例）** / dsh-gate |
+
+**最小跑通路径**（Linux/macOS；需要 PostgreSQL 17 + pgvector 监听 5432）：
+
+```bash
+corepack enable && pnpm install && cp .env.example .env
+# 建库建扩展（双角色由 migrate 自动创建并授权——A3 旁路防控：只有 gateway 角色可 INSERT biz_events）
+psql -U postgres -c "CREATE DATABASE workloom;"
+psql -U postgres -d workloom -c "CREATE EXTENSION vector;"
+pnpm db:migrate && pnpm db:seed          # 迁移 + 演示种子（酒店工作区 ws-yunqi）
+pnpm typecheck && pnpm test              # 类型检查 + vitest（DB 集成见下）
+pnpm db:verify-chain                     # 哈希链全库逐条重算验证
+pnpm suite                               # 371 条全场景用例（含 spawn server 的 HTTP E2E）
+pnpm demo                                # 端到端演示剧本
+pnpm dev                                 # 起 server(:8787) + web(:5173)
+# DB 集成测试（默认 skip）：
+RUN_DB_TESTS=1 pnpm -C packages/base test
+```
+
+**适用 / 不适用**：
+- ✅ 适用：有明确经营指标 + 大量重复处置动作的服务业（酒店/餐饮/零售门店）；需要 AI Agent 进组织、上产线、可问责的团队。首个行业 Bundle 是酒店（`bundles/hotel`）。
+- ❌ 不适用：纯聊天机器人/Copilot 侧边栏诉求；无状态问答 SaaS；不愿自托管 PG 的场景（数据主权设计是 local-first）。
+
+**事实源文档索引**：[`CHANGELOG.md`](CHANGELOG.md) 版本变更 · [`docs/DECISIONS.md`](docs/DECISIONS.md) ADR · [`docs/AUDIT.md`](docs/AUDIT.md) 审计记录 · [`docs/SUITE.md`](docs/SUITE.md) 371 用例清单 · [`docs/03-功能清单-用户版.md`](docs/03-功能清单-用户版.md) 功能全表。安全铁律与编码规范见各包文件头注释与 `docs/AUDIT.md` 附录。
+
+**给 AI 助手的修改纪律**：改网关/权限/RLS/append-only 相关代码前必读 `docs/AUDIT.md` 第 1 轮 P0 教训（RLS 事务级上下文必须配显式事务）；每个逻辑变更一个 commit；修复必须附回归测试（套件已有 371 条，往 `scripts/suite.ts` 加用例优先于新建测试文件）。
+
 
 ---
 
@@ -286,25 +332,38 @@ WorkLoom 把 IM 通道适配层抽成了独立的 dsh 插件 [`vendor/dsh-im`](v
 | [酒店店长使用指南](docs/01-酒店店长使用指南.md) | 酒店店长 / 门店负责人 | 下载安装 → 配置 → 日常使用，全程无技术术语 |
 | [新客户首次接入完整流程](docs/02-新客户首次接入完整流程.md) | 任意行业新客户 | 从下载到正式使用的通用接入流程（约 30 分钟） |
 | [功能清单（用户版）](docs/03-功能清单-用户版.md) | 所有人 | 全部功能按使用场景分类，业务语言描述 |
+| [测试套件用例清单](docs/SUITE.md) | 开发者 / AI 助手 | 371 条场景用例全表（`pnpm suite` 运行时导出） |
+| [架构决策记录](docs/DECISIONS.md) | 开发者 | ADR：为什么这么设计（含否决方案论证） |
+| [审计记录](docs/AUDIT.md) | 开发者 / 安全 | 六轮审计的问题、根因、修复与门禁实测 |
 
 ## 开发者快速开始
+
+环境：Node 24 LTS（corepack 自带 pnpm 10）+ PostgreSQL 17 + pgvector 0.8。
 
 ```bash
 git clone https://github.com/geniusdapeng-collab/workloom-im.git
 cd workloom-im
-corepack enable && pnpm install
+corepack enable && pnpm install && cp .env.example .env
 
-# 开发环境（需要本机 PostgreSQL 17 + pgvector）
-pnpm dev          # 起 server + web
-pnpm typecheck    # 全仓类型检查
-pnpm test         # 单元测试（157 例）
-pnpm demo         # 端到端演示（44 步全绿）
+# 数据库初始化（建库建扩展即可；migrate 自动创建 app/gateway 双角色并完成授权）
+psql -U postgres -c "CREATE DATABASE workloom;"
+psql -U postgres -d workloom -c "CREATE EXTENSION vector;"
+pnpm db:migrate && pnpm db:seed   # 5 个迁移 + 演示种子（种子幂等可复跑）
 
-# dsh-gate 门禁（崩溃重放 / 验链 / 幂等）
-RUN_DB_TESTS=1 DATABASE_APP_URL=postgres://... DATABASE_GATEWAY_URL=postgres://... pnpm test
+# 质量门禁（与 CI ci-gate 完全同口径）
+pnpm typecheck         # 全仓类型检查
+pnpm test              # vitest 168 例（base 152 + runtime 12 + shared 4）
+RUN_DB_TESTS=1 pnpm -C packages/base test   # PG 集成测试（默认 skip）
+pnpm db:verify-chain   # 哈希链全库重算（篡改检测）
+pnpm suite             # 371 条全场景用例（服务层 344 + HTTP E2E 27）
+pnpm demo              # 端到端演示剧本
+pnpm doctor            # 环境自检
+
+# 日常开发
+pnpm dev               # server(:8787) + web(:5173)，演示登录选「王店长」
 ```
 
-仓库结构：`apps/{server, web, site, desktop}` + `packages/{shared, db, base, runtime}` + `bundles/hotel` + `vendor/{dsh, dsh-im}`，pnpm monorepo。核心底座：**`packages/base/workdata`（WorkData 数据大脑）**。
+仓库结构：`apps/{server, web, site, desktop}` + `packages/{shared, db, base, runtime}` + `bundles/hotel` + `vendor/{dsh, dsh-im}`，pnpm monorepo。核心底座：**`packages/base/workdata`（WorkData 数据大脑）**。371 条场景用例清单见 [`docs/SUITE.md`](docs/SUITE.md)；CI 门禁（每次 push 全量执行上述全部检查）见 `.github/workflows/ci.yml`。
 
 ## 安全设计
 
@@ -316,15 +375,16 @@ RUN_DB_TESTS=1 DATABASE_APP_URL=postgres://... DATABASE_GATEWAY_URL=postgres://.
 
 ## 路线图
 
-- ✅ v1.1.0：Mac 桌面包一键启航 + 官网 + CI 冒烟门禁
+- ✅ 当前：Mac 桌面包一键启航 + 官网 + CI 质量门禁（371 场景用例 + 哈希链验证，每次 push 全量执行）
 - 🔜 Intel Mac 包 / Windows 包
 - 🔜 技能市场 industry 层开放（脱敏审核流水线 + 跨组织安装）
 - 🔜 更多行业 bundles（餐饮、零售、物业）
-- 🔜 dsh 上游版本跟进与 seam 自动兼容测试
+- ✅ dsh rc.8 已集成（subagent Codex / Claude Code 按需安装；E6 dsh-gate 门禁全绿）
+- 🔜 dsh 上游新版本持续跟进（任何新版本含预发布即升 + seam 兼容回归）
 
 ## 致谢
 
-- [DeepSeek Harness](https://github.com/deepseek-ai/dsh) — Agent 运行时地基（MIT）
+- [DeepSeek Harness](https://www.npmjs.com/package/@deepseek-ai/dsh) — Agent 运行时地基（MIT）
 - [pgvector](https://github.com/pgvector/pgvector) — 组织记忆的语义检索
 - Hono / tRPC / React / Vite — 优秀的工程基座
 
