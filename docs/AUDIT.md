@@ -5,6 +5,44 @@
 
 ---
 
+## 第 10 轮 · 2026-08-21（基线 61dc6de → a8570e8）· D16 双池事务一致性落地（#1/A 清零）
+
+### 背景与方案
+#1/A（三轮登记的最后一个架构级问题）：业务状态写（app 池）与事件写（gateway 池）
+两个连接两个事务——前者 COMMIT 后、后者写入前崩溃即「状态已变、审计无事件」。
+**D16 ADR 采纳 SECURITY DEFINER 特权函数方案**（否决：合并角色=铁律 1 写入收口作废；
+Outbox 表=26 处同步 eventId 语义全破；2PC=运维坑多）：单连接单事务内业务写 +
+`append_event_insert()`（以 gateway 权限执行）同一 COMMIT。原子性 ✅、写入治理不破 ✅、
+同步语义不变 ✅、DB 层新增上下文一致性 + 链式接龙双校验（防线更强）✅。
+
+### 交付（6 个 commit 逐批推送）
+| commit | 内容 |
+|---|---|
+| `0e9e249` | D16 ADR + 0007 迁移（函数 OWNER=gateway/search_path 锁死/REVOKE PUBLIC/双校验）+ appendEventInTx/gatewayAppendOnClient 核心原语 + atomicity.test.ts 5 例（崩溃注入无孤儿/断链拒写/防伪造/A3 不变） |
+| `8c9153d` | review-console：decide（状态+手势事件+校准记忆同事务）/expireSweep；upsertMemoryInTx |
+| `3dde4e2` | skills：install/uninstall/publish 四处（emit 加 InTx 变体） |
+| `f9cc2b3` | im-channels（#29 三段式并单事务，补偿逻辑由原子性取代）/inspection 派单/night-shift 六处 |
+| `a8570e8` | loop.ts 三分支步骤级原子 + router setPlan/dispatch/proposeRule + forge/activateBundle |
+
+B 级纯事件路径（cards/scan/sink/note 等）维持 gateway 池不变。
+
+### 踩坑与回填
+- **双 GUC 纪律**：append_event_insert 校验 tenant+workspace 双 GUC——registry/resumeNight/
+  pauseAll/setTriggerEnabled 等手写事务单设 workspace 被函数拒写暴露（兜底生效符合设计），
+  全部补齐；scoped() 封装天然双 GUC 无坑。
+- dispatch 旧独立事件块删除防双写；proposeRule 三段（草稿+事件+审批行）重写为单事务。
+
+### 门禁结果（干净库从零实测）
+- 迁移 0001–0007 + seed H-1 100% + verify-chain 100/100；typecheck 6 项目绿；
+  base **157/157**（+5 原子性用例）· runtime 12/12 · suite **390/390**；
+- 安全门禁 7/7：append-only 双拒 / A3 旁路拒 / RLS 0 行 / TRUNCATE 拒 / fence 基线拒 / **D16 函数断链拒写（新）**。
+
+### 当前游标 → 下一轮
+- **全部待修复项清零**（#1/A 已闭合；A 类 3 项「确认不修」维持登记）。
+- 建议：v1.4.0 打版（D15 五机制 + D16 原子性双里程碑）；industry 层真实技能上架流水线端到端演练。
+
+---
+
 ## 第 9 轮 · 2026-08-21（基线 01f720d → 399c25d）· D15 五机制落地 + B-5 走查清零
 
 ### dsh 版本检查

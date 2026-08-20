@@ -2,6 +2,17 @@
 
 本文件记录 WorkLoom IM 底座的变更历史。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/)。
 
+## [1.4.0] - 2026-08-21 · 双池事务一致性（D16，审计第 10 轮）
+
+### 架构修复
+
+- **#1/A 双池事务一致性（SECURITY DEFINER 方案，D16 ADR）**：业务状态写与事件写从此同一事务同一 COMMIT——`append_event_insert()` 特权函数（gateway 权限执行，app 角色仍无直接 INSERT，铁律 1 不破）；DB 层新增上下文一致性（防伪造）与链式接龙（断链拒写）双校验。30 处「业务+事件」调用点全部事务内化（decide/expireSweep/install/uninstall/publish/ingestInbound/派单/夜班/触发器/Quest 循环/setPlan/dispatch/proposeRule/forge/activateBundle）。
+- **原子性回归**：atomicity.test.ts（同事务双生 / 崩溃注入无孤儿 / 断链拒写 / 防伪造 / A3 不变）。
+
+### 门禁验证
+
+- ✅ base 157/157 · runtime 12/12 · suite 390/390 · typecheck 全绿 · 干净库 7 迁移 + verify-chain 100/100 · 安全门禁 7/7
+
 ## [1.3.0] - 2026-08-21 · industry 上架门禁五机制（审计第 9 轮）
 
 ### 新特性
