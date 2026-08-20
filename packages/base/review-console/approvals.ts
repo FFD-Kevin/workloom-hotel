@@ -41,7 +41,7 @@ export interface ApprovalRow {
 
 export class ApprovalError extends Error {
   constructor(
-    public readonly code: "FORBIDDEN_ROLE" | "EMPTY_REASON" | "REASON_TOO_LONG" | "EDIT_REQUIRES_AFTER" | "EXPIRED" | "NOT_FOUND",
+    public readonly code: "FORBIDDEN_ROLE" | "EMPTY_REASON" | "REASON_TOO_LONG" | "EDIT_REQUIRES_AFTER" | "EXPIRED" | "NOT_FOUND" | "INVALID_GESTURE",
     message: string,
   ) {
     super(message);
@@ -62,6 +62,12 @@ export interface GestureInput {
 }
 
 export function validateGesture(g: GestureInput): void {
+  // #41 修复：手势类型白名单——此前不校验 type 本身，非法手势（通道侧异常/伪造
+  // 回调传来 "bogus" 等）会穿透到 decide 的状态映射（approve/edit 之外一律落 rejected），
+  // 被静默当作「驳回」写库，且绕过 L5.2 驳回原因必填校验
+  if (g.type !== "approve" && g.type !== "edit" && g.type !== "reject") {
+    throw new ApprovalError("INVALID_GESTURE", `非法手势类型「${String(g.type)}」（仅 approve/edit/reject，L5.2）`);
+  }
   if (g.type === "reject") {
     // L5.2：驳回必填原因（枚举+自由文本 ≤200 字），空理由被拒
     if (!g.reasonEnum || g.reasonEnum.trim() === "") {
