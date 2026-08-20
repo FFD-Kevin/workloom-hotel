@@ -74,20 +74,18 @@ export interface AppendResult {
 }
 
 /**
- * 追加一条五元事件（须以 workloom_gateway 角色连接；调用方须先完成三段瀑布——见 gateway.ts）
- * 单事务：advisory 锁（租户级串行）→ 读链尾 → 分配 E-N → zod 校验 → INSERT（冲突丢弃）
+ * 事务内追加一条五元事件（D16 核心原语）
+ * 调用方必须已持有事务（BEGIN + set_config 双 GUC）——本函数不再自行开关事务，
+ * 使「业务状态写 + 事件写」可在同一 COMMIT 原子提交（#1/A）。
+ * 事件插入经 append_event_insert（SECURITY DEFINER）完成：app/gateway 角色均可调用，
+ * DB 层自校验上下文一致性与链式接龙（断链拒写）。
  */
-export async function appendEvent(
-  gateway: pg.Pool | pg.PoolClient,
+export async function appendEventInTx(
+  client: pg.PoolClient,
   scope: { tenantId: string; workspaceId: string },
   input: AppendInput,
 ): Promise<AppendResult> {
-  const client = "connect" in gateway ? await gateway.connect() : gateway;
-  const owned = "connect" in gateway;
-  try {
-    await client.query("BEGIN");
-    await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
-    await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
+  {
     // 租户级写串行化（链尾读取与插入必须原子）
     await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [`event-chain:${scope.tenantId}`]);
 
@@ -112,11 +110,8 @@ export async function appendEvent(
     const payload = checked.data;
     const hash = eventHash(prevHash, payload);
 
-    const res = await client.query<{ seq: string }>(
-      `INSERT INTO biz_events (event_id, tenant_id, workspace_id, session_id, payload, prev_hash, hash, created_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
-       ON CONFLICT (tenant_id, event_id) DO NOTHING
-       RETURNING seq`,
+    const res = await client.query<{ seq: string | null; inserted: boolean }>(
+      `SELECT * FROM append_event_insert($1,$2,$3,$4,$5,$6,$7,$8)`,
       [
         eventId,
         scope.tenantId,
@@ -128,9 +123,8 @@ export async function appendEvent(
         payload.context.time,
       ],
     );
-    if (res.rowCount && res.rowCount > 0) {
-      await client.query("COMMIT");
-      return { eventId, seq: BigInt(res.rows[0]!.seq), hash, deduped: false, piiHits: 0 };
+    if (res.rows[0]?.inserted) {
+      return { eventId, seq: BigInt(res.rows[0]!.seq!), hash, deduped: false, piiHits: 0 };
     }
     // 幂等丢弃（重复事件不报错——L1.4）
     // #26 修复：去重时从 DB 取回已存在事件的真实 hash/seq 返回（同 #4 对
@@ -139,7 +133,6 @@ export async function appendEvent(
       `SELECT seq, hash FROM biz_events WHERE tenant_id = $1 AND event_id = $2`,
       [scope.tenantId, eventId],
     );
-    await client.query("COMMIT");
     return {
       eventId,
       seq: BigInt(existing.rows[0]?.seq ?? nextSeq),
@@ -147,11 +140,31 @@ export async function appendEvent(
       deduped: true,
       piiHits: 0,
     };
+  }
+}
+
+/**
+ * 追加一条五元事件（自带事务的便捷包装：connect → BEGIN → set_config → InTx → COMMIT）
+ * 纯事件写（无配套业务状态写）场景使用；有业务写配套时请用 appendEventInTx 并入同一事务。
+ */
+export async function appendEvent(
+  gateway: pg.Pool,
+  scope: { tenantId: string; workspaceId: string },
+  input: AppendInput,
+): Promise<AppendResult> {
+  const client = await gateway.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
+    await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
+    const r = await appendEventInTx(client, scope, input);
+    await client.query("COMMIT");
+    return r;
   } catch (err) {
     await client.query("ROLLBACK").catch(() => undefined);
     throw err;
   } finally {
-    if (owned) (client as pg.PoolClient).release();
+    client.release();
   }
 }
 
@@ -184,16 +197,13 @@ export async function appendEventIdempotent(
     const prevHash = tail.rows[0]?.hash ?? GENESIS_HASH;
     const payload = checked.data;
     const hash = eventHash(prevHash, payload);
-    const res = await client.query<{ seq: string }>(
-      `INSERT INTO biz_events (event_id, tenant_id, workspace_id, session_id, payload, prev_hash, hash, created_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
-       ON CONFLICT (tenant_id, event_id) DO NOTHING
-       RETURNING seq`,
+    const res = await client.query<{ seq: string | null; inserted: boolean }>(
+      `SELECT * FROM append_event_insert($1,$2,$3,$4,$5,$6,$7,$8)`,
       [payload.event_id, scope.tenantId, scope.workspaceId, sessionId ?? null,
         JSON.stringify(payload), prevHash, hash, payload.context.time],
     );
     await client.query("COMMIT");
-    const deduped = !(res.rowCount && res.rowCount > 0);
+    const deduped = !(res.rows[0]?.inserted ?? false);
     if (deduped) {
       // #4 修复：去重时返回 DB 中已存在事件的真实 hash/seq，避免调用方拿到错误 hash 断链
       const existing = await client.query<{ seq: string; hash: string }>(

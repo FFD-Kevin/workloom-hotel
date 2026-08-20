@@ -12,7 +12,7 @@
  */
 import type pg from "pg";
 import { safeParseBusinessEvent, type BusinessEvent } from "@workloom/shared";
-import { appendEvent, appendEventIdempotent, type AppendResult, type EventDraft } from "./events.js";
+import { appendEvent, appendEventIdempotent, appendEventInTx, type AppendResult, type EventDraft } from "./events.js";
 import { maskDeep } from "./pii.js";
 
 /** 写类动作前缀（判定器完整版在 B4 围栏引擎；此处为网关复查位的最小集合） */
@@ -141,6 +141,31 @@ export async function gatewayAppend(
   // 落库（append-only + 哈希链 + 幂等）
   const result = await appendEvent(
     gateway,
+    { tenantId: ctx.tenantId, workspaceId: ctx.workspaceId },
+    { event: masked.value, sessionId: ctx.sessionId },
+  );
+  return { ...result, piiHits: masked.hits };
+}
+
+/**
+ * 事务内经三段瀑布追加事件（D16 核心入口）
+ * 调用方必须已持有事务（BEGIN + set_config 双 GUC）——与业务状态写同一 COMMIT 原子提交（#1/A）。
+ * 纯事件写场景请用 gatewayAppend（自带事务包装）。
+ */
+export async function gatewayAppendOnClient(
+  client: pg.PoolClient,
+  ctx: GatewayContext,
+  draft: EventDraft,
+): Promise<AppendResult> {
+  // 段① 权限
+  checkPermission(ctx.actor, draft);
+  // 段② 脱敏
+  const masked = maskDeep(draft);
+  // 段③ 高风险授权
+  checkHighRiskAuthorization(ctx.actor, masked.value, ctx.approvalRef);
+  // 事务内落库（append_event_insert 特权函数；append-only + 哈希链 + 幂等）
+  const result = await appendEventInTx(
+    client,
     { tenantId: ctx.tenantId, workspaceId: ctx.workspaceId },
     { event: masked.value, sessionId: ctx.sessionId },
   );

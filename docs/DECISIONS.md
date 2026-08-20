@@ -65,3 +65,26 @@
 | 5 | **版本通道与升级提示**：industry 技能版本变更对已安装工作区可见（不自动升级），变更 diff 进审批 | 作者发新版后已装工作区无感知，静默滞留旧版（含已知缺陷版本） |
 
 **验证口径**：五项机制各自带回归测试进 `scripts/suite.ts`（H 域扩充）；全部落地后再评 industry 白名单开口（届时本 ADR 追加修订记录，不改旧文）。
+
+---
+
+## D16 · 双池事务一致性：SECURITY DEFINER 特权函数方案（2026-08-21，#1/A 立项）
+
+**背景（#1/A，三轮登记后立项）**：业务状态写（app 池）与事件写（gateway 池）是两个连接两个事务——前者 COMMIT 后、后者写入前崩溃，即「状态已变、审计无事件」，事件溯源断页。演示期可接受，生产合规不可接受。
+
+**方案评估**：
+
+| 方案 | 分析 | 结论 |
+|---|---|---|
+| A. 合并双角色单事务 | 真原子；但 app 角色获得 biz_events 直接 INSERT 能力——**铁律 1 写入收口作废**，任何 app 代码路径可绕过三段瀑布直写事件（触发器只防 UPDATE/DELETE/TRUNCATE，防不了直写） | ❌ 否决（安全降级换原子性，本末倒置） |
+| B. 经典 Outbox 表 + relay | 保留双角色；但事件变异步——26 处调用点依赖同步 eventId 与即时可见（审批卡 links、replay 步进、IM 事件流），读己之写语义全破 | ❌ 否决（语义代价过大） |
+| C. 2PC | pg 两阶段提交运维坑多（prepared 事务残留卡 VACUUM） | ❌ 否决 |
+| **D. SECURITY DEFINER 特权函数** | 单连接单事务内：业务写 + `SELECT append_event_insert(...)`（函数以 gateway 权限执行插入）→ 同 COMMIT。原子性 ✅；app 角色仍无法直接 INSERT（只能调用受控函数）✅；同步 eventId 语义不变 ✅；函数在 DB 层自校验上下文一致性与链式接龙（断链拒写）——防线比现状更强 | ✅ 采纳 |
+
+**实施要点**：
+- 0007 迁移：`append_event_insert()`（SECURITY DEFINER，OWNER=workloom_gateway，`SET search_path=pg_catalog, public` 防劫持；REVOKE PUBLIC，仅 GRANT EXECUTE 给 app/gateway）。
+- events.ts 抽 `appendEventInTx(client)`（不含 BEGIN/COMMIT，调用方持有事务）；gateway.ts 加 `gatewayAppendOnClient`（三段瀑布 + InTx 写入）。
+- 全部「业务写 + 事件写」调用点迁移为同一事务（按包分批 commit）；纯事件写路径维持 gateway 池不变。
+- 回归：崩溃注入用例（业务写后强制失败 → 事件与状态同滚回，无孤儿）。
+
+**纪律**：SECURITY DEFINER 函数三铁律——①`SET search_path` 锁死；②函数体只做上下文校验 + 链校验 + 插入，不含业务逻辑；③OWNER 权限最小化（gateway 仅 biz_events INSERT）。
