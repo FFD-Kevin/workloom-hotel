@@ -217,11 +217,16 @@ export const threads = pgTable(
     createdBy: text("created_by").notNull(),
     agentId: text("agent_id"),
     error: text("error"),
+    /** #13: 暂停来源（'night-shift' / 'manual' / null）；resumeNight 只恢复 night-shift 暂停的线程 */
+    pausedBy: text("paused_by"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
     closedAt: timestamp("closed_at", { withTimezone: true }),
   },
-  (t) => [index("idx_threads_ws_status").on(t.workspaceId, t.status)],
+  (t) => [
+    index("idx_threads_ws_status").on(t.workspaceId, t.status),
+    index("idx_threads_ws_paused_by").on(t.workspaceId, t.status, t.pausedBy),
+  ],
 );
 
 /** 审批队列（M5 原生消息类型；UNIQUE(event_id,channel) 幂等 L5.3） */
@@ -321,6 +326,8 @@ export const skillInstalls = pgTable(
     workspaceId: text("workspace_id").notNull().references(() => workspaces.id),
     installedBy: text("installed_by").notNull(),
     installedAt: timestamp("installed_at", { withTimezone: true }).notNull().defaultNow(),
+    /** #17: 安装时快照 fence_bindings；运行时读快照而非实时值，防止技能作者更新绑定绕过冲突检测 */
+    fenceBindingsSnapshot: jsonb("fence_bindings_snapshot").notNull().default([]),
   },
   (t) => [primaryKey({ columns: [t.skillId, t.workspaceId] })],
 );

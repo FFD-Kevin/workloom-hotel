@@ -22,19 +22,21 @@ let ownerPool: Pool | null = null;
  */
 export function getOwnerPool(url = process.env.DATABASE_URL): Pool {
   if (!url) throw new Error("缺少 DATABASE_URL（见 .env.example）");
-  if (!ownerPool) ownerPool = new Pool({ connectionString: url, max: 2 });
+  if (!ownerPool) ownerPool = new Pool({ connectionString: url, max: 5 });
   return ownerPool;
 }
 
 export function getAppPool(url = process.env.DATABASE_APP_URL): Pool {
   if (!url) throw new Error("缺少 DATABASE_APP_URL（见 .env.example）");
-  if (!appPool) appPool = new Pool({ connectionString: url, max: 10 });
+  // 架构 L 修复：扩容 app 池（10→30），避免并发请求耗尽连接
+  if (!appPool) appPool = new Pool({ connectionString: url, max: 30 });
   return appPool;
 }
 
 export function getGatewayPool(url = process.env.DATABASE_GATEWAY_URL): Pool {
   if (!url) throw new Error("缺少 DATABASE_GATEWAY_URL（见 .env.example）");
-  if (!gatewayPool) gatewayPool = new Pool({ connectionString: url, max: 4 });
+  // 架构 L 修复：扩容 gateway 池（4→20），避免 withObjectLock 并发耗尽池阻塞所有事件写入
+  if (!gatewayPool) gatewayPool = new Pool({ connectionString: url, max: 20 });
   return gatewayPool;
 }
 
