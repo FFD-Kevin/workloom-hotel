@@ -19,7 +19,7 @@ import {
 } from "@workloom/base/tenancy";
 import { gatewayAppend } from "@workloom/base/workdata";
 import { makeReadableId } from "@workloom/shared";
-import { capabilityProcedure, protectedProcedure, publicProcedure, router, scopeOf } from "./context.js";
+import { capabilityWriteProcedure, protectedProcedure, publicProcedure, router, scopeOf, writeProcedure } from "./context.js";
 import {
   ApprovalError,
   batchApprove,
@@ -204,7 +204,7 @@ const threadsRouter = router({
   }),
 
   /** Quest 派遣入口（B8：意图路由→含糊反问/建档；L3.1 并发上限；G8 留痕） */
-  dispatch: capabilityProcedure("quest")
+  dispatch: capabilityWriteProcedure("quest")
     .input(
       z.object({
         title: z.string().min(1).max(500), // F3.1：≤500 字
@@ -333,7 +333,7 @@ const threadsRouter = router({
     }),
 
   /** 运行/续跑线程（replay 断点续跑幂等，E3.3/H-5；手动触发演示驱动） */
-  run: capabilityProcedure("quest")
+  run: capabilityWriteProcedure("quest")
     .input(z.object({ threadId: z.string(), goal: z.string(), presetKey: z.string().default("pricing-agent") }))
     .mutation(async ({ ctx, input }) => {
       const scope = scopeOf(ctx.identity);
@@ -463,7 +463,7 @@ const approvalsRouter = router({
     }),
 
   /** 超时升级扫描（F5.7；高危项不自动放行 L5.4）——由触发器/巡检调度调用 */
-  sweep: protectedProcedure.mutation(async ({ ctx }) => {
+  sweep: writeProcedure.mutation(async ({ ctx }) => {
     return expireSweep(getAppPool(), getGatewayPool(), scopeOf(ctx.identity));
   }),
 });
@@ -475,11 +475,11 @@ const inspectionRouter = router({
     return inspectionStatusBar(getAppPool(), scopeOf(ctx.identity));
   }),
   /** 手动跑一轮巡检（生产由触发器引擎 cron 07:00 唤起，F9.1；演示手动触发） */
-  run: protectedProcedure.mutation(async ({ ctx }) => {
+  run: writeProcedure.mutation(async ({ ctx }) => {
     return runInspectionScan(getAppPool(), getGatewayPool(), scopeOf(ctx.identity));
   }),
   /** 一键派单（F9.3：以异常事件为输入唤起业务 Agent；幂等 L9.3） */
-  dispatch: protectedProcedure
+  dispatch: writeProcedure
     .input(z.object({ anomalyEventId: z.string(), presetKey: z.string().default("review-agent") }))
     .mutation(async ({ ctx, input }) => {
       try {
@@ -494,7 +494,7 @@ const inspectionRouter = router({
       }
     }),
   /** 处理结果回链（F9.3/E9.3：失败升级一级严重度 + 转需介入） */
-  resolve: protectedProcedure
+  resolve: writeProcedure
     .input(z.object({ anomalyEventId: z.string(), threadId: z.string(), ok: z.boolean(), note: z.string().max(500).optional() }))
     .mutation(async ({ ctx, input }) => {
       try {
@@ -771,7 +771,7 @@ const nightShiftRouter = router({
     }),
 
   /** 08:30 决策包投递（F4.4 三段投影；状态机 → package_generated，统计回写 night_runs.stats） */
-  deliver: protectedProcedure
+  deliver: writeProcedure
     .input(z.object({
       runId: z.string(),
       window: z.object({ from: z.string(), to: z.string() }),
@@ -846,7 +846,7 @@ const nightShiftRouter = router({
     }),
 
   /** 一键暂停（P9E2：二次确认在组件层；G5 端到端计时留痕；超时 P0 升级 E4.1） */
-  pause: protectedProcedure
+  pause: writeProcedure
     .input(z.object({ runId: z.string() }))
     .mutation(async ({ ctx, input }) => {
       try {
@@ -862,7 +862,7 @@ const nightShiftRouter = router({
     }),
 
   /** 恢复（E4.2：断点续跑由 runtime replay 保证） */
-  resume: protectedProcedure
+  resume: writeProcedure
     .input(z.object({ runId: z.string() }))
     .mutation(async ({ ctx, input }) => {
       await resumeNight(getAppPool(), getGatewayPool(), scopeOf(ctx.identity), input.runId, ctx.identity.memberNo);
@@ -870,7 +870,7 @@ const nightShiftRouter = router({
     }),
 
   /** 班组留言（P9E6：人给班组留言=五元事件留痕；触发的动作照常过围栏 L4.1/L4.4） */
-  note: protectedProcedure
+  note: writeProcedure
     .input(z.object({ text: z.string().min(1).max(500) }))
     .mutation(async ({ ctx, input }) => {
       const scope = scopeOf(ctx.identity);
@@ -947,7 +947,7 @@ const fenceRouter = router({
   }),
 
   /** NL 新增群规 dry-run（P5E3/P5E4：候选规则回放最近 10 条 F2.5；未确认不生效 L2.4） */
-  dryRun: protectedProcedure
+  dryRun: writeProcedure
     .input(z.object({
       ruleId: z.string().regex(/^R\d+$/),
       name: z.string().min(1).max(100),
@@ -971,7 +971,7 @@ const fenceRouter = router({
     }),
 
   /** 确认 dry-run（人看过报告才激活 L2.4）→ 规则进 pending_approval + 变更审批（F2.4，走 P4 决断流） */
-  confirmDryRun: protectedProcedure
+  confirmDryRun: writeProcedure
     .input(z.object({
       dryRunId: z.string(),
       rule: z.object({
@@ -1354,7 +1354,7 @@ const imRouter = router({
     channels: listChannels(),
   })),
   /** 入站 webhook（dsh-im 归一化后注入；幂等+PII 脱敏+openid 映射内聚在服务层） */
-  inbound: protectedProcedure
+  inbound: writeProcedure
     .input(
       z.object({
         channel: z.enum(["inapp", "dingtalk", "wecom", "feishu"]),
@@ -1374,7 +1374,7 @@ const imRouter = router({
       }
     }),
   /** 审批卡片出站（F5.5 IM 卡片多通道；仅 pending 可发，出站留痕 approval.card.sent） */
-  sendApprovalCard: protectedProcedure
+  sendApprovalCard: writeProcedure
     .input(
       z.object({
         approvalId: z.string().min(1),

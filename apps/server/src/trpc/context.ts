@@ -48,6 +48,33 @@ export const capabilityProcedure = (cap: CapabilityKey) =>
     return next();
   });
 
+/**
+ * #33 写操作角色守卫（E2.6/L5.1：readonly 一切写操作服务端 403，前端隐藏非置灰）
+ * 背景：此前权限校验靠各 router 自觉（skills/nightShift.start/bundles/decide 有，
+ * 但 threads.dispatch、inspection.*、nightShift.pause/resume/note/deliver、
+ * fence.dryRun/confirmDryRun、approvals.sweep、im.sendApprovalCard 等 12+ 写操作
+ * 裸奔——readonly 成员可直接调 API 派遣 Quest，前端隐藏被绕过）。
+ */
+export const writeProcedure = protectedProcedure.use(({ ctx, next }) => {
+  if (ctx.identity.role === "readonly") {
+    throw new TRPCError({ code: "FORBIDDEN", message: "readonly 角色无写操作权限（E2.6/L5.1，服务端 403）" });
+  }
+  return next();
+});
+
+/** 越版（plan 能力）+ 写操作（role）双守卫 */
+export const capabilityWriteProcedure = (cap: CapabilityKey) =>
+  writeProcedure.use(({ ctx, next }) => {
+    const plan = ctx.identity.plan;
+    if (!hasCapability(plan, cap)) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: `当前版本「${plan}」不含能力「${cap}」，请升级（F7.2）`,
+      });
+    }
+    return next();
+  });
+
 /** 身份 scope 快捷访问（过程内强制使用，杜绝跨工作区读取） */
 export function scopeOf(identity: Identity): { tenantId: string; workspaceId: string } {
   return { tenantId: identity.tenantId, workspaceId: identity.workspaceId };
