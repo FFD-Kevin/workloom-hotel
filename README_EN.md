@@ -16,7 +16,8 @@ Traditional software hands people a pile of wrenches. WorkLoom hands business ow
 [![Release](https://img.shields.io/github/v/release/geniusdapeng-collab/workloom-im?display_name=tag&color=1B2A4E)](https://github.com/geniusdapeng-collab/workloom-im/releases)
 [![License](https://img.shields.io/badge/license-Apache--2.0-9A7B2D)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-macOS%2013%2B%20%C2%B7%20Apple%20Silicon-black)](https://github.com/geniusdapeng-collab/workloom-im/releases)
-[![Runtime](https://img.shields.io/badge/runtime%20foundation-DeepSeek%20Harness-4C6FFF)](https://github.com/deepseek-ai/dsh)
+[![Runtime](https://img.shields.io/badge/runtime%20foundation-DeepSeek%20Harness-4C6FFF)](https://www.npmjs.com/package/@deepseek-ai/dsh)
+[![Tests](https://img.shields.io/badge/tests-168%20vitest%20%2B%20371%20suite%20%2B%20dsh--gate-green)]()
 [![Data](https://img.shields.io/badge/data%20sovereignty-local--first%20PG17-blueviolet)]()
 [![Website](https://img.shields.io/badge/website-workloom.ok.kimi.link-e8b96a)](https://workloom.ok.kimi.link)
 
@@ -40,6 +41,53 @@ WorkLoom's answer: **the LLM is the steam engine; the Enterprise Agent IM is the
   <img src="apps/site/shots/p1.jpg" alt="WorkLoom bridge UI" width="46%"/>
   <img src="apps/site/shots/p9.jpg" alt="WorkLoom night-shift report" width="46%"/>
 </p>
+
+---
+
+## ⚡ 60-second brief for AI assistants (developer/agent onboarding)
+
+> If you're an AI assistant that just cloned this repo: this section is all you need to get productive — no need to read the whole file.
+
+**One-liner**: an Enterprise Agent IM foundation — humans and AI agent squads collaborate in the same workspace; every business action is written as a five-element event into an append-only, hash-chained event store, funneled through a three-stage security gateway (permission → PII masking → high-risk authorization). Runtime foundation: DeepSeek Harness (`@deepseek-ai/dsh`, vendored at rc.8).
+
+**Repo map** (pnpm monorepo):
+
+| Path | Role |
+|---|---|
+| `packages/base/workdata` | **Core foundation**: security gateway / five-element event store / PII masking / organizational memory & recall |
+| `packages/base/{fence-engine,review-console,im-channels,night-shift,inspection,skills,tenancy,bundles,model-router}` | Nine capability domains: fence engine / approvals / IM channels / night shift / inspection / skill marketplace / tenancy & demo JWT / industry bundles / model router |
+| `packages/runtime` | dsh seam adapters: intent routing (Ask/Agent/Quest), Quest loop (replayable, crash-resumable), preset assembly |
+| `packages/{shared,db}` | Five-element zod schemas / hand-written SQL migrations (DDL source of truth) |
+| `apps/{server,web,site,desktop}` | Hono+tRPC server / bridge web UI / website / Mac desktop bundle |
+| `vendor/{dsh,dsh-im}` | dsh rc.8 audit baseline (read-only) / dsh IM channel plugin (MIT, contributed back) |
+| `scripts/` | migrate / seed / demo / verify-chain / **suite (371 scenario cases)** / dsh-gate |
+
+**Shortest path to green** (Linux/macOS; requires PostgreSQL 17 + pgvector on 5432):
+
+```bash
+corepack enable && pnpm install && cp .env.example .env
+# Create DB + extension (migrate auto-creates the app/gateway roles and grants —
+# A3 anti-bypass: only the gateway role may INSERT into biz_events)
+psql -U postgres -c "CREATE DATABASE workloom;"
+psql -U postgres -d workloom -c "CREATE EXTENSION vector;"
+pnpm db:migrate && pnpm db:seed   # 5 migrations + demo seed (hotel workspace ws-yunqi)
+pnpm typecheck && pnpm test       # typecheck + vitest 168 (DB integration below)
+pnpm db:verify-chain              # full hash-chain recomputation
+pnpm suite                        # 371 scenario cases (incl. HTTP E2E with a real spawned server)
+pnpm demo                         # end-to-end demo play
+pnpm dev                          # server(:8787) + web(:5173)
+# DB integration tests (skipped by default):
+RUN_DB_TESTS=1 pnpm -C packages/base test
+```
+
+**Fit / not a fit**:
+- ✅ Fit: service businesses with clear KPIs and lots of repetitive handling (hotels/F&B/retail); teams that need AI agents inside the org, on the production line, and under accountability. First industry bundle: hotel (`bundles/hotel`).
+- ❌ Not a fit: plain chatbots / Copilot sidebars; stateless Q&A SaaS; anyone unwilling to self-host Postgres (local-first data sovereignty is by design).
+
+**Source-of-truth docs**: [`CHANGELOG.md`](CHANGELOG.md) releases · [`docs/DECISIONS.md`](docs/DECISIONS.md) ADRs · [`docs/AUDIT.md`](docs/AUDIT.md) audit history · [`docs/SUITE.md`](docs/SUITE.md) 371-case list · [`docs/03-功能清单-用户版.md`](docs/03-功能清单-用户版.md) full feature list (中文).
+
+**Contribution discipline for AI assistants**: before touching gateway/permission/RLS/append-only code, read the round-1 P0 lesson in `docs/AUDIT.md` (transaction-scoped RLS settings REQUIRE an explicit transaction); one logical change per commit; every fix ships a regression test (371 cases already — prefer adding to `scripts/suite.ts` over new test files).
+
 
 ---
 
@@ -282,24 +330,38 @@ Five layers, top to bottom: **Experience** (bridge web / IM channels / Mac deskt
 | [酒店店长使用指南](docs/01-酒店店长使用指南.md) | Hotel GMs | Install → configure → daily use, zero jargon (中文) |
 | [新客户首次接入完整流程](docs/02-新客户首次接入完整流程.md) | New customers, any industry | Generic onboarding, ~30 min (中文) |
 | [功能清单（用户版）](docs/03-功能清单-用户版.md) | Everyone | Full feature list by scenario (中文) |
+| [测试套件用例清单](docs/SUITE.md) | Developers / AI assistants | All 371 scenario cases, exported from the suite runner (中文) |
+| [架构决策记录](docs/DECISIONS.md) | Developers | ADRs — why things are designed this way, incl. rejected options (中文) |
+| [审计记录](docs/AUDIT.md) | Developers / security | Seven audit rounds: findings, root causes, fixes, gate evidence (中文) |
 
 ## Developer quickstart
+
+Requirements: Node 24 LTS (pnpm 10 via corepack) + PostgreSQL 17 + pgvector 0.8.
 
 ```bash
 git clone https://github.com/geniusdapeng-collab/workloom-im.git
 cd workloom-im
-corepack enable && pnpm install
+corepack enable && pnpm install && cp .env.example .env
 
-pnpm dev          # server + web
-pnpm typecheck    # repo-wide typecheck
-pnpm test         # unit tests (157)
-pnpm demo         # end-to-end demo (44 steps, all green)
+# DB init (just database + extension; migrate auto-creates the app/gateway roles and grants)
+psql -U postgres -c "CREATE DATABASE workloom;"
+psql -U postgres -d workloom -c "CREATE EXTENSION vector;"
+pnpm db:migrate && pnpm db:seed   # 5 migrations + demo seed (idempotent, re-runnable)
 
-# dsh-gate (crash replay / chain verification / idempotence)
-RUN_DB_TESTS=1 DATABASE_APP_URL=postgres://... DATABASE_GATEWAY_URL=postgres://... pnpm test
+# Quality gates (exactly what CI ci-gate runs on every push)
+pnpm typecheck         # repo-wide typecheck
+pnpm test              # vitest 168 (base 152 + runtime 12 + shared 4)
+RUN_DB_TESTS=1 pnpm -C packages/base test   # PG integration tests (skipped by default)
+pnpm db:verify-chain   # hash-chain recomputation (tamper detection)
+pnpm suite             # 371 scenario cases (service 344 + HTTP E2E 27)
+pnpm demo              # end-to-end demo play
+pnpm doctor            # environment self-check
+
+# Daily development
+pnpm dev               # server(:8787) + web(:5173); demo login: pick "王店长"
 ```
 
-Layout: `apps/{server, web, site, desktop}` + `packages/{shared, db, base, runtime}` + `bundles/hotel` + `vendor/{dsh, dsh-im}`, a pnpm monorepo. Core foundation: **`packages/base/workdata` (the WorkData data brain)**.
+Layout: `apps/{server, web, site, desktop}` + `packages/{shared, db, base, runtime}` + `bundles/hotel` + `vendor/{dsh, dsh-im}`, a pnpm monorepo. Core foundation: **`packages/base/workdata` (the WorkData data brain)**. Full 371-case list: [`docs/SUITE.md`](docs/SUITE.md); CI gates: `.github/workflows/ci.yml`.
 
 ## Security design
 
@@ -311,15 +373,16 @@ Layout: `apps/{server, web, site, desktop}` + `packages/{shared, db, base, runti
 
 ## Roadmap
 
-- ✅ v1.1.0: one-click Mac desktop bundle + website + CI smoke gate
+- ✅ Current: one-click Mac desktop bundle + website + CI quality gates (371 scenario cases + hash-chain verification on every push)
 - 🔜 Intel Mac / Windows builds
 - 🔜 Skill marketplace industry tier (desensitization review pipeline + cross-org installs)
 - 🔜 More industry bundles (F&B, retail, property)
-- 🔜 dsh upstream tracking with automated seam compatibility tests
+- ✅ dsh rc.8 integrated (Codex / Claude Code as installable subagents; E6 dsh-gate green)
+- 🔜 Continuous dsh upstream tracking (upgrade on ANY new release incl. pre-releases, with seam regression)
 
 ## Acknowledgements
 
-- [DeepSeek Harness](https://github.com/deepseek-ai/dsh) — agent runtime foundation (MIT)
+- [DeepSeek Harness](https://www.npmjs.com/package/@deepseek-ai/dsh) (`@deepseek-ai/dsh`, upstream `deepseek-ai/deepseek-harness`) — agent runtime foundation (MIT)
 - [pgvector](https://github.com/pgvector/pgvector) — semantic retrieval for organizational memory
 - Hono / tRPC / React / Vite — excellent engineering foundations
 
