@@ -55,15 +55,16 @@ export function ruleBasedRoute(text: string): IntentResult {
 }
 
 export interface IntentClassifier {
-  classify(text: string): Promise<IntentResult>;
+  /** #27：signal 用于超时真正取消底层 LLM 调用（此前 AbortController 未接线，只赢了 race） */
+  classify(text: string, signal?: AbortSignal): Promise<IntentResult>;
 }
 
 /** LLM 分类器（经 model-router；输出受白名单约束） */
 export class LlmIntentClassifier implements IntentClassifier {
   constructor(
-    private readonly call: (prompt: string) => Promise<string>,
+    private readonly call: (prompt: string, signal?: AbortSignal) => Promise<string>,
   ) {}
-  async classify(text: string): Promise<IntentResult> {
+  async classify(text: string, signal?: AbortSignal): Promise<IntentResult> {
     // 提示词注入防护：用户输入用结构化分隔符隔离，声明分隔符内为数据非指令
     const prompt = `你是意图路由器。判断 <user_input> 标签内的用户指令属于哪种模式。
 
@@ -80,7 +81,7 @@ export class LlmIntentClassifier implements IntentClassifier {
 <user_input>
 ${text}
 </user_input>`;
-    const raw = await this.call(prompt);
+    const raw = await this.call(prompt, signal);
     try {
       const parsed = JSON.parse(raw.replace(/```json|```/g, "").trim());
       if (parsed.mode === "clarify") {
@@ -109,7 +110,8 @@ export async function routeIntent(
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     return await Promise.race([
-      classifier.classify(text),
+      // #27：signal 传入分类器——超时 abort 不仅赢下 race，也真正取消底层 LLM 请求
+      classifier.classify(text, controller.signal),
       new Promise<never>((_, reject) => {
         controller.signal.addEventListener("abort", () => reject(new Error("意图路由超时")));
       }),

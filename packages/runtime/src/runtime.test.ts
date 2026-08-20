@@ -34,6 +34,23 @@ describe("意图路由（F3.2）", () => {
     expect(r.via).toBe("timeout_fallback");
     expect(r.kind).toBe("routed");
   });
+
+  it("#27 超时 signal 接线到分类器（底层可真正取消，不再白烧 token）", async () => {
+    let received: AbortSignal | undefined;
+    const slow: IntentClassifier = {
+      classify: (_text, signal) => {
+        received = signal;
+        return new Promise((resolve, reject) => {
+          const t = setTimeout(() => resolve({ kind: "routed", mode: "ask", rationale: "x", via: "llm" }), 10_000);
+          signal?.addEventListener("abort", () => { clearTimeout(t); reject(new Error("aborted")); });
+        });
+      },
+    };
+    const r = await routeIntent("查一下昨天差评", slow, 50);
+    expect(r.via).toBe("timeout_fallback");
+    expect(received).toBeDefined(); // signal 已传入分类器
+    expect(received!.aborted).toBe(true); // 超时后确实触发 abort
+  });
 });
 
 describe("计划模板（演示剧本）", () => {
