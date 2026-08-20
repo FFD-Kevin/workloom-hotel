@@ -5,6 +5,16 @@
 
 ---
 
+## dsh 升级登记 · 2026-08-20（rc.6 → rc.8，commit 9b7a8d0）
+
+- **触发**：官方 rc.7（08-17）/ rc.8（08-19）发布；项目所有者当日新决策——**任何新版本（含 rc/beta/alpha）即升，不得等稳定版**（取代 VENDOR.md 原「稳定 1.x 才升级」旧口径，决策已同步回填 VENDOR.md 与审计技能）。
+- **升级内容**：vendor/dsh → rc.8（integrity 与 registry 逐字符一致 ✅）；dsh-gate pin rc.8 + lock 更新 + node-pty rebuild。
+- **rc.8 变更面**：CLI 聚合包 lib 字节与 rc.6 一致；subagent Codex / Claude Code 改为按需安装 Profile Bundle；SQLite 新存储格式不向下兼容（沙箱 DSH_HOME 新建，无历史会话，无迁移负担）。
+- **兼容性实测**：E6 dsh-gate 门禁全绿（workloom-fence 挂 tools/pre-execute 正常、事件桥 37 条验链通过、H-5 kill -9 重放零重复），plugins 薄壳适配器零改动。
+- **subagent 插件已装**（DSH_HOME web profile）：`@deepseek-ai/dsh-subagent-claude-code@0.1.0-rc.8` + `@deepseek-ai/dsh-subagent-codex@0.1.0-rc.8`，`--dump-config` 确认两插件加载正常；实际调度需目标机安装 codex / claude-code CLI 本体与凭据（沙箱不验证真实调用）。
+
+---
+
 ## 第 1 轮 · 2026-08-20（基线 a596e2a → c595348）
 
 ### 范围与方法
