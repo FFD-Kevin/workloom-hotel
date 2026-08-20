@@ -13,7 +13,7 @@
  */
 import type pg from "pg";
 import { gatewayAppend } from "../workdata/gateway.js";
-import { makeReadableId } from "@workloom/shared";
+
 
 interface Scope { tenantId: string; workspaceId: string }
 
@@ -227,7 +227,9 @@ export async function installSkill(
           `INSERT INTO approvals (approval_id, tenant_id, workspace_id, event_id, channel, status, snapshot)
            VALUES ($1,$2,$3,$4,'inapp','pending',$5)`,
           [
-            makeReadableId("AP", Date.now() % 100000), scope.tenantId, scope.workspaceId, evId,
+            // #28 修复：approval_id 由事件 ID 确定性派生（同 loop.ts 口径 apr-e-<n>），
+            // 原 makeReadableId("AP", Date.now()%100000) 同毫秒两审批即主键碰撞
+            `apr-${evId.toLowerCase()}`, scope.tenantId, scope.workspaceId, evId,
             JSON.stringify({ kind: "skill_fence_conflict", skillId: skill.id, missingBindings: missing }),
           ],
         );
