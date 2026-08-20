@@ -2,6 +2,18 @@
 
 本文件记录 WorkLoom IM 底座的变更历史。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/)。
 
+## [1.5.0] - 2026-08-21 · 行业落地向导批次
+
+### 新增
+
+- **`packages/base/wizard`（行业落地向导）**：首次装机的产品化引导状态机（welcome→industry_select→research→design→delivery→activated→handover，paused 断点续跑），编排"技能一（竞品调研）/技能二（一线调研）→技能三（落地方案）→技能四（交付配置）"Quest 序列；行业内容零预置（D18）；激活门禁与装配检查单同口径；能力裁剪激活（community 版向导全程可跑，超版本能力"已配置·待升级解锁"）；反哺上报四红线校验（D19）。17 条纯函数单测全绿。
+- **`skills/official/` 官方套件（D19）**：`industry-entry/` 落地四技能（industry-benchmark-research v1.2 / industry-frontline-research v1.2 / workloom-industry-landing-design v1.3 / delivery-config v1.0）+ 快速上线骨架模板；`product-feedback/feedback-insight` 反哺信息每日聚类分析技能。配套磁盘加载器 `packages/base/skills/official.ts`（frontmatter 解析 + 扫描入库，bundle=null）。
+- **文档**：`docs/04-行业落地向导-用户版.md`、`docs/methodology/01-行业落地三技能体系.md`（协作关系与调用契约）；`docs/DECISIONS.md` 新增 D17（官方套件顶层目录）/D18（向导行业无关+能力裁剪激活）/D19（反哺隐私红线）。
+
+### 纪律
+
+- 向导只编排任务与依赖，不含任何工期/时间点（排期禁令）；底座代码零行业词汇。
+
 ## [1.4.0] - 2026-08-21 · 双池事务一致性（D16，审计第 10 轮）
 
 ### 架构修复

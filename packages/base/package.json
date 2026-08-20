@@ -13,7 +13,8 @@
     "./model-router": "./model-router/index.ts",
     "./night-shift": "./night-shift/index.ts",
     "./review-console": "./review-console/index.ts",
-    "./tenancy": "./tenancy/index.ts"
+    "./tenancy": "./tenancy/index.ts",
+    "./wizard": "./wizard/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

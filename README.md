@@ -59,6 +59,8 @@ WorkLoom 的答案是：**大模型是蒸汽机，企业 Agent IM 是织机。**
 | `packages/runtime` | dsh seam 适配：意图路由（Ask/Agent/Quest 三模式）、Quest 循环（replay 断点续跑）、装配 |
 | `packages/{shared,db}` | 五元 zod schema / 手写 SQL 迁移（DDL 事实源） |
 | `apps/{server,web,site,desktop}` | Hono+tRPC 服务 / 舰桥前端 / 官网 / Mac 桌面包 |
+| `packages/base/wizard` | **行业落地向导**：首次装机的状态机与编排（技能一/二/三→交付配置），行业内容零预置（D18） |
+| `skills/official/` | 官方套件：`industry-entry/`（行业落地四技能+快速上线模板）、`product-feedback/`（反哺分析技能）（D17） |
 | `vendor/{dsh,dsh-im}` | dsh rc.8 审计基线（只读）/ dsh IM 通道插件（MIT 回馈） |
 | `scripts/` | migrate / seed / demo / verify-chain / **suite（371 场景用例）** / dsh-gate |
 
@@ -83,7 +85,7 @@ RUN_DB_TESTS=1 pnpm -C packages/base test
 - ✅ 适用：有明确经营指标 + 大量重复处置动作的服务业（酒店/餐饮/零售门店）；需要 AI Agent 进组织、上产线、可问责的团队。首个行业 Bundle 是酒店（`bundles/hotel`）。
 - ❌ 不适用：纯聊天机器人/Copilot 侧边栏诉求；无状态问答 SaaS；不愿自托管 PG 的场景（数据主权设计是 local-first）。
 
-**事实源文档索引**：[`CHANGELOG.md`](CHANGELOG.md) 版本变更 · [`docs/DECISIONS.md`](docs/DECISIONS.md) ADR · [`docs/AUDIT.md`](docs/AUDIT.md) 审计记录 · [`docs/SUITE.md`](docs/SUITE.md) 371 用例清单 · [`docs/03-功能清单-用户版.md`](docs/03-功能清单-用户版.md) 功能全表。安全铁律与编码规范见各包文件头注释与 `docs/AUDIT.md` 附录。
+**事实源文档索引**：[`CHANGELOG.md`](CHANGELOG.md) 版本变更 · [`docs/DECISIONS.md`](docs/DECISIONS.md) ADR · [`docs/AUDIT.md`](docs/AUDIT.md) 审计记录 · [`docs/SUITE.md`](docs/SUITE.md) 371 用例清单 · [`docs/03-功能清单-用户版.md`](docs/03-功能清单-用户版.md) 功能全表 · [`docs/04-行业落地向导-用户版.md`](docs/04-行业落地向导-用户版.md) 落地向导 · [`docs/methodology/01-行业落地三技能体系.md`](docs/methodology/01-行业落地三技能体系.md) 行业落地方法论。安全铁律与编码规范见各包文件头注释与 `docs/AUDIT.md` 附录。
 
 **给 AI 助手的修改纪律**：改网关/权限/RLS/append-only 相关代码前必读 `docs/AUDIT.md` 第 1 轮 P0 教训（RLS 事务级上下文必须配显式事务）；每个逻辑变更一个 commit；修复必须附回归测试（套件已有 371 条，往 `scripts/suite.ts` 加用例优先于新建测试文件）。
 
