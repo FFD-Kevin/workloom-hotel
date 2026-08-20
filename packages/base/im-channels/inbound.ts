@@ -86,7 +86,9 @@ export function validateInbound(msg: InboundMessage): void {
   if (msg.text.length > 2000) throw new ChannelError("INVALID_MESSAGE", "通道消息 ≤2000 字");
 }
 
-/** 通道消息去重查询（L1.4 同口径：按 (channel, channel_msg_id) 查事件库投影） */
+/** 通道消息去重查询（L1.4 同口径：按 (channel, channel_msg_id) 查事件库投影）
+ * @deprecated #29 起 ingestInbound 改走 im_inbound_dedupe 幂等键表（原子占位）；
+ * 本函数仅保留作排障/审计查询，禁止再用于写入前查重（TOCTOU）。 */
 export async function findInboundEvent(
   app: pg.Pool,
   scope: { tenantId: string; workspaceId: string },
@@ -110,6 +112,10 @@ export async function findInboundEvent(
 /**
  * 入站消息落五元事件（经网关三段瀑布；PII 脱敏段天然覆盖——通道文本里的手机号/身份证不落明文 F1.10）
  * 重复投递幂等：已落过即返回原 eventId，deduped=true
+ *
+ * #29 修复（TOCTOU）：原实现「findInboundEvent 查重 → gatewayAppend 写事件」非原子，
+ * 通道并发重推（重试风暴/多实例）可双写。改用 im_inbound_dedupe 幂等键表（0003 迁移）：
+ * 主键占位先行（冲突即重复投递）→ 写事件 → 回填 event_id；事件写入失败补偿删占位。
  */
 export async function ingestInbound(
   app: pg.Pool,
@@ -118,35 +124,71 @@ export async function ingestInbound(
   msg: InboundMessage,
 ): Promise<InboundResult> {
   validateInbound(msg);
-  const dup = await findInboundEvent(app, scope, msg.channel, msg.channelMsgId);
-  if (dup) return { eventId: dup, deduped: true, identity: "visitor" };
+
+  // ① 幂等键占位（原子）：冲突 = 重复投递，回查原 event_id 直接返回
+  const claimed = await scoped(app, scope, async (c) => {
+    const ins = await c.query(
+      `INSERT INTO im_inbound_dedupe (workspace_id, channel, channel_msg_id, event_id)
+       VALUES ($1,$2,$3,'') ON CONFLICT DO NOTHING`,
+      [scope.workspaceId, msg.channel, msg.channelMsgId],
+    );
+    if ((ins.rowCount ?? 0) > 0) return { claimed: true as const };
+    const exist = await c.query<{ event_id: string }>(
+      `SELECT event_id FROM im_inbound_dedupe WHERE workspace_id=$1 AND channel=$2 AND channel_msg_id=$3`,
+      [scope.workspaceId, msg.channel, msg.channelMsgId],
+    );
+    return { claimed: false as const, eventId: exist.rows[0]?.event_id ?? "" };
+  });
+  if (!claimed.claimed) {
+    // 占位已存在：event_id 已回填 → 重复投递；空串 = 历史运行窄窗口残留，按已处理口径返回
+    return { eventId: claimed.eventId || null, deduped: true, identity: "visitor" };
+  }
 
   const member = await resolveMemberByOpenid(app, scope, msg.channel, msg.senderOpenId);
   const whoId = member ? member.memberNo : `ext:${msg.channel}:${msg.senderOpenId}`;
-  const r = await gatewayAppend(gateway, {
-    ...scope,
-    actor: { id: whoId, type: "human" },
-  }, {
-    who: { type: "human", id: whoId },
-    context: {
-      tenant_id: scope.tenantId,
-      workspace_id: scope.workspaceId,
-      time: msg.sentAt ?? new Date().toISOString(),
-      channel: msg.channel,
-    },
-    object: { type: "im_conversation", id: `${msg.channel}:${msg.conversationId}` },
-    decision: {
-      action: "im.message",
-      after: {
-        text: msg.text,
-        kind: msg.kind,
-        channel_msg_id: msg.channelMsgId,
-        sender_open_id: msg.senderOpenId,
-        mapped_member: member?.memberNo ?? null,
+  let r: Awaited<ReturnType<typeof gatewayAppend>>;
+  try {
+    r = await gatewayAppend(gateway, {
+      ...scope,
+      actor: { id: whoId, type: "human" },
+    }, {
+      who: { type: "human", id: whoId },
+      context: {
+        tenant_id: scope.tenantId,
+        workspace_id: scope.workspaceId,
+        time: msg.sentAt ?? new Date().toISOString(),
+        channel: msg.channel,
       },
-    },
-    rule_impact: [],
-  });
+      object: { type: "im_conversation", id: `${msg.channel}:${msg.conversationId}` },
+      decision: {
+        action: "im.message",
+        after: {
+          text: msg.text,
+          kind: msg.kind,
+          channel_msg_id: msg.channelMsgId,
+          sender_open_id: msg.senderOpenId,
+          mapped_member: member?.memberNo ?? null,
+        },
+      },
+      rule_impact: [],
+    });
+  } catch (err) {
+    // 事件写入失败：补偿删除占位，允许通道重推再次尝试（不残留幽灵占位）
+    await scoped(app, scope, (c) =>
+      c.query(
+        `DELETE FROM im_inbound_dedupe WHERE workspace_id=$1 AND channel=$2 AND channel_msg_id=$3 AND event_id=''`,
+        [scope.workspaceId, msg.channel, msg.channelMsgId],
+      ),
+    ).catch(() => undefined);
+    throw err;
+  }
+  // ② 回填 event_id（重复投递时据此返回原编号）
+  await scoped(app, scope, (c) =>
+    c.query(
+      `UPDATE im_inbound_dedupe SET event_id=$4 WHERE workspace_id=$1 AND channel=$2 AND channel_msg_id=$3`,
+      [scope.workspaceId, msg.channel, msg.channelMsgId, r.eventId],
+    ),
+  );
   return {
     eventId: r.eventId,
     deduped: false,

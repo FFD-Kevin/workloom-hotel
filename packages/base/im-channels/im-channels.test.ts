@@ -183,8 +183,29 @@ d("PG 集成（G8/L1.4/L5.3/E5.2/L5.1）", async () => {
     }
   });
 
-  it("openid→成员映射（E5.2）：已映射 who=MEM-xxx；未映射=外部访客 ext: 口径", async () => {
-    await bindOpenid("MEM-001", openId);
+  it("#29 并发重推只落一条（im_inbound_dedupe 原子占位，TOCTOU 消除）", async () => {
+    const msg: InboundMessage = {
+      channel: "dingtalk", channelMsgId: `m-${sfx}-race`, conversationId: `conv-${sfx}`,
+      kind: "group", senderOpenId: `ou_race_${sfx}`, text: "并发重推同一条",
+    };
+    // 8 路并发投递同一 (channel, channel_msg_id)——模拟通道重试风暴
+    const rs = await Promise.all(
+      Array.from({ length: 8 }, () => ingestInbound(app, gateway, scope, msg)),
+    );
+    const fresh = rs.filter((r) => !r.deduped);
+    expect(fresh.length).toBe(1); // 只有一路真正落事件
+    expect(rs.filter((r) => r.deduped).length).toBe(7);
+    expect(await countInbound(`m-${sfx}-race`)).toBe(1); // 事件库仅一条
+    // deduped 方在赢家回填 event_id 前返回时拿到 null（窄窗口口径：已处理，编号暂不可得）；
+    // 回填后重推则拿到原编号（见上一用例 r2.eventId === r1.eventId）
+    const winnerId = fresh[0]!.eventId;
+    for (const r of rs) {
+      if (r.deduped) expect([null, winnerId]).toContain(r.eventId);
+      else expect(r.eventId).toBe(winnerId);
+    }
+  });
+
+  it("openid→成员映射（E5.2）：已映射 who=MEM-xxx；未映射=外部访客 ext: 口径", async () => {    await bindOpenid("MEM-001", openId);
     const hit = await resolveMemberByOpenid(app, scope, "dingtalk", openId);
     expect(hit?.memberNo).toBe("MEM-001");
     const miss = await resolveMemberByOpenid(app, scope, "dingtalk", `ou_nobody_${sfx}`);
