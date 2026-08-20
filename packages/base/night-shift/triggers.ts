@@ -5,7 +5,7 @@
  *  - 触发即写 trigger.fired 事件 + 返回派遣模板（由 runtime 装配执行）
  */
 import type pg from "pg";
-import { gatewayAppend } from "../workdata/gateway.js";
+import { gatewayAppend, gatewayAppendOnClient } from "../workdata/gateway.js";
 
 /* ---------- 最小 cron 求值（确定性；完整 cron 库进停车场） ---------- */
 
@@ -56,12 +56,24 @@ export async function upsertTrigger(
     // 事务级 RLS 上下文必须在显式事务内设置：autocommit 下 set_config(...,true) 语句结束即失效
     await client.query("BEGIN");
     await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
+    await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
     await client.query(
       `INSERT INTO triggers (id, workspace_id, name, kind, schedule, action, enabled, created_by)
        VALUES ($1,$2,$3,$4,$5,$6,true,$7)
        ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, schedule=EXCLUDED.schedule, action=EXCLUDED.action, updated_at=now()`,
       [input.id, scope.workspaceId, input.name, input.kind, input.schedule, JSON.stringify(input.action), input.createdBy],
     );
+    // D16（#1/A）：触发器行与事件同一事务同一 COMMIT
+    await gatewayAppendOnClient(client, {
+      tenantId: scope.tenantId, workspaceId: scope.workspaceId,
+      actor: { id: input.createdBy, type: "human" },
+    }, {
+      who: { type: "human", id: input.createdBy },
+      context: { tenant_id: scope.tenantId, workspace_id: scope.workspaceId, time: new Date().toISOString(), channel: "inapp" },
+      object: { type: "staff", id: input.id },
+      decision: { action: "trigger.upsert", after: { id: input.id, kind: input.kind, schedule: input.schedule } },
+      rule_impact: [],
+    } as never);
   } catch (err) {
     await client.query("ROLLBACK").catch(() => undefined);
     throw err;
@@ -69,16 +81,6 @@ export async function upsertTrigger(
     await client.query("COMMIT").catch(() => undefined);
     client.release();
   }
-  await gatewayAppend(gateway, {
-    tenantId: scope.tenantId, workspaceId: scope.workspaceId,
-    actor: { id: input.createdBy, type: "human" },
-  }, {
-    who: { type: "human", id: input.createdBy },
-    context: { tenant_id: scope.tenantId, workspace_id: scope.workspaceId, time: new Date().toISOString(), channel: "inapp" },
-    object: { type: "staff", id: input.id },
-    decision: { action: "trigger.upsert", after: { id: input.id, kind: input.kind, schedule: input.schedule } },
-    rule_impact: [],
-  } as never);
 }
 
 export async function setTriggerEnabled(
@@ -94,11 +96,23 @@ export async function setTriggerEnabled(
     // 事务级 RLS 上下文必须在显式事务内设置：autocommit 下 set_config(...,true) 语句结束即失效
     await client.query("BEGIN");
     await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
+    await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]); // D16：append_event_insert 双 GUC 校验要求
     const r = await client.query(
       `UPDATE triggers SET enabled=$3, updated_at=now() WHERE id=$1 AND workspace_id=$2`,
       [id, scope.workspaceId, enabled],
     );
     if (r.rowCount === 0) throw new Error(`触发器 ${id} 不存在`);
+    // D16（#1/A）：启停状态与事件同一事务同一 COMMIT
+    await gatewayAppendOnClient(client, {
+      tenantId: scope.tenantId, workspaceId: scope.workspaceId,
+      actor: { id: by, type: "human" },
+    }, {
+      who: { type: "human", id: by },
+      context: { tenant_id: scope.tenantId, workspace_id: scope.workspaceId, time: new Date().toISOString(), channel: "inapp" },
+      object: { type: "staff", id },
+      decision: { action: enabled ? "trigger.enable" : "trigger.disable", after: { id, enabled } },
+      rule_impact: [],
+    } as never);
   } catch (err) {
     await client.query("ROLLBACK").catch(() => undefined);
     throw err;
@@ -106,16 +120,6 @@ export async function setTriggerEnabled(
     await client.query("COMMIT").catch(() => undefined);
     client.release();
   }
-  await gatewayAppend(gateway, {
-    tenantId: scope.tenantId, workspaceId: scope.workspaceId,
-    actor: { id: by, type: "human" },
-  }, {
-    who: { type: "human", id: by },
-    context: { tenant_id: scope.tenantId, workspace_id: scope.workspaceId, time: new Date().toISOString(), channel: "inapp" },
-    object: { type: "staff", id },
-    decision: { action: enabled ? "trigger.enable" : "trigger.disable", after: { id, enabled } },
-    rule_impact: [],
-  } as never);
 }
 
 /* ---------- tick：cron 触发评估（由调度循环每分钟调用；演示期手动调用） ---------- */

@@ -9,7 +9,7 @@
  */
 import type pg from "pg";
 import { NIGHT_DEFAULTS, PAUSE_ALL_SLA_SECONDS, type NightStatus } from "@workloom/shared";
-import { gatewayAppend } from "../workdata/gateway.js";
+import { gatewayAppend, gatewayAppendOnClient } from "../workdata/gateway.js";
 
 /* ---------- 状态机（纯函数：迁移合法性唯一事实源） ---------- */
 
@@ -35,6 +35,27 @@ export function assertTransition(from: NightStatus, to: NightStatus): void {
 /* ---------- 运行记录读写 ---------- */
 
 interface Scope { tenantId: string; workspaceId: string }
+
+/** 事务内事件留痕（D16：调用方持有事务，与状态写同一 COMMIT） */
+async function emitInTx(
+  client: pg.PoolClient,
+  scope: Scope,
+  decision: Record<string, unknown>,
+  links?: string[],
+): Promise<string> {
+  const r = await gatewayAppendOnClient(client, {
+    tenantId: scope.tenantId, workspaceId: scope.workspaceId,
+    actor: { id: "night-shift", type: "system" },
+  }, {
+    who: { type: "system", id: "night-shift" },
+    context: { tenant_id: scope.tenantId, workspace_id: scope.workspaceId, time: new Date().toISOString(), channel: "夜班" },
+    object: { type: "store", id: scope.workspaceId },
+    decision: decision as never,
+    rule_impact: [],
+    links,
+  });
+  return r.eventId;
+}
 
 async function emit(
   gateway: pg.Pool,
@@ -118,6 +139,12 @@ export async function confirmNight(
        WHERE id=$1 AND workspace_id=$2`,
       [runId, scope.workspaceId, fenceVersion, candidateIds.length],
     );
+    // D16（#1/A）：状态推进与开启事件同一事务同一 COMMIT
+    await emitInTx(client, scope, {
+      action: "night.run.start",
+      after: { runId, by, candidates: candidateIds, fenceSnapshot: fenceVersion },
+      basis: ["人类命令开启夜班（F4.1 不经模型轮次）", `围栏快照 ${fenceVersion}（F2.6）`],
+    });
     await client.query("COMMIT");
   } catch (err) {
     await client.query("ROLLBACK").catch(() => undefined);
@@ -125,11 +152,6 @@ export async function confirmNight(
     throw err;
   }
   client.release();
-  await emit(gateway, scope, {
-    action: "night.run.start",
-    after: { runId, by, candidates: candidateIds, fenceSnapshot: fenceVersion },
-    basis: ["人类命令开启夜班（F4.1 不经模型轮次）", `围栏快照 ${fenceVersion}（F2.6）`],
-  });
 }
 
 /* ---------- 一键暂停（F4.3/G5/E4.1） ---------- */
@@ -151,9 +173,11 @@ export async function pauseAll(
   const t0 = Date.now();
   const client = await app.connect();
   let pausedThreads = 0;
+  let result!: PauseResult;
   try {
     await client.query("BEGIN");
     await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
+    await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]); // D16：append_event_insert 双 GUC 校验要求
     await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
     const cur = await client.query<{ status: NightStatus }>(
       `SELECT status FROM night_runs WHERE id=$1 AND workspace_id=$2 FOR UPDATE`, [runId, scope.workspaceId],
@@ -171,29 +195,30 @@ export async function pauseAll(
     if (from) {
       await client.query(`UPDATE night_runs SET status='paused' WHERE id=$1 AND workspace_id=$2`, [runId, scope.workspaceId]);
     }
+    const elapsedMs = Date.now() - t0;
+    const withinSla = elapsedMs <= PAUSE_ALL_SLA_SECONDS * 1000;
+    // D16（#1/A）：暂停状态、线程挂起、事件留痕同一事务同一 COMMIT
+    const eventId = await emitInTx(client, scope, {
+      action: "night.pause_all",
+      after: { runId, by: by.memberNo, channel: by.channel, pausedThreads, elapsedMs, slaSeconds: PAUSE_ALL_SLA_SECONDS },
+      basis: [`一键暂停（G5 端到端 ≤${PAUSE_ALL_SLA_SECONDS}s；本次 ${elapsedMs}ms）`],
+    });
+    // E4.1：超时升级 P0 告警（强制隔离机制位——会话隔离动作在 E1 联调卡落）
+    if (!withinSla) {
+      await emitInTx(client, scope, {
+        action: "night.pause_timeout",
+        after: { runId, elapsedMs, slaSeconds: PAUSE_ALL_SLA_SECONDS, level: "p0", action_required: "强制隔离会话" },
+      }, [eventId]);
+    }
     await client.query("COMMIT");
+    result = { runId, elapsedMs, withinSla, pausedThreads };
   } catch (err) {
     await client.query("ROLLBACK").catch(() => undefined);
     client.release();
     throw err;
   }
   client.release();
-
-  const elapsedMs = Date.now() - t0;
-  const withinSla = elapsedMs <= PAUSE_ALL_SLA_SECONDS * 1000;
-  const eventId = await emit(gateway, scope, {
-    action: "night.pause_all",
-    after: { runId, by: by.memberNo, channel: by.channel, pausedThreads, elapsedMs, slaSeconds: PAUSE_ALL_SLA_SECONDS },
-    basis: [`一键暂停（G5 端到端 ≤${PAUSE_ALL_SLA_SECONDS}s；本次 ${elapsedMs}ms）`],
-  });
-  // E4.1：超时升级 P0 告警（强制隔离机制位——会话隔离动作在 E1 联调卡落）
-  if (!withinSla) {
-    await emit(gateway, scope, {
-      action: "night.pause_timeout",
-      after: { runId, elapsedMs, slaSeconds: PAUSE_ALL_SLA_SECONDS, level: "p0", action_required: "强制隔离会话" },
-    }, [eventId]);
-  }
-  return { runId, elapsedMs, withinSla, pausedThreads };
+  return result;
 }
 
 /** 恢复（paused → running；断点续跑由 runtime runQuest 重入保证） */
@@ -208,6 +233,7 @@ export async function resumeNight(
   try {
     await client.query("BEGIN");
     await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
+    await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]); // D16：append_event_insert 双 GUC 校验要求
     const cur = await client.query<{ status: NightStatus }>(
       `SELECT status FROM night_runs WHERE id=$1 AND workspace_id=$2 FOR UPDATE`, [runId, scope.workspaceId],
     );
@@ -219,6 +245,8 @@ export async function resumeNight(
        WHERE workspace_id=$1 AND status='paused' AND paused_by='night-shift'`,
       [scope.workspaceId],
     );
+    // D16（#1/A）：恢复状态与事件同一事务同一 COMMIT
+    await emitInTx(client, scope, { action: "night.resume", after: { runId, by } });
     await client.query("COMMIT");
   } catch (err) {
     await client.query("ROLLBACK").catch(() => undefined);
@@ -226,7 +254,6 @@ export async function resumeNight(
   } finally {
     client.release();
   }
-  await emit(gateway, scope, { action: "night.resume", after: { runId, by } });
 }
 
 export { NIGHT_DEFAULTS };
