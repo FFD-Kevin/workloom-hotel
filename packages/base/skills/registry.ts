@@ -287,10 +287,18 @@ export async function uninstallSkill(
   if (!skill) throw new SkillError("NOT_FOUND", `技能 ${input.skillId} 不存在`);
   const client = await app.connect();
   let removed = 0;
+  // #40 修复：撤销清单读安装时快照（与 #17 口径一致）——此前读 skills.fence_bindings
+  // 实时值，若技能作者安装后改过绑定，卸载留痕的撤销清单与实际安装清单不符
+  let revokedBindings: string[] = [];
   try {
     // 事务级 RLS 上下文必须在显式事务内设置：autocommit 下 set_config(...,true) 语句结束即失效
     await client.query("BEGIN");
     await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
+    const snap = await client.query<{ fence_bindings_snapshot: string[] }>(
+      `SELECT fence_bindings_snapshot FROM skill_installs WHERE skill_id=$1 AND workspace_id=$2`,
+      [skill.id, scope.workspaceId],
+    );
+    revokedBindings = snap.rows[0]?.fence_bindings_snapshot ?? skill.fence_bindings ?? [];
     const r = await client.query(
       `DELETE FROM skill_installs WHERE skill_id=$1 AND workspace_id=$2`,
       [skill.id, scope.workspaceId],
@@ -304,7 +312,6 @@ export async function uninstallSkill(
     client.release();
   }
   if (removed === 0) throw new SkillError("NOT_INSTALLED", `技能「${skill.name}」未安装到本工作区`);
-  const revokedBindings = skill.fence_bindings ?? [];
   await emit(gateway, scope, input.by, {
     action: "skill.uninstalled",
     after: { skillId: skill.id, name: skill.name, revokedBindings },
