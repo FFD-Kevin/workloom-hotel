@@ -90,6 +90,8 @@ export async function searchEvents(
   const { sql, params } = buildWhere(filter, scope, opts.cursor);
   const client = await app.connect();
   try {
+    // 事务级 RLS 上下文必须在显式事务内设置：autocommit 下 set_config(...,true) 语句结束即失效
+    await client.query("BEGIN");
     await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
     await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
     const rows = await client.query<{ seq: string; payload: BusinessEvent }>(
@@ -100,6 +102,7 @@ export async function searchEvents(
       `SELECT count(*) AS c FROM biz_events WHERE ${sql.replace(/ AND seq < \$\d+::bigint/, "")}`,
       params.slice(0, opts.cursor ? -1 : undefined),
     );
+    await client.query("COMMIT");
     const hasMore = rows.rows.length > limit;
     const pageRows = hasMore ? rows.rows.slice(0, limit) : rows.rows;
     return {
@@ -107,6 +110,9 @@ export async function searchEvents(
       nextCursor: hasMore ? String(pageRows[pageRows.length - 1]!.seq) : null,
       total: Number(count.rows[0]?.c ?? 0),
     };
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw err;
   } finally {
     client.release();
   }

@@ -53,6 +53,8 @@ export async function upsertTrigger(
 ): Promise<void> {
   const client = await app.connect();
   try {
+    // 事务级 RLS 上下文必须在显式事务内设置：autocommit 下 set_config(...,true) 语句结束即失效
+    await client.query("BEGIN");
     await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
     await client.query(
       `INSERT INTO triggers (id, workspace_id, name, kind, schedule, action, enabled, created_by)
@@ -60,7 +62,11 @@ export async function upsertTrigger(
        ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, schedule=EXCLUDED.schedule, action=EXCLUDED.action, updated_at=now()`,
       [input.id, scope.workspaceId, input.name, input.kind, input.schedule, JSON.stringify(input.action), input.createdBy],
     );
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw err;
   } finally {
+    await client.query("COMMIT").catch(() => undefined);
     client.release();
   }
   await gatewayAppend(gateway, {
@@ -85,13 +91,19 @@ export async function setTriggerEnabled(
 ): Promise<void> {
   const client = await app.connect();
   try {
+    // 事务级 RLS 上下文必须在显式事务内设置：autocommit 下 set_config(...,true) 语句结束即失效
+    await client.query("BEGIN");
     await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
     const r = await client.query(
       `UPDATE triggers SET enabled=$3, updated_at=now() WHERE id=$1 AND workspace_id=$2`,
       [id, scope.workspaceId, enabled],
     );
     if (r.rowCount === 0) throw new Error(`触发器 ${id} 不存在`);
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw err;
   } finally {
+    await client.query("COMMIT").catch(() => undefined);
     client.release();
   }
   await gatewayAppend(gateway, {
@@ -124,13 +136,19 @@ export async function tickTriggers(
   const client = await app.connect();
   let rows: Array<{ id: string; name: string; schedule: string; action: Record<string, unknown> }>;
   try {
+    // 事务级 RLS 上下文必须在显式事务内设置：autocommit 下 set_config(...,true) 语句结束即失效
+    await client.query("BEGIN");
     await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
     const r = await client.query<typeof rows[number]>(
       `SELECT id, name, schedule, action FROM triggers WHERE workspace_id=$1 AND enabled=true AND kind='cron'`,
       [scope.workspaceId],
     );
     rows = r.rows;
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw err;
   } finally {
+    await client.query("COMMIT").catch(() => undefined);
     client.release();
   }
   const fired: FiredTrigger[] = [];

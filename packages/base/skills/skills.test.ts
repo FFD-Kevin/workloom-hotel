@@ -101,6 +101,24 @@ describe.runIf(RUN_DB)("技能/意识 PG 集成（M8 铁律）", async () => {
   const app = new pg.Pool({ connectionString: process.env.DATABASE_APP_URL });
   const gw = new pg.Pool({ connectionString: process.env.DATABASE_GATEWAY_URL });
   const scope = { tenantId: "tenant-demo", workspaceId: "ws-yunqi" };
+  /** app 池断言查询辅助：事务内设 RLS 上下文（与生产口径一致；池直查在 RLS 下恒 0 行） */
+  const qApp = async <T = unknown>(sql: string, params: unknown[] = []) => {
+    const c = await app.connect();
+    try {
+      await c.query("BEGIN");
+      await c.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
+      await c.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
+      const r = await c.query<T>(sql, params);
+      await c.query("COMMIT");
+      return r;
+    } catch (err) {
+      await c.query("ROLLBACK").catch(() => undefined);
+      throw err;
+    } finally {
+      c.release();
+    }
+  };
+
   const RUN = Date.now().toString(36); // 唯一后缀：同一数据库可重跑
 
   const appendTaskEvent = async (action: string, objType: string) => {
@@ -124,7 +142,7 @@ describe.runIf(RUN_DB)("技能/意识 PG 集成（M8 铁律）", async () => {
     const i1 = await installSkill(app, gw, scope, { skillId: revenue!.id, by: "MEM-001" });
     expect(i1).toMatchObject({ installed: true, deduped: false, bindings: ["R1", "R2"] });
 
-    const agent = await app.query<{ id: string }>(`SELECT id FROM agents WHERE workspace_id=$1 AND preset_key='pricing-agent'`, [scope.workspaceId]);
+    const agent = await qApp<{ id: string }>(`SELECT id FROM agents WHERE workspace_id=$1 AND preset_key='pricing-agent'`, [scope.workspaceId]);
     const bindings = await resolveAgentFenceBindings(app, scope, agent.rows[0]!.id);
     expect(bindings).toContain("R1");
     expect(bindings).toContain("R2");
@@ -142,7 +160,7 @@ describe.runIf(RUN_DB)("技能/意识 PG 集成（M8 铁律）", async () => {
   });
 
   it("L8.1 未脱敏 industry 技能拦截；E8.1 绑定冲突进审批不静默放行", async () => {
-    await app.query(
+    await qApp(
       `INSERT INTO skills (id, level, name, version, description, fence_bindings, body, desensitized)
        VALUES ('skill-ind-raw','industry','raw-asset','1.0.0','', '[]', '', false)
        ON CONFLICT (id) DO NOTHING`,
@@ -150,14 +168,14 @@ describe.runIf(RUN_DB)("技能/意识 PG 集成（M8 铁律）", async () => {
     await expect(installSkill(app, gw, scope, { skillId: "skill-ind-raw", by: "MEM-001" }))
       .rejects.toMatchObject({ code: "NOT_DESENSITIZED" });
 
-    await app.query(
+    await qApp(
       `INSERT INTO skills (id, level, bundle, name, version, description, fence_bindings, body, desensitized)
        VALUES ('skill-conflict','official','hotel','conflict-skill','1.0.0','', '["R1","R9"]', '', false)
        ON CONFLICT (id) DO UPDATE SET fence_bindings='["R1","R9"]'`,
     );
     await expect(installSkill(app, gw, scope, { skillId: "skill-conflict", by: "MEM-001" }))
       .rejects.toMatchObject({ code: "FENCE_CONFLICT" });
-    const ap = await app.query(
+    const ap = await qApp(
       `SELECT status, snapshot->>'kind' AS kind FROM approvals WHERE workspace_id=$1 AND snapshot->>'skillId'='skill-conflict'`,
       [scope.workspaceId],
     );
@@ -195,7 +213,7 @@ describe.runIf(RUN_DB)("技能/意识 PG 集成（M8 铁律）", async () => {
 
     const confirmed = await confirmSuggestion(app, gw, scope, { suggestion: hit!, target: "trigger", by: "MEM-001", schedule: "0 6 * * *" });
     expect(confirmed.artifactId).toMatch(/^trg-auto-/);
-    const trg = await app.query(`SELECT kind, schedule, enabled FROM triggers WHERE id=$1`, [confirmed.artifactId]);
+    const trg = await qApp(`SELECT kind, schedule, enabled FROM triggers WHERE id=$1`, [confirmed.artifactId]);
     expect(trg.rows[0]).toMatchObject({ kind: "cron", schedule: "0 6 * * *", enabled: true });
 
     // 已确认 → 不再重复建议（幂等）

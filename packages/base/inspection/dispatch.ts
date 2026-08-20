@@ -54,6 +54,8 @@ async function getAnomalyEvent(
 ): Promise<{ eventId: string; summary: string; severity: Severity; objectType: string; objectId?: string } | null> {
   const client = await app.connect();
   try {
+    // 事务级 RLS 上下文必须在显式事务内设置：autocommit 下 set_config(...,true) 语句结束即失效
+    await client.query("BEGIN");
     await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
     await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
     const r = await client.query<{
@@ -73,7 +75,11 @@ async function getAnomalyEvent(
       objectType: row.payload.object.type,
       objectId: row.payload.object.id,
     };
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw err;
   } finally {
+    await client.query("COMMIT").catch(() => undefined);
     client.release();
   }
 }
@@ -82,6 +88,8 @@ async function getAnomalyEvent(
 async function findExisting(app: pg.Pool, scope: Scope, anomalyEventId: string, action: string): Promise<string | null> {
   const client = await app.connect();
   try {
+    // 事务级 RLS 上下文必须在显式事务内设置：autocommit 下 set_config(...,true) 语句结束即失效
+    await client.query("BEGIN");
     await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
     const r = await client.query<{ event_id: string }>(
       `SELECT event_id FROM biz_events
@@ -90,7 +98,11 @@ async function findExisting(app: pg.Pool, scope: Scope, anomalyEventId: string, 
       [scope.workspaceId, action, JSON.stringify([anomalyEventId])],
     );
     return r.rows[0]?.event_id ?? null;
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw err;
   } finally {
+    await client.query("COMMIT").catch(() => undefined);
     client.release();
   }
 }
@@ -114,13 +126,19 @@ export async function dispatchFromAnomaly(
   if (existing) {
     const client = await app.connect();
     try {
+      // 事务级 RLS 上下文必须在显式事务内设置：autocommit 下 set_config(...,true) 语句结束即失效
+      await client.query("BEGIN");
       await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
       const ev = await client.query<{ payload: { decision: { after?: { threadId?: string } } } }>(
         `SELECT payload FROM biz_events WHERE workspace_id=$1 AND event_id=$2`,
         [scope.workspaceId, existing],
       );
       return { threadId: ev.rows[0]?.payload.decision.after?.threadId ?? "", eventId: existing, deduped: true };
+    } catch (err) {
+      await client.query("ROLLBACK").catch(() => undefined);
+      throw err;
     } finally {
+      await client.query("COMMIT").catch(() => undefined);
       client.release();
     }
   }
@@ -129,6 +147,8 @@ export async function dispatchFromAnomaly(
   const client = await app.connect();
   let threadId: string;
   try {
+    // 事务级 RLS 上下文必须在显式事务内设置：autocommit 下 set_config(...,true) 语句结束即失效
+    await client.query("BEGIN");
     await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
     await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
     const max = await client.query<{ n: number }>(
@@ -142,7 +162,11 @@ export async function dispatchFromAnomaly(
        VALUES ($1,$2,$3,$4,'quest','queued',$5,$6)`,
       [threadId, scope.tenantId, scope.workspaceId, title, input.by, input.presetKey],
     );
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw err;
   } finally {
+    await client.query("COMMIT").catch(() => undefined);
     client.release();
   }
 

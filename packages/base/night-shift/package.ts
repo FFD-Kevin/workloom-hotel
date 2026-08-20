@@ -96,6 +96,8 @@ export async function deliverPackage(
   const client = await app.connect();
   let events: BusinessEvent[];
   try {
+    // 事务级 RLS 上下文必须在显式事务内设置：autocommit 下 set_config(...,true) 语句结束即失效
+    await client.query("BEGIN");
     await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
     await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
     const r = await client.query<{ payload: BusinessEvent }>(
@@ -105,7 +107,11 @@ export async function deliverPackage(
       [scope.tenantId, scope.workspaceId, window.from, window.to],
     );
     events = r.rows.map((x) => x.payload);
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw err;
   } finally {
+    await client.query("COMMIT").catch(() => undefined);
     client.release();
   }
 
@@ -114,12 +120,18 @@ export async function deliverPackage(
   // 状态机 → package_generated + 统计回写（F4.4/F4.8）
   const c2 = await app.connect();
   try {
+    // 事务级 RLS 上下文必须在显式事务内设置：autocommit 下 set_config(...,true) 语句结束即失效
+    await c2.query("BEGIN");
     await c2.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
     await c2.query(
       `UPDATE night_runs SET status='package_generated', stats=$3 WHERE id=$1 AND workspace_id=$2 AND status IN ('running','paused','ready')`,
       [runId, scope.workspaceId, JSON.stringify(pkg.stats)],
     );
+  } catch (err) {
+    await c2.query("ROLLBACK").catch(() => undefined);
+    throw err;
   } finally {
+    await c2.query("COMMIT").catch(() => undefined);
     c2.release();
   }
 

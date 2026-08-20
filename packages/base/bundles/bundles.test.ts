@@ -62,6 +62,24 @@ describe.runIf(RUN_DB)("行业装配 PG 集成（F2.10 铁律）", async () => {
   const app = new pg.default.Pool({ connectionString: process.env.DATABASE_APP_URL });
   const gw = new pg.default.Pool({ connectionString: process.env.DATABASE_GATEWAY_URL });
   const scope = { tenantId: "tenant-demo", workspaceId: "ws-yunqi" };
+  /** app 池断言查询辅助：事务内设 RLS 上下文（与生产口径一致；池直查在 RLS 下恒 0 行） */
+  const qApp = async <T = unknown>(sql: string, params: unknown[] = []) => {
+    const c = await app.connect();
+    try {
+      await c.query("BEGIN");
+      await c.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
+      await c.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
+      const r = await c.query<T>(sql, params);
+      await c.query("COMMIT");
+      return r;
+    } catch (err) {
+      await c.query("ROLLBACK").catch(() => undefined);
+      throw err;
+    } finally {
+      c.release();
+    }
+  };
+
 
   it("hotel profile：六槽 6/6 已装配 + 起飞前检查单五项全绿（F2.10）", async () => {
     const p = await computeAssembly(app, scope, "hotel");
@@ -80,7 +98,7 @@ describe.runIf(RUN_DB)("行业装配 PG 集成（F2.10 铁律）", async () => {
   it("校验留痕：recheck 写 bundle.check_run 事件（P7E3 留痕可查）", async () => {
     const r = await recheckBundle(app, gw, scope, "hotel", "MEM-001");
     expect(r.eventId).toMatch(/^E-\d+$/);
-    const ev = await app.query(
+    const ev = await qApp(
       `SELECT payload->'decision'->>'action' AS action FROM biz_events WHERE event_id=$1`, [r.eventId]);
     expect(ev.rows[0]!.action).toBe("bundle.check_run");
   });
@@ -88,7 +106,7 @@ describe.runIf(RUN_DB)("行业装配 PG 集成（F2.10 铁律）", async () => {
   it("激活幂等：hotel 已激活仍可重激活并留痕 bundle.activate", async () => {
     const r = await activateBundle(app, gw, scope, "hotel", "MEM-001");
     expect(r.eventId).toMatch(/^E-\d+$/);
-    const ind = await app.query(`SELECT industry FROM workspaces WHERE id=$1`, [scope.workspaceId]);
+    const ind = await qApp(`SELECT industry FROM workspaces WHERE id=$1`, [scope.workspaceId]);
     expect(ind.rows[0]!.industry).toBe("hotel");
   });
 
@@ -101,23 +119,26 @@ describe.runIf(RUN_DB)("行业装配 PG 集成（F2.10 铁律）", async () => {
     bj.name = "@workloom/copycat"; bj.workloom.industry = "copycat"; bj.workloom.status = "draft";
     writeFileSync(bjPath, `${JSON.stringify(bj, null, 2)}\n`, "utf-8");
 
-    const p0 = await computeAssembly(app, scope, "copycat", root);
-    expect(p0.status).toBe("draft");
-    expect(p0.filledCount).toBe(6); // 五要素填满 → 六槽全装配
-    expect(p0.canActivate).toBe(true); // 检查单五项全绿
+    // finally 还原演示工作区（hotel）：断言中断也不残留 industry 污染（测试纪律：不跨用例污染）
+    try {
+      const p0 = await computeAssembly(app, scope, "copycat", root);
+      expect(p0.status).toBe("draft");
+      expect(p0.filledCount).toBe(6); // 五要素填满 → 六槽全装配
+      expect(p0.canActivate).toBe(true); // 检查单五项全绿
 
-    const act = await activateBundle(app, gw, scope, "copycat", "MEM-001", root);
-    expect(act.eventId).toMatch(/^E-\d+$/);
-    const ind = await app.query(`SELECT industry FROM workspaces WHERE id=$1`, [scope.workspaceId]);
-    expect(ind.rows[0]!.industry).toBe("copycat"); // profile 切换生效（§2.3）
+      const act = await activateBundle(app, gw, scope, "copycat", "MEM-001", root);
+      expect(act.eventId).toMatch(/^E-\d+$/);
+      const ind = await qApp(`SELECT industry FROM workspaces WHERE id=$1`, [scope.workspaceId]);
+      expect(ind.rows[0]!.industry).toBe("copycat"); // profile 切换生效（§2.3）
 
-    // 激活态复核：档案/阶段一致性校验同样全绿（isActive 分支）
-    const p1 = await computeAssembly(app, scope, "copycat", root);
-    expect(p1.status).toBe("active");
-    expect(p1.checks.every((c) => c.ok)).toBe(true);
-
-    await activateBundle(app, gw, scope, "hotel", "MEM-001"); // 还原演示工作区
-    const back = await app.query(`SELECT industry FROM workspaces WHERE id=$1`, [scope.workspaceId]);
+      // 激活态复核：档案/阶段一致性校验同样全绿（isActive 分支）
+      const p1 = await computeAssembly(app, scope, "copycat", root);
+      expect(p1.status).toBe("active");
+      expect(p1.checks.every((c) => c.ok)).toBe(true);
+    } finally {
+      await activateBundle(app, gw, scope, "hotel", "MEM-001"); // 还原演示工作区
+    }
+    const back = await qApp(`SELECT industry FROM workspaces WHERE id=$1`, [scope.workspaceId]);
     expect(back.rows[0]!.industry).toBe("hotel");
   }, 20000);
 

@@ -39,6 +39,8 @@ export async function assemblePreset(
 ): Promise<AssembledPreset> {
   const client = await app.connect();
   try {
+    // 事务级 RLS 上下文必须在显式事务内设置：autocommit 下 set_config(...,true) 语句结束即失效
+    await client.query("BEGIN");
     await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
     await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
 
@@ -80,7 +82,11 @@ export async function assemblePreset(
       prompt: agent.meta.prompt ?? null,
       essentials: { archive: prof.rows[0]!.archive, stage: ws.rows[0]!.stage!, goal: input.goal! },
     };
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw err;
   } finally {
+    await client.query("COMMIT").catch(() => undefined);
     client.release();
   }
 }

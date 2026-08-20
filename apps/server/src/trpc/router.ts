@@ -184,6 +184,8 @@ const threadsRouter = router({
     const app = getAppPool();
     const client = await app.connect();
     try {
+      // 事务级 RLS 上下文必须在显式事务内设置：autocommit 下 set_config(...,true) 语句结束即失效
+      await client.query("BEGIN");
       await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
       await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
       const r = await client.query(
@@ -192,7 +194,11 @@ const threadsRouter = router({
         [scope.workspaceId],
       );
       return r.rows;
+    } catch (err) {
+      await client.query("ROLLBACK").catch(() => undefined);
+      throw err;
     } finally {
+      await client.query("COMMIT").catch(() => undefined);
       client.release();
     }
   }),
@@ -215,22 +221,24 @@ const threadsRouter = router({
         return { kind: "clarify" as const, question: intent.clarifyQuestion, via: intent.via };
       }
       const app = getAppPool();
-      // L3.1：单工作区并发 ≤10，超出排队且可见
-      const conc = await app.query<{ c: string }>(
-        `SELECT count(*) AS c FROM threads WHERE workspace_id=$1 AND status IN ('queued','running')`,
-        [scope.workspaceId],
-      );
-      if (Number(conc.rows[0]?.c ?? 0) >= MAX_CONCURRENT_THREADS) {
-        throw new TRPCError({
-          code: "TOO_MANY_REQUESTS",
-          message: `并发上限 ${MAX_CONCURRENT_THREADS}/工作区（L3.1/G11），已超出请稍后或排队`,
-        });
-      }
       const client = await app.connect();
       let threadId: string;
       try {
+        // 事务级 RLS 上下文必须在显式事务内设置：autocommit 下 set_config(...,true) 语句结束即失效
+        await client.query("BEGIN");
         await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
         await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
+        // L3.1：单工作区并发 ≤10，超出排队且可见（须在 RLS 上下文内统计，否则恒 0 行 fail-open）
+        const conc = await client.query<{ c: string }>(
+          `SELECT count(*) AS c FROM threads WHERE workspace_id=$1 AND status IN ('queued','running')`,
+          [scope.workspaceId],
+        );
+        if (Number(conc.rows[0]?.c ?? 0) >= MAX_CONCURRENT_THREADS) {
+          throw new TRPCError({
+            code: "TOO_MANY_REQUESTS",
+            message: `并发上限 ${MAX_CONCURRENT_THREADS}/工作区（L3.1/G11），已超出请稍后或排队`,
+          });
+        }
         const max = await client.query<{ n: number }>(
           `SELECT COALESCE(MAX(NULLIF(regexp_replace(id, '\\D', '', 'g'), '')::int), 100) AS n
            FROM threads WHERE workspace_id=$1 AND id ~ '^T-\\d+$'`,
@@ -242,7 +250,11 @@ const threadsRouter = router({
            VALUES ($1,$2,$3,$4,$5,'queued',$6)`,
           [threadId, scope.tenantId, scope.workspaceId, input.title, intent.mode, ctx.identity.memberNo],
         );
+      } catch (err) {
+        await client.query("ROLLBACK").catch(() => undefined);
+        throw err;
       } finally {
+        await client.query("COMMIT").catch(() => undefined);
         client.release();
       }
       // 派遣事件留痕（G8：经网关三段瀑布；人类派遣为只读动作类，不触发写禁）
@@ -275,6 +287,8 @@ const threadsRouter = router({
       const app = getAppPool();
       const client = await app.connect();
       try {
+        // 事务级 RLS 上下文必须在显式事务内设置：autocommit 下 set_config(...,true) 语句结束即失效
+        await client.query("BEGIN");
         await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
         const r = await client.query(
           `SELECT id, title, mode, status, progress_done, progress_total, created_by, agent_id, created_at, updated_at
@@ -282,7 +296,11 @@ const threadsRouter = router({
           [scope.workspaceId, input.threadId],
         );
         return r.rows[0] ?? null;
+      } catch (err) {
+        await client.query("ROLLBACK").catch(() => undefined);
+        throw err;
       } finally {
+        await client.query("COMMIT").catch(() => undefined);
         client.release();
       }
     }),
@@ -295,6 +313,8 @@ const threadsRouter = router({
       const app = getAppPool();
       const client = await app.connect();
       try {
+        // 事务级 RLS 上下文必须在显式事务内设置：autocommit 下 set_config(...,true) 语句结束即失效
+        await client.query("BEGIN");
         await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
         await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
         const r = await client.query<{ payload: unknown }>(
@@ -303,7 +323,11 @@ const threadsRouter = router({
           [scope.workspaceId, input.threadId, input.limit],
         );
         return r.rows.map((x) => x.payload);
+      } catch (err) {
+        await client.query("ROLLBACK").catch(() => undefined);
+        throw err;
       } finally {
+        await client.query("COMMIT").catch(() => undefined);
         client.release();
       }
     }),
@@ -332,6 +356,8 @@ async function activateFenceRuleAfterApproval(
   const app = getAppPool();
   const client = await app.connect();
   try {
+    // 事务级 RLS 上下文必须在显式事务内设置：autocommit 下 set_config(...,true) 语句结束即失效
+    await client.query("BEGIN");
     await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
     await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
     const r = await client.query<{ payload: unknown }>(
@@ -359,7 +385,11 @@ async function activateFenceRuleAfterApproval(
     if (status !== "draft" && status !== "pending_approval") return null; // 幂等跳过
     await activateRuleVersion(app, scope, { ...params, approvalEventId });
     return params.ruleRowId;
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw err;
   } finally {
+    await client.query("COMMIT").catch(() => undefined);
     client.release();
   }
 }
@@ -501,6 +531,8 @@ const skillsRouter = router({
     const scope = scopeOf(ctx.identity);
     const client = await getAppPool().connect();
     try {
+      // 事务级 RLS 上下文必须在显式事务内设置：autocommit 下 set_config(...,true) 语句结束即失效
+      await client.query("BEGIN");
       await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
       await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
       const skillIds = (await client.query<{ id: string }>(`SELECT id FROM skills ORDER BY id`)).rows.map((r) => r.id);
@@ -555,7 +587,11 @@ const skillsRouter = router({
         };
       }
       return out;
+    } catch (err) {
+      await client.query("ROLLBACK").catch(() => undefined);
+      throw err;
     } finally {
+      await client.query("COMMIT").catch(() => undefined);
       client.release();
     }
   }),
@@ -657,6 +693,8 @@ const workspaceRouter = router({
     const app = getAppPool();
     const client = await app.connect();
     try {
+      // 事务级 RLS 上下文必须在显式事务内设置：autocommit 下 set_config(...,true) 语句结束即失效
+      await client.query("BEGIN");
       await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
       await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
       const p = await client.query<{ archive: Record<string, unknown> }>(
@@ -666,7 +704,11 @@ const workspaceRouter = router({
         `SELECT stage, name FROM workspaces WHERE id=$1`, [scope.workspaceId],
       );
       return { archive: p.rows[0]?.archive ?? {}, stage: w.rows[0]?.stage ?? null, name: w.rows[0]?.name ?? "" };
+    } catch (err) {
+      await client.query("ROLLBACK").catch(() => undefined);
+      throw err;
     } finally {
+      await client.query("COMMIT").catch(() => undefined);
       client.release();
     }
   }),
@@ -676,6 +718,8 @@ const workspaceRouter = router({
     const app = getAppPool();
     const client = await app.connect();
     try {
+      // 事务级 RLS 上下文必须在显式事务内设置：autocommit 下 set_config(...,true) 语句结束即失效
+      await client.query("BEGIN");
       await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
       const r = await client.query<{
         id: string; preset_key: string; name: string; version: string; kind: string;
@@ -686,7 +730,11 @@ const workspaceRouter = router({
         [scope.workspaceId],
       );
       return r.rows;
+    } catch (err) {
+      await client.query("ROLLBACK").catch(() => undefined);
+      throw err;
     } finally {
+      await client.query("COMMIT").catch(() => undefined);
       client.release();
     }
   }),
@@ -738,6 +786,8 @@ const nightShiftRouter = router({
     const app = getAppPool();
     const client = await app.connect();
     try {
+      // 事务级 RLS 上下文必须在显式事务内设置：autocommit 下 set_config(...,true) 语句结束即失效
+      await client.query("BEGIN");
       await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
       const r = await client.query<{
         id: string; status: string; run_date: string; fence_snapshot_version: string | null;
@@ -758,7 +808,11 @@ const nightShiftRouter = router({
           startedAt: row.started_at?.toISOString() ?? null, stats: row.stats,
         },
       };
+    } catch (err) {
+      await client.query("ROLLBACK").catch(() => undefined);
+      throw err;
     } finally {
+      await client.query("COMMIT").catch(() => undefined);
       client.release();
     }
   }),
@@ -771,6 +825,8 @@ const nightShiftRouter = router({
       const app = getAppPool();
       const client = await app.connect();
       try {
+        // 事务级 RLS 上下文必须在显式事务内设置：autocommit 下 set_config(...,true) 语句结束即失效
+        await client.query("BEGIN");
         await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
         await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
         const r = await client.query<{ payload: unknown }>(
@@ -780,7 +836,11 @@ const nightShiftRouter = router({
           [scope.workspaceId, input?.limit ?? 80],
         );
         return r.rows.map((x) => x.payload).reverse(); // ts 升序
+      } catch (err) {
+        await client.query("ROLLBACK").catch(() => undefined);
+        throw err;
       } finally {
+        await client.query("COMMIT").catch(() => undefined);
         client.release();
       }
     }),
@@ -835,6 +895,8 @@ const fenceRouter = router({
     const app = getAppPool();
     const client = await app.connect();
     try {
+      // 事务级 RLS 上下文必须在显式事务内设置：autocommit 下 set_config(...,true) 语句结束即失效
+      await client.query("BEGIN");
       await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
       await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
       const r = await client.query(
@@ -850,7 +912,11 @@ const fenceRouter = router({
         [scope.workspaceId],
       );
       return r.rows;
+    } catch (err) {
+      await client.query("ROLLBACK").catch(() => undefined);
+      throw err;
     } finally {
+      await client.query("COMMIT").catch(() => undefined);
       client.release();
     }
   }),
@@ -861,6 +927,8 @@ const fenceRouter = router({
     const app = getAppPool();
     const client = await app.connect();
     try {
+      // 事务级 RLS 上下文必须在显式事务内设置：autocommit 下 set_config(...,true) 语句结束即失效
+      await client.query("BEGIN");
       await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
       const r = await client.query(
         `SELECT version, status, count(*) AS rules, min(created_at) AS created_at
@@ -869,7 +937,11 @@ const fenceRouter = router({
         [scope.workspaceId],
       );
       return r.rows;
+    } catch (err) {
+      await client.query("ROLLBACK").catch(() => undefined);
+      throw err;
     } finally {
+      await client.query("COMMIT").catch(() => undefined);
       client.release();
     }
   }),
@@ -914,6 +986,8 @@ const fenceRouter = router({
       const app = getAppPool();
       const client = await app.connect();
       try {
+        // 事务级 RLS 上下文必须在显式事务内设置：autocommit 下 set_config(...,true) 语句结束即失效
+        await client.query("BEGIN");
         await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
         const rowId = fenceRuleRowId(input.rule.ruleId, scope.workspaceId);
         await client.query(
@@ -924,7 +998,11 @@ const fenceRouter = router({
            JSON.stringify({ object_types: input.rule.objectTypes, actions: input.rule.actions, when: input.rule.when }),
            JSON.stringify({ result: input.rule.level }), ctx.identity.memberNo],
         );
+      } catch (err) {
+        await client.query("ROLLBACK").catch(() => undefined);
+        throw err;
       } finally {
+        await client.query("COMMIT").catch(() => undefined);
         client.release();
       }
       const ev = await gatewayAppend(getGatewayPool(), {
@@ -940,6 +1018,8 @@ const fenceRouter = router({
       // 幂等：UNIQUE(event_id, channel) 冲突丢弃（L5.3 同口径）
       const client2 = await app.connect();
       try {
+        // 事务级 RLS 上下文必须在显式事务内设置：autocommit 下 set_config(...,true) 语句结束即失效
+        await client2.query("BEGIN");
         await client2.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
         await client2.query(
           `INSERT INTO approvals (approval_id, tenant_id, workspace_id, event_id, channel, status, snapshot)
@@ -948,7 +1028,11 @@ const fenceRouter = router({
           [`apr-${ev.eventId.toLowerCase()}`, scope.tenantId, scope.workspaceId, ev.eventId,
            JSON.stringify({ after: input.rule, high_risk: true })],
         );
+      } catch (err) {
+        await client2.query("ROLLBACK").catch(() => undefined);
+        throw err;
       } finally {
+        await client2.query("COMMIT").catch(() => undefined);
         client2.release();
       }
       return { proposed: true, eventId: ev.eventId };
@@ -985,6 +1069,8 @@ const rosterRouter = router({
     const app = getAppPool();
     const client = await app.connect();
     try {
+      // 事务级 RLS 上下文必须在显式事务内设置：autocommit 下 set_config(...,true) 语句结束即失效
+      await client.query("BEGIN");
       await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
       await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
 
@@ -1084,7 +1170,11 @@ const rosterRouter = router({
           };
         }),
       };
+    } catch (err) {
+      await client.query("ROLLBACK").catch(() => undefined);
+      throw err;
     } finally {
+      await client.query("COMMIT").catch(() => undefined);
       client.release();
     }
   }),
@@ -1097,6 +1187,8 @@ const rosterRouter = router({
       const app = getAppPool();
       const client = await app.connect();
       try {
+        // 事务级 RLS 上下文必须在显式事务内设置：autocommit 下 set_config(...,true) 语句结束即失效
+        await client.query("BEGIN");
         await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
         await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
 
@@ -1219,7 +1311,11 @@ const rosterRouter = router({
             receiptSynced: e.payload.receipt?.synced === true, // 无回执标未核实（E3.7）
           })),
         };
+      } catch (err) {
+        await client.query("ROLLBACK").catch(() => undefined);
+        throw err;
       } finally {
+        await client.query("COMMIT").catch(() => undefined);
         client.release();
       }
     }),
@@ -1290,6 +1386,8 @@ const imRouter = router({
       const scope = scopeOf(ctx.identity);
       const client = await getAppPool().connect();
       try {
+        // 事务级 RLS 上下文必须在显式事务内设置：autocommit 下 set_config(...,true) 语句结束即失效
+        await client.query("BEGIN");
         await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
         await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
         const r = await client.query<{
@@ -1318,8 +1416,10 @@ const imRouter = router({
         );
         return { ...sent, card };
       } catch (err) {
+        await client.query("ROLLBACK").catch(() => undefined);
         imRethrow(err);
       } finally {
+        await client.query("COMMIT").catch(() => undefined);
         client.release();
       }
     }),
@@ -1386,7 +1486,23 @@ const bundlesRouter = router({
     .query(async ({ ctx, input }) => {
       const app = getAppPool();
       const scope = scopeOf(ctx.identity);
-      const ws = await app.query<{ industry: string }>(`SELECT industry FROM workspaces WHERE id=$1`, [scope.workspaceId]);
+      // workspaces 有 RLS：必须在事务内设上下文再查（否则恒 0 行回退默认 industry）
+      const ws = await (async () => {
+        const c = await app.connect();
+        try {
+          await c.query("BEGIN");
+          await c.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
+          await c.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
+          const r = await c.query<{ industry: string }>(`SELECT industry FROM workspaces WHERE id=$1`, [scope.workspaceId]);
+          await c.query("COMMIT");
+          return r;
+        } catch (err) {
+          await c.query("ROLLBACK").catch(() => undefined);
+          throw err;
+        } finally {
+          c.release();
+        }
+      })();
       const activeSlug = ws.rows[0]?.industry ?? "hotel";
       const slugs = listProfileSlugs();
       const profiles = [] as Awaited<ReturnType<typeof computeAssembly>>[];

@@ -93,9 +93,16 @@ async function scoped<T>(
 ): Promise<T> {
   const client = await pool.connect();
   try {
+    // 事务级 RLS 上下文必须在显式事务内设置：autocommit 下 set_config(...,true) 语句结束即失效
+    await client.query("BEGIN");
     await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
     await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
-    return await fn(client);
+    const result = await fn(client);
+    await client.query("COMMIT");
+    return result;
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw err;
   } finally {
     client.release();
   }
@@ -143,8 +150,9 @@ export async function decide(
   assertApproverRole(actor.role);
   validateGesture(gesture);
 
-  return scoped(app, scope, async (c) => {
-    await c.query("BEGIN");
+  // scoped 已包裹显式事务（BEGIN→set_config→COMMIT/ROLLBACK），本函数内不再自行开关事务；
+  // 过期分支需要「标 expired 落库 + 抛 EXPIRED」——先提交事务再抛，避免 catch 回滚掉过期标记
+  const txResult = await scoped(app, scope, async (c) => {
     const cur = await c.query<ApprovalRow>(
       `SELECT * FROM approvals WHERE approval_id=$1 AND workspace_id=$2 FOR UPDATE`,
       [approvalId, scope.workspaceId],
@@ -154,8 +162,7 @@ export async function decide(
 
     // L5.3：非 pending 一律视为重复回调，只处理首次
     if (row.status !== "pending") {
-      await c.query("ROLLBACK");
-      return { approvalId, status: row.status, deduped: true };
+      return { kind: "deduped" as const, row };
     }
 
     // F5.7/E5.3：快照过期检测（高危项不存在超时自动放行，L5.4）
@@ -165,8 +172,7 @@ export async function decide(
         `UPDATE approvals SET status='expired' WHERE approval_id=$1`,
         [approvalId],
       );
-      await c.query("COMMIT");
-      throw new ApprovalError("EXPIRED", `快照已过期（${expiresAt.toISOString()}），审批标记 expired（E5.3/F5.7）`);
+      return { kind: "expired" as const, row, expiresAt };
     }
 
     const status: ApprovalStatus =
@@ -188,8 +194,18 @@ export async function decide(
         actor.memberNo,
       ],
     );
-    await c.query("COMMIT");
+    return { kind: "decided" as const, row, status };
+  });
 
+  if (txResult.kind === "deduped") {
+    return { approvalId, status: txResult.row.status, deduped: true };
+  }
+  if (txResult.kind === "expired") {
+    throw new ApprovalError("EXPIRED", `快照已过期（${txResult.expiresAt.toISOString()}），审批标记 expired（E5.3/F5.7）`);
+  }
+  const { row, status } = txResult;
+
+  {
     // F5.5 手势回写：事件库（经安全网关；人类手势动作）
     const gres = await gatewayAppend(gateway, {
       ...scope,
@@ -223,14 +239,16 @@ export async function decide(
         sourceEvents: [gres.eventId],
         confidence: 0.6,
       }, embedder);
-      await c.query(
-        `INSERT INTO memory_usage (memory_id, event_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`,
-        [`mem-reject-${gesture.reasonEnum}`, gres.eventId],
+      await scoped(app, scope, (c) =>
+        c.query(
+          `INSERT INTO memory_usage (memory_id, event_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`,
+          [`mem-reject-${gesture.reasonEnum}`, gres.eventId],
+        ),
       );
     }
 
     return { approvalId, status, deduped: false, gestureEventId: gres.eventId };
-  });
+  }
 }
 
 /* ================= 批量采纳（F5.2；仅非高危，P4 原型口径） ================= */

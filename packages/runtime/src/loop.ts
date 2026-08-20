@@ -66,6 +66,8 @@ export function planQuest(goal: string, preset: AssembledPreset): QuestStep[] {
 async function loadActiveRules(app: pg.Pool, scope: { tenantId: string; workspaceId: string }): Promise<{ rules: RuntimeRule[]; defaultLevel: "auto" | "review" | "block" }> {
   const client = await app.connect();
   try {
+    // 事务级 RLS 上下文必须在显式事务内设置：autocommit 下 set_config(...,true) 语句结束即失效
+    await client.query("BEGIN");
     await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
     const r = await client.query<{
       rule_id: string; version: string; name: string; level: "auto" | "review" | "block";
@@ -83,7 +85,11 @@ async function loadActiveRules(app: pg.Pool, scope: { tenantId: string; workspac
       })),
       defaultLevel: "review", // hotel-baseline default_level
     };
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw err;
   } finally {
+    await client.query("COMMIT").catch(() => undefined);
     client.release();
   }
 }
@@ -106,6 +112,8 @@ export interface QuestRunResult {
 async function existingStepIds(gateway: pg.Pool, scope: { tenantId: string; workspaceId: string }, threadId: string): Promise<Set<string>> {
   const client = await gateway.connect();
   try {
+    // 事务级 RLS 上下文必须在显式事务内设置：autocommit 下 set_config(...,true) 语句结束即失效
+    await client.query("BEGIN");
     await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
     await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
     const r = await client.query<{ payload: BusinessEvent }>(
@@ -124,7 +132,11 @@ async function existingStepIds(gateway: pg.Pool, scope: { tenantId: string; work
       if (typeof sid === "string" && !isBlocked && !isReview) set.add(sid);
     }
     return set;
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw err;
   } finally {
+    await client.query("COMMIT").catch(() => undefined);
     client.release();
   }
 }
@@ -132,6 +144,8 @@ async function existingStepIds(gateway: pg.Pool, scope: { tenantId: string; work
 async function updateThread(app: pg.Pool, scope: { tenantId: string; workspaceId: string }, threadId: string, patch: Record<string, unknown>): Promise<void> {
   const client = await app.connect();
   try {
+    // 事务级 RLS 上下文必须在显式事务内设置：autocommit 下 set_config(...,true) 语句结束即失效
+    await client.query("BEGIN");
     await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
     const sets: string[] = ["updated_at = now()"];
     const params: unknown[] = [threadId, scope.workspaceId];
@@ -140,7 +154,11 @@ async function updateThread(app: pg.Pool, scope: { tenantId: string; workspaceId
       sets.push(`${k} = $${params.length}`);
     }
     await client.query(`UPDATE threads SET ${sets.join(", ")} WHERE id=$1 AND workspace_id=$2`, params);
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw err;
   } finally {
+    await client.query("COMMIT").catch(() => undefined);
     client.release();
   }
 }
@@ -212,6 +230,8 @@ export async function runQuest(
       const appClient = await app.connect();
       let approvalId = `apr-${ev.eventId.toLowerCase()}`;
       try {
+        // 事务级 RLS 上下文必须在显式事务内设置：autocommit 下 set_config(...,true) 语句结束即失效
+        await appClient.query("BEGIN");
         await appClient.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
         await appClient.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
         await appClient.query(
@@ -221,7 +241,11 @@ export async function runQuest(
           [approvalId, scope.tenantId, scope.workspaceId, ev.eventId,
             JSON.stringify({ before: null, after: step.params, expires_at: new Date(Date.now() + 24 * 3600e3).toISOString() })],
         );
+      } catch (err) {
+        await appClient.query("ROLLBACK").catch(() => undefined);
+        throw err;
       } finally {
+        await appClient.query("COMMIT").catch(() => undefined);
         appClient.release();
       }
       await updateThread(app, scope, threadId, { status: "pending_review" });

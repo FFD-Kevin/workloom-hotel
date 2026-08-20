@@ -156,10 +156,16 @@ export async function computeAssembly(
   // 每连接重设租户/工作区上下文（编码铁律：RLS 依赖 set_config）
   const client = await app.connect();
   try {
+    // 事务级 RLS 上下文必须在显式事务内设置：autocommit 下 set_config(...,true) 语句结束即失效
+    await client.query("BEGIN");
     await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
     await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
     return await computeAssemblyScoped(client, scope, slug, dir, bj, isDraft);
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw err;
   } finally {
+    await client.query("COMMIT").catch(() => undefined);
     client.release();
   }
 }
@@ -385,10 +391,16 @@ export async function activateBundle(
   }
   const client = await app.connect();
   try {
+    // 事务级 RLS 上下文必须在显式事务内设置：autocommit 下 set_config(...,true) 语句结束即失效
+    await client.query("BEGIN");
     await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
     await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
     await client.query(`UPDATE workspaces SET industry=$2 WHERE id=$1`, [scope.workspaceId, slug]);
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw err;
   } finally {
+    await client.query("COMMIT").catch(() => undefined);
     client.release();
   }
   // 草稿激活即转正（§2.3：草稿不进分发；通过检查单激活后脱离草稿态，bundle.json 实物同步）

@@ -116,6 +116,8 @@ export async function dryRunSkill(
   let events: BusinessEvent[] = [];
   let rules: RuntimeRule[] = [];
   try {
+    // 事务级 RLS 上下文必须在显式事务内设置：autocommit 下 set_config(...,true) 语句结束即失效
+    await client.query("BEGIN");
     await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
     await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
     const ev = await client.query<{ payload: BusinessEvent }>(
@@ -139,7 +141,11 @@ export async function dryRunSkill(
         objectTypes: r.match_spec.object_types ?? [], actions: r.match_spec.actions ?? [], when: r.match_spec.when ?? "true",
       }));
     }
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw err;
   } finally {
+    await client.query("COMMIT").catch(() => undefined);
     client.release();
   }
 

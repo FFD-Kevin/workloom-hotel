@@ -66,13 +66,19 @@ export async function ensureReady(
   const id = `nr-${runDate}`;
   const client = await app.connect();
   try {
+    // 事务级 RLS 上下文必须在显式事务内设置：autocommit 下 set_config(...,true) 语句结束即失效
+    await client.query("BEGIN");
     await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
     await client.query(
       `INSERT INTO night_runs (id, workspace_id, run_date, status) VALUES ($1,$2,$3,'ready')
        ON CONFLICT (id) DO NOTHING`,
       [id, scope.workspaceId, runDate],
     );
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw err;
   } finally {
+    await client.query("COMMIT").catch(() => undefined);
     client.release();
   }
   return id;

@@ -87,6 +87,24 @@ describe.runIf(RUN_DB)("巡检 PG 集成（M9 铁律）", async () => {
   const app = new pg.Pool({ connectionString: process.env.DATABASE_APP_URL });
   const gw = new pg.Pool({ connectionString: process.env.DATABASE_GATEWAY_URL });
   const scope = { tenantId: "tenant-demo", workspaceId: "ws-yunqi" };
+  /** app 池断言查询辅助：事务内设 RLS 上下文（与生产口径一致；池直查在 RLS 下恒 0 行） */
+  const qApp = async <T = unknown>(sql: string, params: unknown[] = []) => {
+    const c = await app.connect();
+    try {
+      await c.query("BEGIN");
+      await c.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
+      await c.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
+      const r = await c.query<T>(sql, params);
+      await c.query("COMMIT");
+      return r;
+    } catch (err) {
+      await c.query("ROLLBACK").catch(() => undefined);
+      throw err;
+    } finally {
+      c.release();
+    }
+  };
+
 
   it("L9.1 只读前置通过 + F9.2 异常分级事件 + G3 高优推送 + F9.4 状态条", async () => {
     const report = await runInspectionScan(app, gw, scope, { snapshot });
@@ -120,7 +138,7 @@ describe.runIf(RUN_DB)("巡检 PG 集成（M9 铁律）", async () => {
     expect(report.ok).toBe(false);
     expect(report.attempts).toBe(2);
     expect(report.failedEventId).toMatch(/^E-\d+$/);
-    const r = await app.query(
+    const r = await qApp(
       `SELECT payload->'decision'->'after'->>'level' AS level FROM biz_events WHERE event_id=$1`,
       [report.failedEventId],
     );
@@ -128,7 +146,7 @@ describe.runIf(RUN_DB)("巡检 PG 集成（M9 铁律）", async () => {
   });
 
   it("F9.3 一键派单：异常事件 → 建单回链；重复派单幂等；处理失败升级+转需介入（E9.3）", async () => {
-    const ev = await app.query<{ event_id: string }>(
+    const ev = await qApp<{ event_id: string }>(
       `SELECT event_id FROM biz_events
        WHERE workspace_id=$1 AND payload->'decision'->>'action'='inspect.anomaly'
          AND payload->'decision'->'after'->>'dedupeKey'=$2
@@ -140,7 +158,7 @@ describe.runIf(RUN_DB)("巡检 PG 集成（M9 铁律）", async () => {
     const d1 = await dispatchFromAnomaly(app, gw, scope, { anomalyEventId: anomalyId, presetKey: "review-agent", by: "MEM-001" });
     expect(d1.deduped).toBe(false);
     expect(d1.threadId).toMatch(/^T-\d+$/);
-    const th = await app.query(`SELECT status, agent_id FROM threads WHERE id=$1`, [d1.threadId]);
+    const th = await qApp(`SELECT status, agent_id FROM threads WHERE id=$1`, [d1.threadId]);
     expect(th.rows[0]).toMatchObject({ status: "queued", agent_id: "review-agent" });
 
     const d2 = await dispatchFromAnomaly(app, gw, scope, { anomalyEventId: anomalyId, presetKey: "review-agent", by: "MEM-001" });

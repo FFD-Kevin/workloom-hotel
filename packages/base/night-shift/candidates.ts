@@ -38,6 +38,8 @@ export async function buildCandidateList(
 ): Promise<CandidateItem[]> {
   const client = await app.connect();
   try {
+    // 事务级 RLS 上下文必须在显式事务内设置：autocommit 下 set_config(...,true) 语句结束即失效
+    await client.query("BEGIN");
     await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
     await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
     // 夜班型 preset（meta.night_shift=true 且 ready）
@@ -66,7 +68,11 @@ export async function buildCandidateList(
     }
     // 谷时价折算（F4.6：预估积分按峰谷价展示）
     return items.map((i) => ({ ...i, estCredits: Math.max(1, Math.round(i.estCredits * OFF_PEAK_RATE_RATIO)) }));
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw err;
   } finally {
+    await client.query("COMMIT").catch(() => undefined);
     client.release();
   }
 }

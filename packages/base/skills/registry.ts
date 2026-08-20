@@ -79,13 +79,19 @@ export async function listSkills(app: pg.Pool, opts: { level?: SkillLevel } = {}
 export async function listInstalls(app: pg.Pool, scope: Scope): Promise<Array<{ skill_id: string; installed_by: string; installed_at: Date }>> {
   const client = await app.connect();
   try {
+    // 事务级 RLS 上下文必须在显式事务内设置：autocommit 下 set_config(...,true) 语句结束即失效
+    await client.query("BEGIN");
     await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
     const r = await client.query<{ skill_id: string; installed_by: string; installed_at: Date }>(
       `SELECT skill_id, installed_by, installed_at FROM skill_installs WHERE workspace_id=$1 ORDER BY installed_at`,
       [scope.workspaceId],
     );
     return r.rows;
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw err;
   } finally {
+    await client.query("COMMIT").catch(() => undefined);
     client.release();
   }
 }
@@ -108,13 +114,19 @@ export function detectFenceConflicts(
 async function activeRuleIds(app: pg.Pool, scope: Scope): Promise<Set<string>> {
   const client = await app.connect();
   try {
+    // 事务级 RLS 上下文必须在显式事务内设置：autocommit 下 set_config(...,true) 语句结束即失效
+    await client.query("BEGIN");
     await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
     const r = await client.query<{ rule_id: string }>(
       `SELECT DISTINCT rule_id FROM fence_rules WHERE (workspace_id=$1 OR workspace_id='*') AND status='active'`,
       [scope.workspaceId],
     );
     return new Set(r.rows.map((x) => x.rule_id));
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw err;
   } finally {
+    await client.query("COMMIT").catch(() => undefined);
     client.release();
   }
 }
@@ -123,6 +135,8 @@ async function activeRuleIds(app: pg.Pool, scope: Scope): Promise<Set<string>> {
 async function hasDryRunTrace(app: pg.Pool, scope: Scope, skillId: string): Promise<boolean> {
   const client = await app.connect();
   try {
+    // 事务级 RLS 上下文必须在显式事务内设置：autocommit 下 set_config(...,true) 语句结束即失效
+    await client.query("BEGIN");
     await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
     const r = await client.query<{ c: string }>(
       `SELECT count(*) AS c FROM biz_events
@@ -131,7 +145,11 @@ async function hasDryRunTrace(app: pg.Pool, scope: Scope, skillId: string): Prom
       [scope.workspaceId, skillId],
     );
     return Number(r.rows[0]?.c ?? 0) > 0;
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw err;
   } finally {
+    await client.query("COMMIT").catch(() => undefined);
     client.release();
   }
 }
@@ -176,6 +194,8 @@ export async function installSkill(
       });
       const client = await app.connect();
       try {
+        // 事务级 RLS 上下文必须在显式事务内设置：autocommit 下 set_config(...,true) 语句结束即失效
+        await client.query("BEGIN");
         await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
         await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
         await client.query(
@@ -186,7 +206,11 @@ export async function installSkill(
             JSON.stringify({ kind: "skill_fence_conflict", skillId: skill.id, missingBindings: missing }),
           ],
         );
+      } catch (err) {
+        await client.query("ROLLBACK").catch(() => undefined);
+        throw err;
       } finally {
+        await client.query("COMMIT").catch(() => undefined);
         client.release();
       }
       throw new SkillError("FENCE_CONFLICT", `技能「${skill.name}」绑定围栏 ${missing.join("/")} 未生效，冲突项已进审批（E8.1），安装挂起`);
@@ -198,6 +222,8 @@ export async function installSkill(
   const client = await app.connect();
   let deduped = false;
   try {
+    // 事务级 RLS 上下文必须在显式事务内设置：autocommit 下 set_config(...,true) 语句结束即失效
+    await client.query("BEGIN");
     await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
     const r = await client.query(
       `INSERT INTO skill_installs (skill_id, workspace_id, installed_by, fence_bindings_snapshot)
@@ -206,7 +232,11 @@ export async function installSkill(
       [skill.id, scope.workspaceId, input.by, JSON.stringify(bindings)],
     );
     deduped = r.rowCount === 0;
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw err;
   } finally {
+    await client.query("COMMIT").catch(() => undefined);
     client.release();
   }
   if (!deduped) {
@@ -231,13 +261,19 @@ export async function uninstallSkill(
   const client = await app.connect();
   let removed = 0;
   try {
+    // 事务级 RLS 上下文必须在显式事务内设置：autocommit 下 set_config(...,true) 语句结束即失效
+    await client.query("BEGIN");
     await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
     const r = await client.query(
       `DELETE FROM skill_installs WHERE skill_id=$1 AND workspace_id=$2`,
       [skill.id, scope.workspaceId],
     );
     removed = r.rowCount ?? 0;
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw err;
   } finally {
+    await client.query("COMMIT").catch(() => undefined);
     client.release();
   }
   if (removed === 0) throw new SkillError("NOT_INSTALLED", `技能「${skill.name}」未安装到本工作区`);
@@ -261,6 +297,8 @@ export async function resolveAgentFenceBindings(
 ): Promise<string[]> {
   const client = await app.connect();
   try {
+    // 事务级 RLS 上下文必须在显式事务内设置：autocommit 下 set_config(...,true) 语句结束即失效
+    await client.query("BEGIN");
     await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
     const ag = await client.query<{ fence_bindings: string[] }>(
       `SELECT fence_bindings FROM agents WHERE id=$1 AND workspace_id=$2`,
@@ -277,7 +315,11 @@ export async function resolveAgentFenceBindings(
     const union = new Set<string>(base);
     for (const row of sk.rows) for (const b of row.fence_bindings_snapshot ?? []) union.add(b);
     return [...union].sort();
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw err;
   } finally {
+    await client.query("COMMIT").catch(() => undefined);
     client.release();
   }
 }

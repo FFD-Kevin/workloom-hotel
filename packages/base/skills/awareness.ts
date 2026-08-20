@@ -81,6 +81,8 @@ async function emit(
 async function loadRecentEvents(app: pg.Pool, scope: Scope, days: number): Promise<BusinessEvent[]> {
   const client = await app.connect();
   try {
+    // 事务级 RLS 上下文必须在显式事务内设置：autocommit 下 set_config(...,true) 语句结束即失效
+    await client.query("BEGIN");
     await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
     await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
     const since = new Date(Date.now() - days * 24 * 3600 * 1000);
@@ -89,7 +91,11 @@ async function loadRecentEvents(app: pg.Pool, scope: Scope, days: number): Promi
       [scope.workspaceId, since.toISOString()],
     );
     return r.rows.map((x) => x.payload);
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw err;
   } finally {
+    await client.query("COMMIT").catch(() => undefined);
     client.release();
   }
 }
@@ -98,6 +104,8 @@ async function loadRecentEvents(app: pg.Pool, scope: Scope, days: number): Promi
 async function loadFeedbackKeys(app: pg.Pool, scope: Scope): Promise<{ rejected: Set<string>; confirmed: Set<string> }> {
   const client = await app.connect();
   try {
+    // 事务级 RLS 上下文必须在显式事务内设置：autocommit 下 set_config(...,true) 语句结束即失效
+    await client.query("BEGIN");
     await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
     const since = new Date(Date.now() - 30 * 24 * 3600 * 1000);
     const r = await client.query<{ payload: { decision: { action: string; after?: { key?: string } } } }>(
@@ -115,7 +123,11 @@ async function loadFeedbackKeys(app: pg.Pool, scope: Scope): Promise<{ rejected:
       else confirmed.add(key);
     }
     return { rejected, confirmed };
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw err;
   } finally {
+    await client.query("COMMIT").catch(() => undefined);
     client.release();
   }
 }

@@ -77,6 +77,8 @@ async function emit(
 export async function assertReadonlyPreset(app: pg.Pool, scope: Scope, presetKey = "inspection-agent"): Promise<void> {
   const client = await app.connect();
   try {
+    // 事务级 RLS 上下文必须在显式事务内设置：autocommit 下 set_config(...,true) 语句结束即失效
+    await client.query("BEGIN");
     await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
     const r = await client.query<{ readonly: boolean; meta: { tools?: Array<{ name: string; access: string }> } }>(
       `SELECT readonly, meta FROM agents WHERE workspace_id=$1 AND preset_key=$2`,
@@ -89,7 +91,11 @@ export async function assertReadonlyPreset(app: pg.Pool, scope: Scope, presetKey
     if (writeTool) {
       throw new InspectionPreflightError(`巡检 preset「${presetKey}」加载了写工具 ${writeTool.name}，违反 L9.1`);
     }
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw err;
   } finally {
+    await client.query("COMMIT").catch(() => undefined);
     client.release();
   }
 }
@@ -98,6 +104,8 @@ export async function assertReadonlyPreset(app: pg.Pool, scope: Scope, presetKey
 export async function loadSnapshot(app: pg.Pool, scope: Scope): Promise<InspectionSnapshot> {
   const client = await app.connect();
   try {
+    // 事务级 RLS 上下文必须在显式事务内设置：autocommit 下 set_config(...,true) 语句结束即失效
+    await client.query("BEGIN");
     await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
     const r = await client.query<{ archive: Record<string, unknown> }>(
       `SELECT archive FROM profiles WHERE workspace_id=$1`,
@@ -105,7 +113,11 @@ export async function loadSnapshot(app: pg.Pool, scope: Scope): Promise<Inspecti
     );
     const insp = (r.rows[0]?.archive as { inspection?: InspectionSnapshot } | undefined)?.inspection;
     return insp ?? {};
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw err;
   } finally {
+    await client.query("COMMIT").catch(() => undefined);
     client.release();
   }
 }
@@ -119,6 +131,8 @@ export function anomalyDedupeKey(f: Finding): string {
 export async function listOpenAnomalyKeys(app: pg.Pool, scope: Scope, day: Date): Promise<Set<string>> {
   const client = await app.connect();
   try {
+    // 事务级 RLS 上下文必须在显式事务内设置：autocommit 下 set_config(...,true) 语句结束即失效
+    await client.query("BEGIN");
     await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
     await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
     const dayStart = new Date(day); dayStart.setHours(0, 0, 0, 0);
@@ -140,7 +154,11 @@ export async function listOpenAnomalyKeys(app: pg.Pool, scope: Scope, day: Date)
       if (k) keys.add(k);
     }
     return keys;
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw err;
   } finally {
+    await client.query("COMMIT").catch(() => undefined);
     client.release();
   }
 }

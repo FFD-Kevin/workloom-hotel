@@ -63,6 +63,8 @@ export async function createDryRun(
 ): Promise<{ dryRunId: string; report: DryRunReport }> {
   const client = await app.connect();
   try {
+    // 事务级 RLS 上下文必须在显式事务内设置：autocommit 下 set_config(...,true) 语句结束即失效
+    await client.query("BEGIN");
     await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
     await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
     const rows = await client.query<{ payload: BusinessEvent }>(
@@ -88,7 +90,11 @@ export async function createDryRun(
       [dryRunId, scope.workspaceId, input.ruleId, input.ruleVersion, JSON.stringify(report), input.createdBy],
     );
     return { dryRunId, report };
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw err;
   } finally {
+    await client.query("COMMIT").catch(() => undefined);
     client.release();
   }
 }
@@ -127,13 +133,19 @@ export async function confirmDryRun(
 ): Promise<void> {
   const client = await app.connect();
   try {
+    // 事务级 RLS 上下文必须在显式事务内设置：autocommit 下 set_config(...,true) 语句结束即失效
+    await client.query("BEGIN");
     await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
     const r = await client.query(
       `UPDATE fence_dry_runs SET status='confirmed' WHERE id=$1 AND workspace_id=$2 AND status='pending'`,
       [dryRunId, scope.workspaceId],
     );
     if (r.rowCount === 0) throw new Error(`dry-run ${dryRunId} 不存在或非 pending（幂等约束）`);
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw err;
   } finally {
+    await client.query("COMMIT").catch(() => undefined);
     client.release();
   }
 }
@@ -196,8 +208,10 @@ export async function withObjectLock<T>(
   const lockKey = `obj:${objectKey}`;
   try {
     // 用 statement_timeout 控制锁等待超时，超时后 PG 自动 abort 当前语句
-    await client.query(`SET LOCAL statement_timeout = ${timeoutMs}`);
+    // 修复：SET LOCAL 必须在 BEGIN 之后才生效（事务外 SET LOCAL 仅警告且无效果，
+    // 此前锁等待实际无超时兜底，持锁冲突时挂到测试/调用方超时）
     await client.query("BEGIN");
+    await client.query(`SET LOCAL statement_timeout = ${Math.max(1, Math.floor(timeoutMs))}`);
     // 64位确定性 hash key：md5 前 16 位转 bigint，碰撞概率远低于 hashtext 32位
     const r = await client.query<{ k: string }>(
       `SELECT ('x' || substr(md5($1), 1, 16))::bit(64)::bigint AS k`,

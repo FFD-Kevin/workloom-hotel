@@ -57,6 +57,24 @@ d("PG 集成审批流（种子队列）", async () => {
   const appPool = new pg.Pool({ connectionString: process.env.DATABASE_APP_URL });
   const gwPool = new pg.Pool({ connectionString: process.env.DATABASE_GATEWAY_URL });
   const scope = { tenantId: "tenant-demo", workspaceId: "ws-yunqi" };
+  /** app 池断言查询辅助：事务内设 RLS 上下文（与生产口径一致；池直查在 RLS 下恒 0 行） */
+  const qApp = async <T = unknown>(sql: string, params: unknown[] = []) => {
+    const c = await appPool.connect();
+    try {
+      await c.query("BEGIN");
+      await c.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
+      await c.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
+      const r = await c.query<T>(sql, params);
+      await c.query("COMMIT");
+      return r;
+    } catch (err) {
+      await c.query("ROLLBACK").catch(() => undefined);
+      throw err;
+    } finally {
+      c.release();
+    }
+  };
+
   const boss = { memberNo: "MEM-001", role: "owner" as const };
 
   /** gateway 池直查/直写辅助：同一连接内设会话级 RLS 上下文（池连接不共享 set_config） */
@@ -133,7 +151,7 @@ d("PG 集成审批流（种子队列）", async () => {
       type: "reject", reasonEnum: "amount_too_large", reasonText: "超出门店免赔额度",
     });
     expect(r.status).toBe("rejected");
-    const mem = await appPool.query("SELECT kind, content FROM org_memory WHERE memory_id='mem-reject-amount_too_large'");
+    const mem = await qApp("SELECT kind, content FROM org_memory WHERE memory_id='mem-reject-amount_too_large'");
     expect(mem.rows.length).toBe(1);
     expect(mem.rows[0].kind).toBe("preference");
   });
