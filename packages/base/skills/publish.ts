@@ -8,7 +8,7 @@
  * ⑤ 版本通道：安装时版本快照 vs 当前版本，列示可更新技能
  */
 import type pg from "pg";
-import { gatewayAppend } from "../workdata/gateway.js";
+import { gatewayAppendOnClient } from "../workdata/gateway.js";
 import { maskText } from "../workdata/pii.js";
 /** 本地 Scope（与 registry.Scope 同构；避免 registry↔publish 循环依赖） */
 export interface Scope { tenantId: string; workspaceId: string }
@@ -117,14 +117,15 @@ export async function proposePublish(
     await client.query(
       `INSERT INTO skill_publish_reviews (id, skill_id, from_workspace_id, proposed_by) VALUES ($1,$2,$3,$4)`,
       [reviewId, input.skillId, scope.workspaceId, input.by]);
-    await client.query("COMMIT");
-    await gatewayAppend(gateway, { ...scope, actor: { id: input.by, type: "human" } }, {
+    // D16（#1/A）：审核单行与提案事件同一事务同一 COMMIT
+    await gatewayAppendOnClient(client, { ...scope, actor: { id: input.by, type: "human" } }, {
       who: { type: "human", id: input.by },
       context: { tenant_id: scope.tenantId, workspace_id: scope.workspaceId, time: new Date().toISOString() },
       object: { type: "skill", id: input.skillId },
       decision: { action: "skill.publish.propose", after: { reviewId, skillName: input.skillName } },
       rule_impact: [],
     });
+    await client.query("COMMIT");
     return { reviewId, deduped: false };
   } catch (err) {
     await client.query("ROLLBACK").catch(() => undefined);
@@ -166,14 +167,15 @@ export async function reviewPublish(
     await client.query(
       `UPDATE skill_publish_reviews SET approvals=$2, status=$3, reason=$4, decided_at=CASE WHEN $3 IN ('approved','rejected') THEN now() ELSE NULL END WHERE id=$1`,
       [input.reviewId, JSON.stringify(approvals), status, input.reason ?? null]);
-    await client.query("COMMIT");
-    await gatewayAppend(gateway, { ...scope, actor: { id: input.by, type: "human" } }, {
+    // D16（#1/A）：复核手势落库与事件同一事务同一 COMMIT
+    await gatewayAppendOnClient(client, { ...scope, actor: { id: input.by, type: "human" } }, {
       who: { type: "human", id: input.by },
       context: { tenant_id: scope.tenantId, workspace_id: scope.workspaceId, time: new Date().toISOString() },
       object: { type: "skill_publish_review", id: input.reviewId },
       decision: { action: `skill.publish.${input.gesture}`, after: { status, approvals: approvedCount, required: row.required_approvals, reason: input.reason ?? null } },
       rule_impact: [],
     });
+    await client.query("COMMIT");
     return { status, deduped: false };
   } catch (err) {
     await client.query("ROLLBACK").catch(() => undefined);
@@ -205,18 +207,19 @@ export async function completePublish(
     skillId = row.skill_id;
     await client.query(`UPDATE skills SET level='industry', desensitized=true WHERE id=$1`, [skillId]);
     await client.query(`UPDATE skill_publish_reviews SET status='completed', decided_at=now() WHERE id=$1`, [input.reviewId]);
+    // D16（#1/A）：上架状态变更与完成事件同一事务同一 COMMIT
+    await gatewayAppendOnClient(client, { ...scope, actor: { id: input.by, type: "human" } }, {
+      who: { type: "human", id: input.by },
+      context: { tenant_id: scope.tenantId, workspace_id: scope.workspaceId, time: new Date().toISOString() },
+      object: { type: "skill", id: skillId },
+      decision: { action: "skill.publish.complete", after: { reviewId: input.reviewId, level: "industry", desensitized: true } },
+      rule_impact: [],
+    });
     await client.query("COMMIT");
   } catch (err) {
     await client.query("ROLLBACK").catch(() => undefined);
     throw err;
   } finally { client.release(); }
-  await gatewayAppend(gateway, { ...scope, actor: { id: input.by, type: "human" } }, {
-    who: { type: "human", id: input.by },
-    context: { tenant_id: scope.tenantId, workspace_id: scope.workspaceId, time: new Date().toISOString() },
-    object: { type: "skill", id: skillId },
-    decision: { action: "skill.publish.complete", after: { reviewId: input.reviewId, level: "industry", desensitized: true } },
-    rule_impact: [],
-  });
   return { skillId };
 }
 
@@ -230,18 +233,32 @@ export async function revokeSkill(
   if (!input.reason || input.reason.trim() === "") {
     throw new PublishError("EMPTY_REASON", "吊销必须填写原因");
   }
-  const r = await app.query(
-    `INSERT INTO skill_revocations (skill_id, reason, revoked_by) VALUES ($1,$2,$3) ON CONFLICT (skill_id) DO NOTHING`,
-    [input.skillId, input.reason, input.by]);
-  if ((r.rowCount ?? 0) === 0) return { deduped: true };
-  await gatewayAppend(gateway, { ...scope, actor: { id: input.by, type: "human" } }, {
-    who: { type: "human", id: input.by },
-    context: { tenant_id: scope.tenantId, workspace_id: scope.workspaceId, time: new Date().toISOString() },
-    object: { type: "skill", id: input.skillId },
-    decision: { action: "skill.revoke", after: { reason: input.reason, scope: "global" } },
-    rule_impact: [],
-  });
-  return { deduped: false };
+  // D16（#1/A）：吊销行与吊销事件同一事务同一 COMMIT
+  const client = await app.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
+    await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
+    const r = await client.query(
+      `INSERT INTO skill_revocations (skill_id, reason, revoked_by) VALUES ($1,$2,$3) ON CONFLICT (skill_id) DO NOTHING`,
+      [input.skillId, input.reason, input.by]);
+    if ((r.rowCount ?? 0) === 0) {
+      await client.query("COMMIT");
+      return { deduped: true };
+    }
+    await gatewayAppendOnClient(client, { ...scope, actor: { id: input.by, type: "human" } }, {
+      who: { type: "human", id: input.by },
+      context: { tenant_id: scope.tenantId, workspace_id: scope.workspaceId, time: new Date().toISOString() },
+      object: { type: "skill", id: input.skillId },
+      decision: { action: "skill.revoke", after: { reason: input.reason, scope: "global" } },
+      rule_impact: [],
+    });
+    await client.query("COMMIT");
+    return { deduped: false };
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw err;
+  } finally { client.release(); }
 }
 
 /** 吊销查询（installSkill / resolveAgentFenceBindings 消费） */

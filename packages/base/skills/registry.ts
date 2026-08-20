@@ -12,7 +12,7 @@
  *  - F8.3 团队自建技能生效前必须 dry-run 预览（无 skill.dry_run 留痕 → 拒绝安装并提示先预览）
  */
 import type pg from "pg";
-import { gatewayAppend } from "../workdata/gateway.js";
+import { gatewayAppend, gatewayAppendOnClient } from "../workdata/gateway.js";
 import { isSkillRevoked } from "./publish.js";
 
 
@@ -44,6 +44,28 @@ export class SkillError extends Error {
     super(message);
     this.name = "SkillError";
   }
+}
+
+/** 事务内事件留痕（D16：调用方持有事务，与业务写同一 COMMIT） */
+async function emitInTx(
+  client: pg.PoolClient,
+  scope: Scope,
+  by: string,
+  decision: Record<string, unknown>,
+  links?: string[],
+): Promise<string> {
+  const r = await gatewayAppendOnClient(client, {
+    tenantId: scope.tenantId, workspaceId: scope.workspaceId,
+    actor: { id: by, type: "human" },
+  }, {
+    who: { type: "human", id: by },
+    context: { tenant_id: scope.tenantId, workspace_id: scope.workspaceId, time: new Date().toISOString(), channel: "inapp" },
+    object: { type: "skill", id: (decision.after as { skillId?: string } | undefined)?.skillId },
+    decision: decision as never,
+    rule_impact: [],
+    links,
+  });
+  return r.eventId;
 }
 
 async function emit(
@@ -258,12 +280,13 @@ export async function installSkill(
 
   // 落安装（幂等 L1.4 同源：重复安装不报错）
   // #17 修复：安装时快照 fence_bindings，运行时读快照而非实时值，防止技能作者更新绑定绕过冲突检测
+  // D16（#1/A）：安装行与 skill.installed 事件同一事务同一 COMMIT
   const client = await app.connect();
   let deduped = false;
   try {
-    // 事务级 RLS 上下文必须在显式事务内设置：autocommit 下 set_config(...,true) 语句结束即失效
     await client.query("BEGIN");
     await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
+    await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]); // D16：append_event_insert 双 GUC 校验要求
     // D15-⑤：安装时记录版本快照（installed_version），供 listSkillUpdates 版本通道对比
     const r = await client.query(
       `INSERT INTO skill_installs (skill_id, workspace_id, installed_by, fence_bindings_snapshot, installed_version)
@@ -272,19 +295,19 @@ export async function installSkill(
       [skill.id, scope.workspaceId, input.by, JSON.stringify(bindings), skill.version],
     );
     deduped = r.rowCount === 0;
+    if (!deduped) {
+      await emitInTx(client, scope, input.by, {
+        action: "skill.installed",
+        after: { skillId: skill.id, name: skill.name, level: skill.level, bindings },
+        basis: ["安装即绑定围栏（F8.2）；技能动作照常过围栏瀑布（L8.3，运行时由 tools/pre-execute 瀑布强制）"],
+      });
+    }
   } catch (err) {
     await client.query("ROLLBACK").catch(() => undefined);
     throw err;
   } finally {
     await client.query("COMMIT").catch(() => undefined);
     client.release();
-  }
-  if (!deduped) {
-    await emit(gateway, scope, input.by, {
-      action: "skill.installed",
-      after: { skillId: skill.id, name: skill.name, level: skill.level, bindings },
-      basis: ["安装即绑定围栏（F8.2）；技能动作照常过围栏瀑布（L8.3，运行时由 tools/pre-execute 瀑布强制）"],
-    });
   }
   return { installed: true, deduped, bindings };
 }
@@ -307,6 +330,7 @@ export async function uninstallSkill(
     // 事务级 RLS 上下文必须在显式事务内设置：autocommit 下 set_config(...,true) 语句结束即失效
     await client.query("BEGIN");
     await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
+    await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]); // D16：append_event_insert 双 GUC 校验要求
     const snap = await client.query<{ fence_bindings_snapshot: string[] }>(
       `SELECT fence_bindings_snapshot FROM skill_installs WHERE skill_id=$1 AND workspace_id=$2`,
       [skill.id, scope.workspaceId],
@@ -317,6 +341,14 @@ export async function uninstallSkill(
       [skill.id, scope.workspaceId],
     );
     removed = r.rowCount ?? 0;
+    // D16（#1/A）：删除行与 skill.uninstalled 事件同一事务（removed=0 时事件也不写，一并滚回）
+    if (removed > 0) {
+      await emitInTx(client, scope, input.by, {
+        action: "skill.uninstalled",
+        after: { skillId: skill.id, name: skill.name, revokedBindings },
+        basis: ["卸载即撤销围栏绑定（F8.2/L8.3：绑定并集随 install 行删除即时收缩，US8.5 不留后门）"],
+      });
+    }
   } catch (err) {
     await client.query("ROLLBACK").catch(() => undefined);
     throw err;
@@ -325,11 +357,6 @@ export async function uninstallSkill(
     client.release();
   }
   if (removed === 0) throw new SkillError("NOT_INSTALLED", `技能「${skill.name}」未安装到本工作区`);
-  await emit(gateway, scope, input.by, {
-    action: "skill.uninstalled",
-    after: { skillId: skill.id, name: skill.name, revokedBindings },
-    basis: ["卸载即撤销围栏绑定（F8.2/L8.3：绑定并集随 install 行删除即时收缩，US8.5 不留后门）"],
-  });
   return { uninstalled: true, revokedBindings };
 }
 
