@@ -128,12 +128,25 @@ export async function appendEvent(
         payload.context.time,
       ],
     );
-    await client.query("COMMIT");
     if (res.rowCount && res.rowCount > 0) {
+      await client.query("COMMIT");
       return { eventId, seq: BigInt(res.rows[0]!.seq), hash, deduped: false, piiHits: 0 };
     }
-    // 幂等丢弃（重复事件不报错，返回已存在编号——L1.4）
-    return { eventId, seq: nextSeq, hash, deduped: true, piiHits: 0 };
+    // 幂等丢弃（重复事件不报错——L1.4）
+    // #26 修复：去重时从 DB 取回已存在事件的真实 hash/seq 返回（同 #4 对
+    // appendEventIdempotent 的修法），避免调用方拿到按本 payload 新算的 hash 续链断裂
+    const existing = await client.query<{ seq: string; hash: string }>(
+      `SELECT seq, hash FROM biz_events WHERE tenant_id = $1 AND event_id = $2`,
+      [scope.tenantId, eventId],
+    );
+    await client.query("COMMIT");
+    return {
+      eventId,
+      seq: BigInt(existing.rows[0]?.seq ?? nextSeq),
+      hash: existing.rows[0]?.hash ?? hash,
+      deduped: true,
+      piiHits: 0,
+    };
   } catch (err) {
     await client.query("ROLLBACK").catch(() => undefined);
     throw err;

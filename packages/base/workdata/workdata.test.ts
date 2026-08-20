@@ -123,6 +123,42 @@ d("PG 集成（H-2/L1.4：幂等丢弃、哈希链序）", async () => {
     expect(r.eventId).toBe("E-8801");
   });
 
+  it("#26 appendEvent 幂等丢弃返回 DB 真实 hash/seq（不返回新算值）", async () => {
+    // 独立租户隔离构造（不碰种子事件库——append-only 不可清理）：
+    // 占位行用 CTE 取 nextval 同时决定 seq 与 event_id=E-(seq+1)——appendEvent 读链尾后
+    // 分配的 event_id 恰为 E-(seq+1)，与占位行撞上 ON CONFLICT → deduped 分支；hash 用哨兵值
+    const iso = { tenantId: `tenant-t26-${Date.now().toString(36)}`, workspaceId: "ws-t26" };
+    const isoCtx = { ...iso, actor: ctx.actor };
+    await gatewayAppend(pool, isoCtx, draft("price.adjust")); // iso 租户首条（起链）
+    const sentinelHash = "sentinel-hash-26";
+    const c = await pool.connect();
+    let occupiedId = "";
+    try {
+      await c.query("BEGIN");
+      await c.query("SELECT set_config('app.workspace_id', $1, true)", [iso.workspaceId]);
+      await c.query("SELECT set_config('app.tenant_id', $1, true)", [iso.tenantId]);
+      const ins = await c.query<{ event_id: string }>(
+        `WITH s AS (SELECT nextval('biz_events_seq_seq') AS v)
+         INSERT INTO biz_events (seq, event_id, tenant_id, workspace_id, payload, prev_hash, hash)
+         SELECT s.v, 'E-' || (s.v + 1), $1, $2, $3, $4, $5 FROM s
+         RETURNING event_id`,
+        [iso.tenantId, iso.workspaceId, JSON.stringify({ marker: "occupy-26" }), "occupy-prev", sentinelHash],
+      );
+      occupiedId = ins.rows[0]!.event_id;
+      await c.query("COMMIT");
+    } catch (err) {
+      await c.query("ROLLBACK").catch(() => undefined);
+      throw err;
+    } finally {
+      c.release();
+    }
+    // appendEvent 分配同一 event_id → ON CONFLICT 丢弃 → 必须返回 DB 中真实 hash/seq
+    const r = await gatewayAppend(pool, isoCtx, draft("price.adjust"));
+    expect(r.eventId).toBe(occupiedId);
+    expect(r.deduped).toBe(true);
+    expect(r.hash).toBe(sentinelHash); // #26：此前会返回按本 payload 新算的 hash（断链风险）
+  });
+
   it("脱敏落库：事件库无明文手机号（F1.10 机制位）", async () => {
     const r = await gatewayAppend(pool, ctx, {
       ...draft("price.adjust"),
