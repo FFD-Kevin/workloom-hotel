@@ -2,6 +2,20 @@
 
 本文件记录 WorkLoom IM 底座的变更历史。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/)。
 
+## [0.1.7] - 2026-08-21 · 用例集扩充批次（审计第 6 轮）
+
+### 安全修复
+
+- **#41 审批手势类型白名单（P1）**：非法手势（bogus）此前穿透校验被静默当作「驳回」写库（绕过 L5.2 原因必填）。validateGesture 入口白名单，非法类型抛 INVALID_GESTURE。
+
+### 测试基建
+
+- **suite 326→371 用例**：新增 O 店长日常场景（16）/ P 系统层（14）/ Q 异常压测（15）三域；suite 命令加 TOOL_UNVERIFIED_RATE=0 确定性执行。
+
+### 门禁验证
+
+- ✅ suite 371/371 ×2 连跑 · base 152/152 · runtime 12/12 · typecheck 全绿
+
 ## [0.1.6] - 2026-08-21 · CI 门禁 + 决策记录批次（审计第 5 轮）
 
 ### 基建
