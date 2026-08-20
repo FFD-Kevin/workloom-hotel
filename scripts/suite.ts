@@ -711,6 +711,27 @@ e("空 approvalIds 批量返回空结果", async () => {
   eq(r.approved.length + r.skipped.length, 0, "空输入空输出");
 });
 
+e("expire 并发：5 路 sweep 同跑结果一致（不重复标/不重复写事件）", async () => {
+  const { approvalId } = await mkApproval({ expiresInMs: -1000 });
+  const rs = await Promise.all(Array.from({ length: 5 }, () => expireSweep(app, gw, scope)));
+  eq(rs.filter((r) => r.expired.includes(approvalId)).length >= 1, true, "至少一路命中");
+  const row = await qApp<{ status: string }>(`SELECT status FROM approvals WHERE approval_id=$1`, [approvalId]);
+  eq(row.rows[0]!.status, "expired", "终态 expired");
+  const ev = await qApp<{ c: string }>(`SELECT count(*) AS c FROM biz_events WHERE workspace_id=$1 AND payload->'decision'->>'action'='approval.expired' AND payload->'decision'->'after'->>'approval_id'=$2`, [scope.workspaceId, approvalId]);
+  assert(Number(ev.rows[0]!.c) >= 1, "过期事件留痕");
+});
+e("expire 竞态：过期瞬间 decide 与 sweep 并发，终态恰其一", async () => {
+  const { approvalId } = await mkApproval({ expiresInMs: -1000 });
+  const [d] = await Promise.allSettled([
+    decide(app, gw, scope, boss, approvalId, { type: "approve" }),
+    expireSweep(app, gw, scope),
+  ]);
+  const row = await qApp<{ status: string }>(`SELECT status FROM approvals WHERE approval_id=$1`, [approvalId]);
+  const st = row.rows[0]!.status;
+  assert(st === "approved" || st === "expired", `终态二选一（实际 ${st}）`);
+  if (d.status === "rejected") eq(st, "expired", "decide 被拒则必为 expired");
+});
+
 /* ================= F · IM 通道（32 条） ================= */
 const f = C("F");
 f("合法入站消息落事件 + 成员映射", async () => {
@@ -1913,6 +1934,32 @@ p("套件数据自我隔离：他工作区视角查不到套件事件", async ()
   const ev = await mkEvent("suite.isolation_probe");
   const page = await searchEvents(app, { tenantId: scope.tenantId, workspaceId: "ws-nobody" }, { action: "suite.isolation_probe" });
   assert(!page.events.some((x) => x.event_id === ev), "他区不可见");
+});
+
+p("前后端契约对账：web 全部 trpc 调用点均有后端挂载", async () => {
+  const { readFileSync, readdirSync, statSync } = await import("node:fs");
+  const { join } = await import("node:path");
+  const root = new URL("../", import.meta.url).pathname; // 仓库根（scripts/ 的上一级）
+  const walk = (dir: string): string[] =>
+    readdirSync(dir).flatMap((f) => {
+      const fp = join(dir, f);
+      return statSync(fp).isDirectory() ? walk(fp) : (fp.endsWith(".tsx") || fp.endsWith(".ts") ? [fp] : []);
+    });
+  const calls = new Set<string>();
+  for (const f of walk(join(root, "apps/web/src"))) {
+    for (const m of readFileSync(f, "utf-8").matchAll(/trpc\.([a-zA-Z]+)\.([a-zA-Z]+)/g)) {
+      calls.add(`${m[1]}.${m[2]}`);
+    }
+  }
+  const routerSrc = readFileSync(join(root, "apps/server/src/trpc/router.ts"), "utf-8");
+  const procs = new Set<string>();
+  for (const rm of routerSrc.matchAll(/(\w+)Router = router\(\{([\s\S]*?)\n\}\)/g)) {
+    for (const pm of (rm[2] as string).matchAll(/^  (\w+):/gm)) {
+      procs.add(`${rm[1]}.${pm[1]}`);
+    }
+  }
+  const missing = [...calls].filter((c) => !procs.has(c));
+  eq(missing.length, 0, `悬空调用：${missing.join(",")}`);
 });
 
 /* ================= Q · 异常 case 与压测（15 条） ================= */
