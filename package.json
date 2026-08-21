@@ -26,7 +26,8 @@
     "suite": "TOOL_UNVERIFIED_RATE=0 tsx --env-file=.env scripts/suite.ts",
     "demo:twin": "tsx --env-file=.env scripts/simulate-twin.ts",
     "demo:twin:snapshot": "bash scripts/snapshot-twin.sh",
-    "demo:twin:restore": "bash scripts/restore-twin.sh"
+    "demo:twin:restore": "bash scripts/restore-twin.sh",
+    "demo:twin:live": "tsx --env-file=.env scripts/twin-genie.ts"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

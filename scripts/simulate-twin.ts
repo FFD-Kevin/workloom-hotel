@@ -113,6 +113,10 @@ const at = (day: number, h: number, m = int(0, 59)) =>
 interface ApprovalItem { eventId: string; level: "review" | "block"; title: string; time: Date }
 const approvalsToCreate: ApprovalItem[] = [];
 
+/** 夜班决策包事件登记（事件落库后回填 night_runs 表） */
+const nightPackages: Array<{ day: number; runDate: string; eventId: string; done: number; pending: number; escalate: number }> = [];
+const fmtDate = (day: number) => new Date(START.getTime() + day * 86_400_000 + 8 * 3_600_000).toISOString().slice(0, 10);
+
 /* ================= 场景生成器 ================= */
 function evOrderConfirm(t: Date): TwinEvent {
   const rt = pick(ROOM_TYPES);
@@ -446,7 +450,14 @@ async function main(): Promise<void> {
     // 夜班：竞对采集 + 对账 + 08:30 决策包
     push(evCompetitorFetch(at(d, 23, int(0, 30))));
     push(evReconcile(at(d, 23, int(31, 59))));
-    push(evNightPackage(at(d + 1, 8, 30), d));
+    const pkg = evNightPackage(at(d + 1, 8, 30), d);
+    nightPackages.push({
+      day: d, runDate: fmtDate(d), eventId: pkg.event_id,
+      done: (pkg.decision.after as { done: number }).done,
+      pending: (pkg.decision.after as { pending: number }).pending,
+      escalate: (pkg.decision.after as { escalate: number }).escalate,
+    });
+    push(pkg);
     // 内容营销：每周 2–3 篇
     if (d % 3 === 1) push(evContentPublish(at(d, int(15, 20))), "T-103");
     // 周频：FAQ 萃取 + 断点周报
@@ -506,6 +517,145 @@ async function main(): Promise<void> {
     aprInserted += res.rowCount ?? 0;
   }
   console.log(`✓ 审批流 ×${aprInserted}（含 pending ×2 / rejected ×1：演示三手势与驳回回流）`);
+
+  // —— 补盲 ①：night_runs ×30（夜班驾驶舱 P9 的表格投影，与决策包事件一一对应） ——
+  let nrInserted = 0;
+  for (const np of nightPackages) {
+    const res = await owner.query(
+      `INSERT INTO night_runs (id, workspace_id, run_date, status, fence_snapshot_version, candidate_count, stats, started_at, package_event_id)
+       VALUES ($1,$2,$3,'package_generated',$4,$5,$6,$7,$8)
+       ON CONFLICT (id) DO NOTHING`,
+      [
+        `nr-${np.runDate}`, WS_ID, np.runDate, FENCE_VERSION, int(3, 5),
+        JSON.stringify({ done: np.done, pending: np.pending, escalate: np.escalate, credits: int(7, 11) }),
+        iso(new Date(START.getTime() + np.day * 86_400_000 + 22 * 3_600_000)),
+        np.eventId,
+      ],
+    );
+    nrInserted += res.rowCount ?? 0;
+  }
+  console.log(`✓ 夜班班次表 ×${nrInserted}（30 天 package_generated，快照 ${FENCE_VERSION}）`);
+
+  // —— 补盲 ②：组织记忆 ×8 + 使用归因（经验资产化的可见证据） ——
+  const evIdBy = async (action: string, limit: number) => {
+    const r = await gw.query(
+      `SELECT event_id FROM biz_events WHERE tenant_id=$1 AND workspace_id=$2 AND payload->'decision'->>'action'=$3 ORDER BY seq LIMIT $4`,
+      [TENANT_ID, WS_ID, action, limit],
+    );
+    return r.rows.map((x) => x.event_id as string);
+  };
+  const priceIds = await evIdBy("price.adjust", 5);
+  const reviewIds = await evIdBy("review.reply", 5);
+  const phoneIds = await evIdBy("call.summary", 5);
+  const reconIds = await evIdBy("order.reconcile", 3);
+  const memories = [
+    { id: "mem-pat-weekend-family", scope: "workspace", kind: "pattern", conf: 0.86, content: "周五/六亲子双床房需求显著高于平日（30 天订单分布），建议周四前完成周末溢价调价", src: priceIds.slice(0, 3) },
+    { id: "mem-pat-night-micro", scope: "workspace", kind: "pattern", conf: 0.82, content: "夜班 R7 微调（≤3%）主要集中在 23:00–01:00 预订收尾窗口，30 天零越线", src: priceIds.slice(2, 5) },
+    { id: "mem-sop-review-apology", scope: "workspace", kind: "sop", conf: 0.9, content: "差评致歉结构 v2：共情→核实→整改→邀约回流；禁用「百分百满意」等档案外承诺", src: reviewIds.slice(0, 3) },
+    { id: "mem-sop-sync-outage", scope: "workspace", kind: "sop", conf: 0.78, content: "渠道直连中断 SOP：自动下架保护→人工核验→恢复上架→复盘直连稳定性", src: reconIds.slice(0, 2) },
+    { id: "mem-pref-owner-pricing", scope: "agent", kind: "preference", conf: 0.75, content: "王店长调价偏好：节假日提前 3 天布局、单次涨幅 ≤5% 为宜", src: priceIds.slice(0, 2) },
+    { id: "mem-pat-faq-topics", scope: "workspace", kind: "pattern", conf: 0.88, content: "电话咨询 TOP3：停车场/早餐时间/退房时间，占呼入 60%+，知识库命中即答", src: phoneIds.slice(0, 3) },
+    { id: "mem-pat-linen-3f", scope: "workspace", kind: "pattern", conf: 0.7, content: "3F 亲子房布草损耗偏高（客人带走疑似），已联动查房检项加严", src: reviewIds.slice(3, 5) },
+    { id: "mem-sop-incident-triage", scope: "workspace", kind: "sop", conf: 0.84, content: "断点根因四分类纪律：未分类不许结案；同类周均≥3 次触发固化建议", src: reconIds.slice(1, 3) },
+  ];
+  let memInserted = 0;
+  for (const m of memories) {
+    const res = await owner.query(
+      `INSERT INTO org_memory (memory_id, tenant_id, workspace_id, scope, kind, content, source_events, confidence, status)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'active') ON CONFLICT (memory_id) DO NOTHING`,
+      [m.id, TENANT_ID, WS_ID, m.scope, m.kind, m.content, m.src, m.conf],
+    );
+    memInserted += res.rowCount ?? 0;
+    for (const evId of m.src.slice(0, 2)) {
+      await owner.query(`INSERT INTO memory_usage (memory_id, event_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`, [m.id, evId]);
+    }
+  }
+  console.log(`✓ 组织记忆 ×${memInserted}（pattern/sop/preference，来源事件可归因）`);
+
+  // —— 补盲 ③：fence_dry_runs ×3（围栏演进史：2 confirmed / 1 rejected，含单调守卫驳回样本） ——
+  const dryRuns = [
+    { id: "dr-r7-tighten", rule: "R7", ver: "hotel-patch/v-next", status: "confirmed", report: { replayed: 10, would_block: 0, would_review: 1, impact: "夜班微调上限 3%→2%：回放 10 条夜班调价，1 条转入必审，无熔断" } },
+    { id: "dr-r17-parity", rule: "R17", ver: FENCE_VERSION, status: "confirmed", report: { replayed: 30, would_block: 2, would_review: 0, impact: "倒挂防护预演：回放 30 条发布，2 条历史倒挂将熔断（d5 已实证）" } },
+    { id: "dr-r1-loosen", rule: "R1", ver: "draft-loosen-10pct", status: "rejected", report: { replayed: 30, would_block: 0, would_review: 6, impact: "涨幅上限 8%→10% 放宽提案：单调守卫拒绝（基线只可收紧），店长驳回留痕" } },
+  ];
+  let drInserted = 0;
+  for (const dr of dryRuns) {
+    const res = await owner.query(
+      `INSERT INTO fence_dry_runs (id, workspace_id, rule_id, rule_version, report, status, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6,'MEM-001') ON CONFLICT (id) DO NOTHING`,
+      [dr.id, WS_ID, dr.rule, dr.ver, JSON.stringify(dr.report), dr.status],
+    );
+    drInserted += res.rowCount ?? 0;
+  }
+  console.log(`✓ 围栏 dry-run 报告 ×${drInserted}（含单调守卫驳回样本：只紧不松可演示）`);
+
+  // —— 补盲 ④：跨店工作区 ×2（owner-cockpit 多店驾驶舱的数据基础） ——
+  const sisterStores = [
+    { id: "ws-xixi", name: "云栖·西溪店", slug: "yunqi-xixi", rooms: 32, segment: "homestay", occ: 0.72, adr: 388 },
+    { id: "ws-manlong", name: "云栖·满陇店", slug: "yunqi-manlong", rooms: 24, segment: "unmanned", occ: 0.81, adr: 328 },
+  ];
+  for (const s of sisterStores) {
+    await owner.query(
+      `INSERT INTO workspaces (id, tenant_id, name, slug, industry, stage) VALUES ($1,$2,$3,$4,'hotel','stable')
+       ON CONFLICT (id) DO NOTHING`,
+      [s.id, TENANT_ID, s.name, s.slug],
+    );
+    await owner.query(
+      `INSERT INTO profiles (workspace_id, tenant_id, industry, archive, forbidden, pii_vault)
+       VALUES ($1,$2,'hotel',$3,$4,NULL) ON CONFLICT (workspace_id) DO NOTHING`,
+      [s.id, TENANT_ID, JSON.stringify({ property: { name: s.name, city: "杭州", rooms: s.rooms, segment: s.segment } }),
+       JSON.stringify([{ rule: "不低于保底价", scope: "room_price" }])],
+    );
+  }
+  // 跨店轻量事件：每日经营快照 + 夜班决策包（驾驶舱 KPI 与 digest 数据源）
+  // 哈希链为「每工作区独立链」（verify-chain 按 ws 分组验证）：跨店事件从各自链尾/GENESIS 续接
+  let sisInserted = 0;
+  for (const s of sisterStores) {
+    await gw.query("SELECT set_config('app.workspace_id', $1, false)", [s.id]);
+    const sisTail = await gw.query(`SELECT hash FROM biz_events WHERE tenant_id=$1 AND workspace_id=$2 ORDER BY seq DESC LIMIT 1`, [TENANT_ID, s.id]);
+    let sisPrev = (sisTail.rows[0]?.hash as string) ?? GENESIS_HASH;
+    for (let d = 0; d < DAYS; d++) {
+      const dayOcc = Math.min(0.98, Math.max(0.4, s.occ + (rand() - 0.5) * 0.2));
+      const dayAdr = Math.round(s.adr * (1 + (rand() - 0.5) * 0.12));
+      const evs: TwinEvent[] = [
+        {
+          event_id: nextId(), who: { type: "system", id: "cockpit-daily" }, context: ctx(at(d, 23, 55)),
+          object: { type: "store", id: s.id },
+          decision: {
+            action: "store.daily.summary",
+            after: { occ: Number(dayOcc.toFixed(2)), adr: dayAdr, revpar: Math.round(dayOcc * dayAdr), rooms: s.rooms },
+            basis: ["当日订单/收款聚合快照（驾驶舱 KPI 数据源）"],
+          },
+          rule_impact: [],
+        },
+        {
+          event_id: nextId(), who: { type: "system", id: "night-shift" }, context: ctx(at(d + 1, 8, 30), "夜班"),
+          object: { type: "shift", id: `nr-${s.id}-${fmtDate(d)}` },
+          decision: {
+            action: "night.package.deliver",
+            after: { done: int(4, 9), pending: int(0, 2), escalate: d % 11 === 0 ? 1 : 0, fence_snapshot: FENCE_VERSION },
+            basis: ["夜班班组三段投影（✓已完成/◆待审批/▲需介入）"],
+          },
+          rule_impact: [],
+        },
+      ];
+      for (const ev of evs) {
+        const checked = safeParseBusinessEvent(ev);
+        if (!checked.success) throw new Error(`跨店事件 ${ev.event_id} 未过校验：${checked.error.message}`);
+        const payload = JSON.stringify(checked.data);
+        const hash = eventHash(sisPrev, checked.data);
+        const res = await gw.query(
+          `INSERT INTO biz_events (event_id, tenant_id, workspace_id, session_id, payload, prev_hash, hash, created_at)
+           VALUES ($1,$2,$3,NULL,$4,$5,$6,$7)
+           ON CONFLICT (tenant_id, event_id) DO NOTHING RETURNING seq`,
+          [ev.event_id, TENANT_ID, s.id, payload, sisPrev, hash, ev.context.time],
+        );
+        if (res.rowCount && res.rowCount > 0) { sisPrev = hash; sisInserted++; }
+      }
+    }
+  }
+  await gw.query("SELECT set_config('app.workspace_id', $1, false)", [WS_ID]);
+  console.log(`✓ 跨店工作区 ×2（西溪 32 间民宿型/满陇 24 间无人型）· 驾驶舱事件 ×${sisInserted}`);
 
   // —— FAQ 知识库生长结果回写一店一档（萃取产物可见） ——
   const prof = await owner.query(`SELECT archive FROM profiles WHERE workspace_id=$1`, [WS_ID]);
