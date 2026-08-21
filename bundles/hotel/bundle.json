@@ -1,10 +1,10 @@
 {
   "name": "@workloom/hotel",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "workloom": {
     "industry": "hotel",
     "displayName": "WorkLoom 酒店行业版",
-    "description": "酒店行业版差异资产包 v2：9 个 Agent preset（7 深化 + 前台/客房 2 新增）+ 基线围栏包 R1–R16 + 三类客群客户级 Patch 模板 + 20 类对象/16 阶段枚举 + 一店一档五类档案 17 字段组 + 22 个官方技能套件，覆盖七大业务域 67 个经营环节（低星单体酒店/民宿/无人酒店）",
+    "description": "酒店行业版差异资产包 v2.1：11 个 Agent preset（+语音前台 phone-agent/业主驾驶舱 owner-cockpit）+ 基线围栏包 R1–R20（v3：+倒挂/超售/差评SLA/布草损耗）+ 三类客群客户级 Patch 模板+ 20 类对象/16 阶段枚举 + 一店一档五类档案 20 字段组（+布草/断点/FAQ）+ 25 个官方技能套件（+phone-concierge/overbooking-parity-guard/incident-postmortem），覆盖七大业务域 67 个经营环节（低星单体酒店/民宿/无人酒店）",
     "provides": {
       "presets": [
         "presets/pricing-agent.yml",
@@ -15,7 +15,9 @@
         "presets/competitor-agent.yml",
         "presets/desktop-agent.yml",
         "presets/frontdesk-agent.yml",
-        "presets/housekeeper-agent.yml"
+        "presets/housekeeper-agent.yml",
+        "presets/phone-agent.yml",
+        "presets/owner-cockpit.yml"
       ],
       "fences": [
         "fences/hotel-baseline.yml",
@@ -45,7 +47,10 @@
         "skills/maintenance-dispatch/SKILL.md",
         "skills/ai-live-assistant/SKILL.md",
         "skills/ota-operations/SKILL.md",
-        "skills/guest-profile-crm/SKILL.md"
+        "skills/guest-profile-crm/SKILL.md",
+        "skills/phone-concierge/SKILL.md",
+        "skills/overbooking-parity-guard/SKILL.md",
+        "skills/incident-postmortem/SKILL.md"
       ],
       "schemas": [
         "schemas/objects.json",

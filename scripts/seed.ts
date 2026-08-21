@@ -2,9 +2,9 @@
  * A5 · 演示种子数据（PRD V2.5 P 章示例场景：云栖酒店）
  * 用法：pnpm db:seed（读取 .env；幂等，可重复执行）
  *
- * 内容：demo 租户 / 云栖酒店工作区 / 3 人类成员 / 7 Agent preset 实例 /
- *      一店一档（含 forbidden 硬约束）/ 基线围栏 R1–R6 装载 / 3 官方技能 /
- *      2 触发器 / 昨夜夜班班次 / 100 条五元事件（哈希链）/ 审批样例 / 组织记忆
+ * 内容：demo 租户 / 云栖酒店工作区 / 3 人类成员 / 11 Agent preset 实例 /
+ *      一店一档（含 forbidden 硬约束 + 布草/断点/FAQ 字段组）/ 基线围栏 R1–R20（hotel-baseline/v3）装载 / 25 官方技能 /
+ *      6 触发器 / 昨夜夜班班次 / 100 条五元事件（哈希链）/ 审批样例 / 组织记忆
  *
  * 纪律：
  *  - 事件只经 workloom_gateway 角色写入（F1.2），其余表走 owner 种子连接（D10）；
@@ -40,7 +40,7 @@ const TENANT_NAME = "演示租户（Demo）";
 const WS_ID = "ws-yunqi";
 const WS_NAME = "云栖酒店";
 const WS_SLUG = "yunqi-hotel";
-const FENCE_VERSION = "hotel-baseline/v2";
+const FENCE_VERSION = "hotel-baseline/v3";
 
 const MEMBERS = [
   { id: "MEM-001", name: "王店长", role: "owner" },
@@ -175,6 +175,9 @@ function loadSkills(): SkillDoc[] {
         "ai-live-assistant": ["R15", "R2"],
         "ota-operations": [],
         "guest-profile-crm": [],
+        "phone-concierge": ["R9", "R13"],
+        "overbooking-parity-guard": ["R17", "R18", "R2"],
+        "incident-postmortem": ["R10"],
       };
       return {
         name: String(fm.name ?? d),
@@ -245,6 +248,37 @@ function yunqiArchive(): Record<string, unknown> {
     },
     compensation_policy: { max_goodwill_amount: 200, upgrade_promise: "forbidden", refund_channel: "reconcile-agent" },
     memory: { case_index: [], note: "处置案例索引（第五类 case 记忆落地前的配置层锚点）" },
+    // v2.1 新增字段组 ×3（schemas/archive.schema.json 对齐）
+    linen: {
+      initial_sets: { 床单: 180, 被套: 180, 枕套: 360, 毛巾: 260, 浴巾: 180 },
+      laundry_vendor: "洁雅布草洗涤",
+      delivery_tolerance: 0.02,
+      baseline_loss_rate: 0.03,
+      rfid_enabled: false,
+    },
+    incident_profile: {
+      devices: [
+        { kind: "self_checkin_kiosk", model: "示例自助机 K2", warranty_until: "2027-06-30" },
+        { kind: "smart_lock", model: "示例门锁 L5", warranty_until: "2027-03-31" },
+      ],
+      emergency_contacts: [
+        { level: 1, name: "值班手机", phone: "138****0001" },
+        { level: 2, name: "远程店长 王店长", phone: "138****0002" },
+        { level: 3, name: "就近应急 顺达维修", phone: "138****0003" },
+      ],
+      alarm_integration: "烟感/门磁联动 110/119 自动报警",
+      backup_access: "前台保险柜机械钥匙 ×2（店长/业主各一）",
+      current_fallback_levels: { order_anomaly: "ai_first", identity_fail: "remote_video", safety_event: "alarm_only" },
+    },
+    faq_kb: {
+      top_questions: [
+        { q: "有停车场吗", a: "酒店地下两层免费停车，入口在云栖路辅道", source_call_ids: [], confirmed: true },
+        { q: "早餐几点", a: "06:30–10:00，一楼全日制餐厅", source_call_ids: [], confirmed: true },
+        { q: "几点退房", a: "12:00 前；延迟退房按半日房费，视房态确认", source_call_ids: [], confirmed: true },
+      ],
+      last_mined_at: null,
+      pending_candidates: [],
+    },
     // 巡检只读快照（M9/F9.1 探针输入；E1 补登：07:00 巡检真实检出——高危差评 + 中危价格/房态异常）
     inspection: {
       channels: [
@@ -585,7 +619,7 @@ async function main(): Promise<void> {
       ],
     );
   }
-  console.log(`✓ Agent 实例 ×${presets.length}（含只读 preset：巡检/竞对，L9.1）`);
+  console.log(`✓ Agent 实例 ×${presets.length}（含只读 preset：巡检/竞对/业主驾驶舱，L9.1）`);
 
   // 一店一档（槽①；forbidden 双写：archive 内 + 独立列，L1.6）
   const archive = yunqiArchive();
@@ -597,7 +631,7 @@ async function main(): Promise<void> {
   );
   console.log("✓ 一店一档（含 forbidden 硬约束 ×2，保底价 ¥380 与 R2 同源）");
 
-  // 基线围栏装载（R1–R16，active；单调守卫 F2.3 由阶段二 B4 判定器执行）
+  // 基线围栏装载（R1–R20，active；单调守卫 F2.3 由阶段二 B4 判定器执行）
   // 版本化装载纪律：id 含版本 slug（重复 seed 不撞 pkey）；同 rule_id 的旧 active 版本滚动为 rolled_back，保证单一生效版本
   const fenceVerSlug = FENCE_VERSION.replace(/[^a-z0-9]+/gi, "-").toLowerCase();
   for (const r of fences) {
@@ -668,10 +702,14 @@ async function main(): Promise<void> {
   );
   console.log(`✓ 团队技能 ×1（已装）+ 行业共享技能 ×1（已脱敏待装）`);
 
-  // 触发器（F4.7：07:00 巡检 / 22:00 夜班出征）
+  // 触发器（F4.7：07:00 巡检 / 22:00 夜班出征 + v2.1 新增 4 个：差评SLA/倒挂超售/FAQ萃取/断点周报）
   const triggers = [
     { id: "tg-inspection-0700", name: "每日 07:00 只读巡检", kind: "cron", schedule: "0 7 * * *", action: { dispatch: "inspection-agent", template: "inspection.daily" } },
     { id: "tg-night-2200", name: "夜班 22:00 战队出征", kind: "cron", schedule: "0 22 * * *", action: { dispatch: "night-shift", template: "night.run.start" } },
+    { id: "tg-review-sla-30min", name: "差评 SLA 扫描（每 30 分钟，R19 联动）", kind: "cron", schedule: "*/30 * * * *", action: { dispatch: "review-agent", template: "review.sla.scan" } },
+    { id: "tg-parity-15min", name: "倒挂超售看门狗（每 15 分钟，R17/R18 联动）", kind: "cron", schedule: "*/15 * * * *", action: { dispatch: "competitor-agent", template: "channel.parity.scan" } },
+    { id: "tg-faq-mine-sun", name: "FAQ 知识库周萃取（周日 03:00）", kind: "cron", schedule: "0 3 * * 0", action: { dispatch: "phone-agent", template: "faq.weekly.mine" } },
+    { id: "tg-incident-weekly", name: "断点率周报（周一 04:00）", kind: "cron", schedule: "0 4 * * 1", action: { dispatch: "desktop-agent", template: "incident.weekly.report" } },
   ];
   for (const t of triggers) {
     await q(
@@ -680,7 +718,7 @@ async function main(): Promise<void> {
       [t.id, WS_ID, t.name, t.kind, t.schedule, JSON.stringify(t.action)],
     );
   }
-  console.log("✓ 触发器 ×2（巡检 07:00 / 夜班 22:00）");
+  console.log("✓ 触发器 ×6（巡检/夜班 + 差评SLA/倒挂超售/FAQ萃取/断点周报）");
 
   // 演示线程（P1/P2 有数据可投影）
   const threads = [
