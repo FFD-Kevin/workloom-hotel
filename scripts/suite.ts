@@ -651,6 +651,23 @@ e("expireSweep 未到期项不动", async () => {
   const row = await qApp<{ status: string }>(`SELECT status FROM approvals WHERE approval_id=$1`, [approvalId]);
   eq(row.rows[0]!.status, "pending", "未到期保留");
 });
+e("#43 同事件跨通道幂等：inapp 批后 dingtalk 行按重复回调处理", async () => {
+  const { approvalId, eventId } = await mkApproval();
+  const dingId = `apr-x43-${Date.now().toString(36)}`;
+  await qApp(
+    `INSERT INTO approvals (approval_id, tenant_id, workspace_id, event_id, channel, status, snapshot)
+     VALUES ($1,$2,$3,$4,'dingtalk','pending','{}')`,
+    [dingId, scope.tenantId, scope.workspaceId, eventId],
+  );
+  const d1 = await decide(app, gw, scope, boss, approvalId, { type: "approve" });
+  eq(d1.deduped, false, "行内首批生效");
+  const d2 = await decide(app, gw, scope, boss, dingId, { type: "approve" });
+  eq(d2.deduped, true, "他通道行按重复回调（#43 同事件幂等）");
+  const row = await qApp<{ status: string }>(`SELECT status FROM approvals WHERE approval_id=$1`, [dingId]);
+  eq(row.rows[0]!.status, "pending", "他通道行不被误改");
+  await qApp(`DELETE FROM approvals WHERE approval_id=$1`, [dingId]); // 清理
+});
+
 e("并发 8 路 decide 同一审批：仅 1 路生效", async () => {
   const { approvalId } = await mkApproval();
   const rs = await Promise.all(Array.from({ length: 8 }, () => decide(app, gw, scope, boss, approvalId, { type: "approve" }).catch((err) => err)));

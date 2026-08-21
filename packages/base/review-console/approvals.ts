@@ -171,6 +171,18 @@ export async function decide(
       return { kind: "deduped" as const, row };
     }
 
+    // #43 修复：同事件跨通道幂等——UNIQUE(event_id,channel) 允许 inapp/dingtalk 各一行，
+    // 此前两通道可各批一次（同一动作双批双留痕）。锁同事件全部审批行（FOR UPDATE
+    // 阻塞并发他通道 decide 至本事务提交），任一他行已终态即按重复回调处理
+    const siblings = await c.query<{ approval_id: string; status: ApprovalStatus }>(
+      `SELECT approval_id, status FROM approvals WHERE event_id=$1 AND workspace_id=$2 AND approval_id<>$3 FOR UPDATE`,
+      [row.event_id, scope.workspaceId, approvalId],
+    );
+    const decidedElsewhere = siblings.rows.find((x) => x.status !== "pending");
+    if (decidedElsewhere) {
+      return { kind: "deduped" as const, row: { ...row, status: decidedElsewhere.status } };
+    }
+
     // F5.7/E5.3：快照过期检测（高危项不存在超时自动放行，L5.4）
     const expiresAt = row.snapshot?.expires_at ? new Date(row.snapshot.expires_at) : null;
     if (expiresAt && expiresAt.getTime() < Date.now()) {
