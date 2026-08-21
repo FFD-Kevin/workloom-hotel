@@ -1561,6 +1561,85 @@ const bundlesRouter = router({
     }),
 });
 
+/**
+ * 酒店经营态查询（P10 断点看板 / P11 价格健康 / P12 经营目标 数据源）
+ * 全部读路径：app 池 + 事务级双 GUC（RLS 口径与既有查询一致）；
+ * 数据全部来自五元事件库与一店一档——无独立模拟源（样板间工程纪律：前后端数据打通）。
+ */
+async function queryEventsByActions(
+  scope: { tenantId: string; workspaceId: string },
+  actions: string[],
+  limit: number,
+): Promise<Array<Record<string, unknown>>> {
+  const app = getAppPool();
+  const client = await app.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
+    await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
+    const r = await client.query<{ payload: Record<string, unknown> }>(
+      `SELECT payload FROM biz_events
+       WHERE workspace_id=$1 AND payload->'decision'->>'action' = ANY($2::text[])
+       ORDER BY seq DESC LIMIT $3`,
+      [scope.workspaceId, actions, limit],
+    );
+    await client.query("COMMIT");
+    return r.rows.map((x) => x.payload);
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+const twinRouter = router({
+  /** P10 断点看板：断点闭环事件（根因四分类）+ 周频断点率周报 */
+  incidents: protectedProcedure.query(async ({ ctx }) => {
+    const scope = scopeOf(ctx.identity);
+    const [incidents, weekly] = await Promise.all([
+      queryEventsByActions(scope, ["incident.postmortem"], 50),
+      queryEventsByActions(scope, ["incident.weekly.report"], 12),
+    ]);
+    return { incidents, weekly };
+  }),
+
+  /** P11 价格健康：倒挂熔断 / 超售防护 / 修复留痕 / 调价事件流 */
+  priceHealth: protectedProcedure.query(async ({ ctx }) => {
+    const scope = scopeOf(ctx.identity);
+    const [blocks, fixes, adjusts] = await Promise.all([
+      queryEventsByActions(scope, ["price.publish", "inventory.sync"], 50),
+      queryEventsByActions(scope, ["channel.parity.fixed", "inventory.sync.restore"], 20),
+      queryEventsByActions(scope, ["price.adjust"], 30),
+    ]);
+    return { blocks, fixes, adjusts };
+  }),
+
+  /** P12 经营目标：一店一档 goals 字段组 + 周频 goal.tracking 达成追踪 */
+  goals: protectedProcedure.query(async ({ ctx }) => {
+    const scope = scopeOf(ctx.identity);
+    const app = getAppPool();
+    const client = await app.connect();
+    try {
+      await client.query("BEGIN");
+      await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
+      await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
+      const prof = await client.query<{ archive: { goals?: unknown } }>(
+        `SELECT archive FROM profiles WHERE workspace_id=$1`,
+        [scope.workspaceId],
+      );
+      await client.query("COMMIT");
+      const trackings = await queryEventsByActions(scope, ["goal.tracking"], 16);
+      return { goals: prof.rows[0]?.archive?.goals ?? null, trackings };
+    } catch (err) {
+      await client.query("ROLLBACK").catch(() => undefined);
+      throw err;
+    } finally {
+      client.release();
+    }
+  }),
+});
+
 export const appRouter = router({
   system: systemRouter,
   auth: authRouter,
@@ -1575,6 +1654,7 @@ export const appRouter = router({
   roster: rosterRouter,
   im: imRouter,
   bundles: bundlesRouter,
+  twin: twinRouter,
 });
 
 export type AppRouter = typeof appRouter;

@@ -91,7 +91,7 @@ export function Bridge({
               </span>
             </div>
             <span className="text-xs text-ink3">
-              企业 Agent IM · <b className="font-semibold text-ink2">云栖酒店</b>
+              酒店智能经营系统 · <b className="font-semibold text-ink2">云栖酒店</b>
             </span>
             <span className="flex-1" />
             <PlanSwitcher onPlan={setPlan} />

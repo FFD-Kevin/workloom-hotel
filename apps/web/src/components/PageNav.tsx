@@ -1,0 +1,58 @@
+/**
+ * 页面导航（左栏）：P1–P12 全量入口（酒店经营态页面接线后统一导航）
+ * 视觉口径：与 Bridge 左栏一致（text-ink3 分组标 / border-line 卡片 / hover:border-gline）
+ */
+const NAV: Array<{ group: string; items: Array<{ path: string; label: string; tag: string }> }> = [
+  {
+    group: "经营驾驶",
+    items: [
+      { path: "/", label: "主甲板·舰桥", tag: "P1" },
+      { path: "/p12", label: "经营目标", tag: "P12" },
+      { path: "/p3", label: "交接班", tag: "P3" },
+    ],
+  },
+  {
+    group: "订单与渠道",
+    items: [
+      { path: "/p11", label: "价格健康", tag: "P11" },
+      { path: "/p4", label: "决断队列", tag: "P4" },
+      { path: "/p5", label: "航道管制·围栏", tag: "P5" },
+    ],
+  },
+  {
+    group: "组织与夜班",
+    items: [
+      { path: "/p9", label: "守夜战队频道", tag: "P9" },
+      { path: "/p6", label: "技能市场", tag: "P6" },
+      { path: "/p7", label: "组织记忆", tag: "P7" },
+      { path: "/p8", label: "班组名册", tag: "P8" },
+      { path: "/p10", label: "断点看板", tag: "P10" },
+    ],
+  },
+];
+
+export function PageNav({ current }: { current: string }) {
+  return (
+    <>
+      {NAV.map((g) => (
+        <div key={g.group} className="mb-3">
+          <div className="mb-2 px-1 text-[11px] tracking-[.2em] text-ink3">{g.group}</div>
+          {g.items.map((it) => (
+            <a
+              key={it.path}
+              href={it.path}
+              className={`mb-1.5 flex items-center justify-between rounded-lg border px-3 py-2.5 text-body transition-colors ${
+                current === it.tag
+                  ? "border-gline bg-card text-gold"
+                  : "border-line bg-card text-ink2 hover:border-gline"
+              }`}
+            >
+              <span>{it.label}</span>
+              <span className="font-mono text-[11px] text-ink3">{it.tag}</span>
+            </a>
+          ))}
+        </div>
+      ))}
+    </>
+  );
+}

@@ -121,11 +121,14 @@ WorkLoom 的 AI 不是「一个助手」，是**一支有分工、有纪律、�
 ## 三、五分钟，亲手点一遍
 
 ```bash
-pnpm install && pnpm db:migrate && pnpm db:seed
-pnpm demo:twin          # 内置体验门店「云栖酒店」（86 间）30 天经营数据就位
-pnpm dev                # 打开工作台：从 P1 今日驾驶舱到 P12 经营目标
-pnpm db:verify-chain    # 现场验证：全库哈希链逐条重算
+pnpm install && pnpm db:migrate
+pnpm demo:twin:restore        # 30 秒恢复体验门店「云栖酒店」30 天经营态（随仓快照）
+pnpm dev                      # 打开工作台：P1 今日驾驶舱 → P9 夜班驾驶舱 → P10 断点看板 → P11 价格健康 → P12 经营目标
+pnpm db:verify-chain          # 现场验证：全库哈希链逐条重算
 ```
+
+> 全部页面（P1–P12）均为真实 API 接线，数据来自事件库与一店一档——接入真实 PMS/OTA 数据源后，所见即所得。
+> 另有零安装高保真原型 [`demo/prototype/`](demo/prototype/)（PC + 移动端，双击即开），供售前演示与设计走查。
 
 推荐阅读：[经营体验与演示指南](docs/DEMO-TWIN.md) · [三客群默认装配清单](bundles/hotel/segment-defaults.yml) · [围栏基线 R1–R20](bundles/hotel/fences/hotel-baseline.yml) · [25 个官方技能](bundles/hotel/skills) · [底座技术文档](README-CORE.md)
 
