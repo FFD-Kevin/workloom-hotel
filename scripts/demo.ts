@@ -309,7 +309,7 @@ async function main(): Promise<void> {
   );
   check(
     "22:00 围栏快照写入（F2.6：夜班动作 100% 过围栏 L4.1）",
-    curNight.configured && curNight.run?.fenceSnapshot === "hotel-baseline/v1",
+    curNight.configured && curNight.run?.fenceSnapshot === "hotel-baseline/v2",
     `快照 ${curNight.run?.fenceSnapshot}`,
   );
   nightStartedAt = nightStartedAt ?? curNight.run?.startedAt ?? null;

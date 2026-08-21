@@ -40,7 +40,7 @@ const TENANT_NAME = "演示租户（Demo）";
 const WS_ID = "ws-yunqi";
 const WS_NAME = "云栖酒店";
 const WS_SLUG = "yunqi-hotel";
-const FENCE_VERSION = "hotel-baseline/v1";
+const FENCE_VERSION = "hotel-baseline/v2";
 
 const MEMBERS = [
   { id: "MEM-001", name: "王店长", role: "owner" },
@@ -153,9 +153,28 @@ function loadSkills(): SkillDoc[] {
       const m = raw.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
       const fm = YAML.parse(m?.[1] ?? "{}");
       const bindMap: Record<string, string[]> = {
-        "revenue-manager": ["R1", "R2"],
+        "revenue-manager": ["R1", "R2", "R7", "R8"],
         "review-crisis": ["R6"],
         "channel-reconciler": ["R4", "R5"],
+        "inspection-suite": [],
+        "night-audit-suite": ["R5"],
+        "checkin-checkout": ["R4", "R14"],
+        "customer-service": ["R13"],
+        "content-marketing": ["R3", "R15"],
+        "retention-manager": ["R9"],
+        "inventory-procurement": ["R11"],
+        "staff-scheduler": ["R12"],
+        "safety-compliance": ["R10"],
+        "finance-reporting": [],
+        "morning-briefing": [],
+        "handover-manager": [],
+        "pricing-matrix": ["R1", "R2"],
+        "review-asset-mining": [],
+        "room-service-dispatch": ["R14"],
+        "maintenance-dispatch": [],
+        "ai-live-assistant": ["R15", "R2"],
+        "ota-operations": [],
+        "guest-profile-crm": [],
       };
       return {
         name: String(fm.name ?? d),
@@ -169,11 +188,18 @@ function loadSkills(): SkillDoc[] {
 /** 一店一档（bundles/hotel/schemas/archive.schema.json 对齐；保底价 ¥380 与 R2 同源） */
 function yunqiArchive(): Record<string, unknown> {
   return {
-    property: { name: WS_NAME, city: "杭州", rooms: 86, star: "四钻" },
+    property: { name: WS_NAME, city: "杭州", rooms: 86, star: "四钻", segment: "low_star_single", pms_vendor: "示例PMS" },
     brand_guideline: {
       tone: "真诚克制，不夸大、不承诺档案外补偿",
       banned_words: ["最低价全网保证", "百分百满意"],
       image_rules: "首图实拍、无水印、16:9",
+      live_rules: "直播口播不承诺最低价，专享价不低于保底价",
+    },
+    business: {
+      floor_price: 380,
+      price_bands: { "雅致大床房": [398, 688], "亲子双床房": [468, 788], "商旅大床房": [358, 588] },
+      commission_rules: { "美团": 0.10, "携程": 0.12, "飞猪": 0.08, "直连": 0 },
+      refund_policy: { free_cancel_hours: 18, guarantee_required_after: "18:00" },
     },
     competitors: [
       { name: "西湖云舍酒店", channels: ["美团", "携程"], price_band: [420, 680] },
@@ -187,6 +213,38 @@ function yunqiArchive(): Record<string, unknown> {
       "2026-08": { occ: 0.78, adr: 496, revpar: 387 },
     },
     sop: ["差评 24h 内响应", "调价须附竞对依据", "夜间对账三轮比对"],
+    channels: [
+      { name: "美团", kind: "ota", channel_new: false },
+      { name: "携程", kind: "ota", channel_new: false },
+      { name: "飞猪", kind: "ota", channel_new: false },
+      { name: "抖音", kind: "live", channel_new: true },
+      { name: "小红书", kind: "content", channel_new: true },
+    ],
+    price_calendar: {
+      horizon_days: 90,
+      holidays: [{ date: "2026-10-01", name: "国庆", strategy: "提前7天策略审批" }],
+    },
+    operations: {
+      shifts: ["早班 08:00-16:00", "中班 16:00-24:00", "夜班 00:00-08:00"],
+      night_window: { start: "22:00", end: "08:00", package_time: "08:30" },
+      inspection_cron: ["10:00", "15:00", "20:00"],
+      cleaning_sop: "预抵房>退房>续住房>空房；30-45分钟/间",
+      room_check_items: ["清洁", "设施", "耗材", "minibar", "损坏丢失"],
+    },
+    staffing: { frontdesk: 3, housekeeping: 3, maintenance: 1, overtime_legal_max_h_month: 36 },
+    suppliers: [
+      { name: "洁雅布草洗涤", kind: "linen", backup: false },
+      { name: "快捷酒店用品", kind: "consumable", backup: false },
+      { name: "顺达维修", kind: "maintenance", backup: true },
+    ],
+    approval_matrix: {
+      refund_review_threshold: 500,
+      procurement_review_threshold: 1000,
+      compensation: "review_only",
+      night_high_risk: "block",
+    },
+    compensation_policy: { max_goodwill_amount: 200, upgrade_promise: "forbidden", refund_channel: "reconcile-agent" },
+    memory: { case_index: [], note: "处置案例索引（第五类 case 记忆落地前的配置层锚点）" },
     // 巡检只读快照（M9/F9.1 探针输入；E1 补登：07:00 巡检真实检出——高危差评 + 中危价格/房态异常）
     inspection: {
       channels: [
