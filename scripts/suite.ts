@@ -290,7 +290,7 @@ c("种子基线规则装载 ≥6 条且含 R1-R6", async () => {
 });
 c("R1 涨幅 ≤8% → auto", async () => {
   const rules = await activeRules();
-  const v = judge({ object: { type: "room_price", id: "RT-DLX-KING" }, action: "price.adjust", before: { price: 458 }, after: { price: 468 }, context: { channel_new: false } }, rules, "review");
+  const v = judge({ object: { type: "room_price", id: "RT-DLX-KING" }, action: "price.adjust", before: { price: 458 }, after: { price: 468 }, context: { channel_new: false, night_shift: false } }, rules, "review");
   eq(v.level, "auto", `判定（${v.triggeredBy.join("/")}）`);
 });
 c("R2 破保底价 ¥380 → block 熔断", async () => {

@@ -62,7 +62,7 @@ export function planQuest(goal: string, preset: AssembledPreset): QuestStep[] {
     return [
       { stepId: "s1", action: "competitor.fetch", objectType: "channel", tool: "competitor.fetch", params: {}, label: "采集竞对价格卡" },
       { stepId: "s2", action: "pms.price.read", objectType: "room_price", tool: "pms.price.read", params: { room_type: "RT-DLX-KING" }, label: "读取当前房价/房态" },
-      { stepId: "s3", action: "price.adjust", objectType: "room_price", objectId: "RT-DLX-KING", tool: "pms.price.write", params: { room_type: "RT-DLX-KING", price: 468 }, before: { price: 458 }, after: { price: 468 }, context: { channel_new: false }, label: "调价至 ¥468（涨幅约 2.2%）" },
+      { stepId: "s3", action: "price.adjust", objectType: "room_price", objectId: "RT-DLX-KING", tool: "pms.price.write", params: { room_type: "RT-DLX-KING", price: 468 }, before: { price: 458 }, after: { price: 468 }, context: { channel_new: false, night_shift: false }, label: "调价至 ¥468（涨幅约 2.2%）" },
     ];
   }
   if (/差评|评价|回复/.test(goal)) {

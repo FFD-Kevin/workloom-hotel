@@ -597,14 +597,21 @@ async function main(): Promise<void> {
   );
   console.log("✓ 一店一档（含 forbidden 硬约束 ×2，保底价 ¥380 与 R2 同源）");
 
-  // 基线围栏装载（R1–R6，active；单调守卫 F2.3 由阶段二 B4 判定器执行）
+  // 基线围栏装载（R1–R16，active；单调守卫 F2.3 由阶段二 B4 判定器执行）
+  // 版本化装载纪律：id 含版本 slug（重复 seed 不撞 pkey）；同 rule_id 的旧 active 版本滚动为 rolled_back，保证单一生效版本
+  const fenceVerSlug = FENCE_VERSION.replace(/[^a-z0-9]+/gi, "-").toLowerCase();
   for (const r of fences) {
+    await q(
+      `UPDATE fence_rules SET status = 'rolled_back'
+       WHERE workspace_id = $1 AND rule_id = $2 AND version <> $3 AND status = 'active'`,
+      [WS_ID, r.rule_id, FENCE_VERSION],
+    );
     await q(
       `INSERT INTO fence_rules (id, rule_id, version, workspace_id, name, level, match_spec, action, is_baseline, status, created_by)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'active','system:seed')
-       ON CONFLICT (rule_id, version, workspace_id) DO NOTHING`,
+       ON CONFLICT (rule_id, version, workspace_id) DO UPDATE SET status = 'active', match_spec = EXCLUDED.match_spec, action = EXCLUDED.action`,
       [
-        `fr-${r.rule_id.toLowerCase()}-v1-${WS_ID}`,
+        `fr-${r.rule_id.toLowerCase()}-${fenceVerSlug}-${WS_ID}`,
         r.rule_id,
         FENCE_VERSION,
         WS_ID,
@@ -827,11 +834,13 @@ async function main(): Promise<void> {
   console.log(`✓ 组织记忆 ×${memories.length}（含来源事件归因）`);
 
   // —— 验收（附录 H-1）：回读本批次 100 条，逐条过 zod，五元完整率必须 100%
+  // 按本批显式 ID 清单回读（不用字符串范围：库里可能存在历史遗留事件，词法区间会误纳）
+  const batchIds = Array.from({ length: EVENT_COUNT }, (_, i) => `E-${EVENT_BASE + 1 + i}`);
   const check = await gw.query(
     `SELECT payload FROM biz_events
-     WHERE tenant_id=$1 AND workspace_id=$2 AND event_id >= $3 AND event_id <= $4
+     WHERE tenant_id=$1 AND workspace_id=$2 AND event_id = ANY($3::text[])
      ORDER BY seq`,
-    [TENANT_ID, WS_ID, `E-${EVENT_BASE + 1}`, `E-${EVENT_BASE + EVENT_COUNT}`],
+    [TENANT_ID, WS_ID, batchIds],
   );
   let valid = 0;
   for (const row of check.rows) {
