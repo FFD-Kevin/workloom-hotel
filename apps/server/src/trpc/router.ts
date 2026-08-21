@@ -28,6 +28,8 @@ import {
   listQueue,
 } from "@workloom/base/review-console";
 import { routeIntent, runQuest } from "@workloom/runtime";
+import { LlmIntentClassifier, type IntentClassifier } from "@workloom/runtime";
+import { providerFromEnv } from "@workloom/base/model-router";
 import {
   buildCandidateList,
   confirmNight,
@@ -227,8 +229,8 @@ const threadsRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const scope = scopeOf(ctx.identity);
-      // F3.2 意图路由（规则兜底；LLM 分类器在 B8 后续接 model-router）
-      const intent = await routeIntent(input.title);
+      // F3.2 意图路由（B8 接线：真实模型分类 → 超时/异常规则兜底 → 含糊反问）
+      const intent = await routeIntent(input.title, intentClassifier());
       if (intent.kind === "clarify") {
         // 含糊指令：反问澄清，不盲目建任务
         return { kind: "clarify" as const, question: intent.clarifyQuestion, via: intent.via };
@@ -1560,6 +1562,32 @@ const bundlesRouter = router({
       }
     }),
 });
+
+/**
+ * B8 · 意图分类器装配：LLM_PROVIDER 非 mock 且凭据齐备 → LlmIntentClassifier（真实模型，含注入防护+白名单+规则兜底）；
+ * 默认 mock 或未配置 → undefined（ruleBasedRoute 确定性规则直译，D4 全流程可跑口径）。
+ * 分类结果 via 字段留痕（llm / rule / timeout_fallback），任务卡可见路由来源。
+ */
+let cachedClassifier: IntentClassifier | null | undefined;
+function intentClassifier(): IntentClassifier | undefined {
+  if (cachedClassifier !== undefined) return cachedClassifier ?? undefined;
+  try {
+    if ((process.env.LLM_PROVIDER ?? "mock") === "mock") {
+      cachedClassifier = null;
+      return undefined;
+    }
+    const modelId = process.env.LLM_MODEL ?? "deepseek-chat";
+    const provider = providerFromEnv(modelId);
+    cachedClassifier = new LlmIntentClassifier(async (prompt) => {
+      const r = await provider.chat([{ role: "user", content: prompt }]);
+      return r.text;
+    });
+    return cachedClassifier;
+  } catch {
+    cachedClassifier = null; // 配置缺失等 → 规则兜底（不静默：via=rule 留痕）
+    return undefined;
+  }
+}
 
 /**
  * 酒店经营态查询（P10 断点看板 / P11 价格健康 / P12 经营目标 数据源）

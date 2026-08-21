@@ -45,3 +45,21 @@ pnpm demo:twin:restore           # 售前现场：免模拟一键恢复（30 秒
 ## 三客群切换
 
 快照默认是低星单体（云栖酒店 86 间）视角。民宿/无人酒店叙事用 `bundles/hotel/segment-defaults.yml` 的默认安装清单讲解即可（技能市场按客群命中对应排序）；后续可按需生成民宿版/无人酒店版孪生快照（同一生成器，换档案与权重参数）。
+
+## 真实模型接入（B8，v2.5.2 起）
+
+意图路由（派遣框「安排任务/提问」的第一跳）支持真实大模型：
+
+```bash
+# .env
+LLM_PROVIDER=openai            # openai 兼容：deepseek/moonshot/zhipu/openai 均可
+LLM_BASE_URL=https://api.deepseek.com/v1
+LLM_API_KEY=sk-xxx
+LLM_MODEL=deepseek-chat
+```
+
+- 配置后：dispatch 意图分类走真实模型（含提示词注入防护 + 输出白名单 + 3s 超时熔断），路由来源 `via=llm` 在任务卡留痕；
+- 未配置（默认 `mock`）：确定性规则路由兜底（`via=rule`），全流程可跑（D4）；
+- 模型出站强制脱敏（L6.2，任何调用路径不可绕过）。
+
+**当前边界（诚实口径）**：意图分类可接真模型；quest 的步骤规划为确定性模板（L3 剧本，真实 LLM 规划属 dsh agent loop 融合工程）；ask 自由问答的内容合成未接线（演示时围绕已覆盖场景：调价/差评/对账/巡检/夜班/排班等，含糊指令反问澄清本身是展示点）。
