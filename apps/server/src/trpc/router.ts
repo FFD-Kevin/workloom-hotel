@@ -27,7 +27,7 @@ import {
   expireSweep,
   listQueue,
 } from "@workloom/base/review-console";
-import { routeIntent, runQuest } from "@workloom/runtime";
+import { routeIntent, runAsk, runQuest } from "@workloom/runtime";
 import { LlmIntentClassifier, type IntentClassifier } from "@workloom/runtime";
 import { providerFromEnv } from "@workloom/base/model-router";
 import {
@@ -286,6 +286,13 @@ const threadsRouter = router({
       }
       // 派遣事件已随建线程同事务落库（D16；G8 三段瀑布同口径）
       // 演示驱动：立即执行 Quest 循环（生产由调度器拉取，B9）
+      // ask 问询：即时应答（B8——取数为真、模型可插拔；不依赖 runImmediately 按钮）
+      if (intent.mode === "ask") {
+        const ra = await runAsk(getAppPool(), getGatewayPool(), scope, {
+          threadId, goal: input.title, presetKey: "morning-briefing", llmCall: llmCall(),
+        });
+        return { kind: "routed" as const, mode: intent.mode, via: intent.via, threadId, status: ra.status, answer: ra.answer };
+      }
       if (input.runImmediately && intent.mode === "quest") {
         const r = await runQuest(app, getGatewayPool(), scope, {
           threadId, goal: input.title, presetKey: input.presetKey,
@@ -348,13 +355,31 @@ const threadsRouter = router({
       }
     }),
 
-  /** 运行/续跑线程（replay 断点续跑幂等，E3.3/H-5；手动触发演示驱动） */
+  /** 运行/续跑线程（replay 断点续跑幂等，E3.3/H-5；按线程模式分流：ask 应答 / agent 逐步确认 / quest 自主执行） */
   run: capabilityWriteProcedure("quest")
     .input(z.object({ threadId: z.string(), goal: z.string(), presetKey: z.string().default("pricing-agent") }))
     .mutation(async ({ ctx, input }) => {
       const scope = scopeOf(ctx.identity);
-      return runQuest(getAppPool(), getGatewayPool(), scope, {
-        threadId: input.threadId, goal: input.goal, presetKey: input.presetKey,
+      const app = getAppPool();
+      const client = await app.connect();
+      let mode: "ask" | "agent" | "quest" = "quest";
+      try {
+        await client.query("BEGIN");
+        await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
+        const t = await client.query<{ mode: string }>(`SELECT mode FROM threads WHERE id=$1 AND workspace_id=$2`, [input.threadId, scope.workspaceId]);
+        await client.query("COMMIT");
+        if (t.rows[0]?.mode === "ask" || t.rows[0]?.mode === "agent") mode = t.rows[0].mode;
+      } catch (err) {
+        await client.query("ROLLBACK").catch(() => undefined);
+        throw err;
+      } finally {
+        client.release();
+      }
+      if (mode === "ask") {
+        return runAsk(app, getGatewayPool(), scope, { threadId: input.threadId, goal: input.goal, presetKey: input.presetKey, llmCall: llmCall() });
+      }
+      return runQuest(app, getGatewayPool(), scope, {
+        threadId: input.threadId, goal: input.goal, presetKey: input.presetKey, mode, llmCall: llmCall(),
       });
     }),
 });
@@ -1568,25 +1593,33 @@ const bundlesRouter = router({
  * 默认 mock 或未配置 → undefined（ruleBasedRoute 确定性规则直译，D4 全流程可跑口径）。
  * 分类结果 via 字段留痕（llm / rule / timeout_fallback），任务卡可见路由来源。
  */
+let cachedLlmCall: ((prompt: string) => Promise<string>) | null | undefined;
+/** 统一 LLM 调用面（B8/B9）：未配置真实模型 → undefined（各链路走确定性兜底，D4 全流程可跑） */
+function llmCall(): ((prompt: string) => Promise<string>) | undefined {
+  if (cachedLlmCall !== undefined) return cachedLlmCall ?? undefined;
+  try {
+    if ((process.env.LLM_PROVIDER ?? "mock") === "mock") {
+      cachedLlmCall = null;
+      return undefined;
+    }
+    const provider = providerFromEnv(process.env.LLM_MODEL ?? "deepseek-chat");
+    cachedLlmCall = async (prompt: string) => {
+      const r = await provider.chat([{ role: "user", content: prompt }]);
+      return r.text;
+    };
+    return cachedLlmCall;
+  } catch {
+    cachedLlmCall = null; // 配置缺失 → 兜底（via=rule 留痕）
+    return undefined;
+  }
+}
+
 let cachedClassifier: IntentClassifier | null | undefined;
 function intentClassifier(): IntentClassifier | undefined {
   if (cachedClassifier !== undefined) return cachedClassifier ?? undefined;
-  try {
-    if ((process.env.LLM_PROVIDER ?? "mock") === "mock") {
-      cachedClassifier = null;
-      return undefined;
-    }
-    const modelId = process.env.LLM_MODEL ?? "deepseek-chat";
-    const provider = providerFromEnv(modelId);
-    cachedClassifier = new LlmIntentClassifier(async (prompt) => {
-      const r = await provider.chat([{ role: "user", content: prompt }]);
-      return r.text;
-    });
-    return cachedClassifier;
-  } catch {
-    cachedClassifier = null; // 配置缺失等 → 规则兜底（不静默：via=rule 留痕）
-    return undefined;
-  }
+  const call = llmCall();
+  cachedClassifier = call ? new LlmIntentClassifier(call) : null;
+  return cachedClassifier ?? undefined;
 }
 
 /**
