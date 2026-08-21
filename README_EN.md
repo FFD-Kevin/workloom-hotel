@@ -81,7 +81,7 @@ RUN_DB_TESTS=1 pnpm -C packages/base test
 ```
 
 **Fit / not a fit**:
-- ✅ Fit: service businesses with clear KPIs and lots of repetitive handling (hotels/F&B/retail); teams that need AI agents inside the org, on the production line, and under accountability. First industry bundle: hotel (`bundles/hotel`).
+- ✅ Fit: **a general-purpose agent collaboration foundation** — any organization with clear output metrics and lots of repetitive handling: service businesses (hotels/F&B/retail), **social-media marketing teams** (topic planning / copywriting / scheduling / engagement / review), **AI video & content-creation teams** (scripts / storyboards / assets / publishing / comment ops); teams that need AI agents inside the org, on the production line, and under accountability. Domain capabilities load as pluggable bundles; `bundles/hotel` is the first reference implementation.
 - ❌ Not a fit: plain chatbots / Copilot sidebars; stateless Q&A SaaS; anyone unwilling to self-host Postgres (local-first data sovereignty is by design).
 
 **Source-of-truth docs**: [`CHANGELOG.md`](CHANGELOG.md) releases · [`docs/DECISIONS.md`](docs/DECISIONS.md) ADRs · [`docs/AUDIT.md`](docs/AUDIT.md) audit history · [`docs/SUITE.md`](docs/SUITE.md) 371-case list · [`docs/03-功能清单-用户版.md`](docs/03-功能清单-用户版.md) full feature list (中文).
@@ -149,7 +149,7 @@ Everything else — execution, inspection, reconciliation, night watch, report w
 
 ## 2. Business model innovation: a space cockpit for the owner
 
-WorkLoom's buyer is not the IT department — it's the **business owner**: the hotel GM, the store owner, the ops director.
+WorkLoom's buyer is not the IT department — it's the **business owner**: the store owner, the ops director, the social-media marketing lead, the content-team principal.
 
 ### 2.1 Six axioms of the space cockpit
 
@@ -170,9 +170,18 @@ WorkLoom's buyer is not the IT department — it's the **business owner**: the h
 
 ### 2.3 The goal: rebuild the service industry. First landing: hospitality
 
-**WorkLoom's mission is to rebuild the service industry.** Today's service businesses (hotels, restaurants, retail stores) — and sales-driven e-commerce alike — share one inefficient structure: companies buy piles of platforms and tools, and employees alt-tab between a dozen systems all day, burning hours on mechanical work — checking numbers, reconciling, copying orders, replying to messages. Worse, between mechanical tasks people still have to make judgments; attention and decision-making get shredded. Every one of these tasks is something AI is already proven capable of handling. What was missing is not AI capability — it is a container that lets AI enter the org, join the production line, and be held accountable.
+**WorkLoom is a general-purpose agent collaboration foundation — not a single-industry system.** Across industries, one inefficient structure keeps repeating: companies buy piles of platforms and tools, and employees alt-tab between a dozen systems all day, burning hours on mechanical work — checking numbers, reconciling, copying orders, replying to messages, publishing content, answering comments. Worse, between mechanical tasks people still have to make judgments; attention and decision-making get shredded. Every one of these tasks is something AI is already proven capable of handling. What was missing is not AI capability — it is a container that lets AI enter the org, join the production line, and be held accountable.
 
-WorkLoom is here to solve exactly that. `bundles/hotel` is the service industry's first landing: three ready-made digital-employee skills ship in the box — revenue-manager, channel-reconciler, review-crisis — and a new customer goes from download to production in ~30 minutes. The same base fits any service scenario with clear business metrics and repetitive handling work.
+WorkLoom is exactly that container — domain capabilities load as **pluggable bundles** on top of an industry-agnostic base (security gateway / event store / fences / approvals / night shift / skill marketplace / organizational memory):
+
+| Domain | Typical digital employees | Business-grade output |
+|---|---|---|
+| **Service businesses** (hotels/F&B/retail) | revenue manager, channel reconciler, review responder | RevPAR, review response time, price-parity convergence |
+| **Social-media marketing** | topic planner, copywriter, publisher, engagement responder | publishing cadence, response time, lead conversion |
+| **AI video & content creation** | script drafter, storyboard breaker, asset generator, comment ops | pipeline throughput, on-time publishing, viral-playbook accumulation |
+| **Sales-driven e-commerce / store ops** | inspection alerts, support triage, night-shift reconciliation | anomaly detection time, recovered orders |
+
+`bundles/hotel` is the first reference implementation (three ready-made skills — revenue-manager, channel-reconciler, review-crisis — ~30 min from download to production). Bundles for social-media marketing and content creation are on the roadmap (see below). To land in a new domain, **only the bundle changes — skills, fence baselines, inspection checks; the base code stays untouched** (enforced by the H-15 acceptance assertion).
 
 ---
 
@@ -224,7 +233,7 @@ All data lives in the company's own PostgreSQL 17 + pgvector, multi-tenant isola
 
 WorkLoom's **skills** system is a skill marketplace with three levels — **official** (shipped with industry bundles), **team** (built inside a workspace), **industry** (shared across organizations after mandatory desensitization). Users can install ready-made skills or author their own in natural language.
 
-### 5.1 A real case (service-industry flagship · hotel): the GM says "answer every bad review within 2 hours"
+### 5.1 A real case (one example · hotel bundle): the GM says "answer every bad review within 2 hours"
 
 ```
 One sentence from the GM
@@ -248,6 +257,28 @@ One sentence from the GM
             └─ suggests sedimenting a new skill → one-tap confirm → forge drafts it
                 → dry-run replays the last 10 historical actions → goes live
 ```
+
+### 5.1b The same base in a content domain: the marketing lead says "3 posts a day, every comment answered within an hour"
+
+```
+One sentence from the marketing lead
+   │
+   ▼ Intent routing → Quest decomposed into steps
+   │
+   ├─ Step 1 Draft topics   ── copywriting skill (team-built or industry-published)
+   │        └─ 3 drafts grounded in organizational memory (past viral postmortems)
+   ├─ Step 2 Approval       ── external publishing = review level → approve/edit/reject per card
+   ├─ Step 3 Scheduled post ── triggers fire on schedule, every step on the event chain
+   ├─ Step 4 Comment watch  ── night shift patrols the comment section; routine
+   │        └─ replies auto-drafted, sensitive/complaint cases escalate to humans (fence)
+   └─ Step 5 Data review    ── 8:30 report on reach/engagement/conversion; winning plays
+            └─ distilled into new skills by awareness — the team's "content instincts"
+               settle into organizational memory
+```
+
+> AI video creation works the same way: script → storyboard → asset generation →
+> publishing schedule → comment ops. Every step has an actor, an authorization,
+> a result, and a trace — a content team's production pipeline *is* a Quest pipeline.
 
 ### 5.2 Safety rules of the marketplace
 
@@ -376,7 +407,7 @@ Layout: `apps/{server, web, site, desktop}` + `packages/{shared, db, base, runti
 - ✅ Current: one-click Mac desktop bundle + website + CI quality gates (371 scenario cases + hash-chain verification on every push)
 - 🔜 Intel Mac / Windows builds
 - 🔜 Skill marketplace industry tier (desensitization review pipeline + cross-org installs)
-- 🔜 More industry bundles (F&B, retail, property)
+- 🔜 More domain bundles (social-media marketing, AI video & content creation, F&B, retail, property)
 - ✅ dsh rc.8 integrated (Codex / Claude Code as installable subagents; E6 dsh-gate green)
 - 🔜 Continuous dsh upstream tracking (upgrade on ANY new release incl. pre-releases, with seam regression)
 
