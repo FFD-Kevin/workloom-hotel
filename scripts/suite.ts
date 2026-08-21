@@ -1308,6 +1308,21 @@ h("D15-⑤ 版本通道：安装记版本快照，升版后可检出更新", asy
   await uninstallSkill(app, gw, scope, { skillId, by: "MEM-001" });
   await qApp(`DELETE FROM skills WHERE id=$1`, [skillId]);
 });
+h("#42 publish_reviews 跨工作区越权被拒（RLS 收口）", async () => {
+  // 本区上下文伪造他区审核单：WITH CHECK 拒；读他区单：USING 0 行
+  let insertBlocked = false;
+  try {
+    await qApp(
+      `INSERT INTO skill_publish_reviews (id, skill_id, from_workspace_id, proposed_by)
+       VALUES ($1, $2, $3, $4)`,
+      [`pub-forge-${SFX}`, "skill-x", "ws-evil", "MEM-009"],
+    );
+  } catch { insertBlocked = true; }
+  assert(insertBlocked, "伪造他区审核单插入必拒（WITH CHECK）");
+  const cross = await qApp<{ c: string }>(`SELECT count(*) AS c FROM skill_publish_reviews WHERE from_workspace_id <> $1`, [scope.workspaceId]);
+  eq(Number(cross.rows[0]!.c), 0, "他区审核单不可见（USING）");
+});
+
 h("D15 事件留痕：提案/复核/吊销/完成全程进事件库", async () => {
   const page = await searchEvents(app, scope, { action: "skill.publish.propose" });
   const page2 = await searchEvents(app, scope, { action: "skill.revoke" });
