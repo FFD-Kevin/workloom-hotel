@@ -9,6 +9,13 @@ import { EmptyState, SkeletonBlock, SystemDivider } from "../../components/hud";
 import { PageNav } from "../../components/PageNav";
 import { Ev, fmtTime, HBar, Note, PageHead, Row, Stat, Tag } from "../../components/Twin";
 
+const rightPanel = (
+  <>
+    <div className="mb-2 px-1 text-[11px] tracking-[.2em] text-ink3">口碑防线 · REVIEW</div>
+    <div className="rounded-lg border border-gline bg-card p-3 text-xs leading-relaxed text-ink3">差评防御窗口前移到在住期间；处置案例沉淀组织记忆，同类问题越来越少是工程结果。</div>
+  </>
+);
+
 export default function P15() {
   const [ready, setReady] = useState(false);
   const [evs, setEvs] = useState<Ev[]>([]);
@@ -32,7 +39,7 @@ export default function P15() {
   const good = replies.length - bad.length;
 
   return (
-    <Bridge left={<PageNav current="P15" />}>
+    <Bridge right={rightPanel} left={<PageNav current="P15" />}>
       <PageHead title="口碑与差评" tag="P15 · REVIEWS" extra={<Tag tone="warn">差评 24h SLA · R19</Tag>} />
       {!ready ? (<><SkeletonBlock lines={2} h={44} /><SkeletonBlock lines={4} /></>) : (
         <div className="space-y-3">

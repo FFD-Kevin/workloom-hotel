@@ -16,6 +16,13 @@ interface Linen {
   delivery_tolerance?: number;
 }
 
+const rightPanel = (
+  <>
+    <div className="mb-2 px-1 text-[11px] tracking-[.2em] text-ink3">前厅客房 · OPS</div>
+    <div className="rounded-lg border border-gline bg-card p-3 text-xs leading-relaxed text-ink3">清洁质量画像回流派单权重：急单给高画像服务员；店长从检查者变教练。</div>
+  </>
+);
+
 export default function P17() {
   const [ready, setReady] = useState(false);
   const [evs, setEvs] = useState<Ev[]>([]);
@@ -43,7 +50,7 @@ export default function P17() {
   const losses = useMemo(() => evs.filter((e) => e.decision.action === "inventory.loss"), [evs]);
 
   return (
-    <Bridge left={<PageNav current="P17" />}>
+    <Bridge right={rightPanel} left={<PageNav current="P17" />}>
       <PageHead title="前厅与客房" tag="P17 · FRONT & HOUSEKEEPING" />
       {!ready ? (<><SkeletonBlock lines={2} h={44} /><SkeletonBlock lines={4} /></>) : (
         <div className="space-y-3">

@@ -14,6 +14,13 @@ interface ArchiveShape {
   inspection?: { channels?: Array<{ channel: string; price: number; parity: boolean; status: string }> };
 }
 
+const rightPanel = (
+  <>
+    <div className="mb-2 px-1 text-[11px] tracking-[.2em] text-ink3">渠道治理 · OPS</div>
+    <div className="rounded-lg border border-gline bg-card p-3 text-xs leading-relaxed text-ink3">倒挂/超售处置见 P11；活动与图评整改由 ota-operations 产出。渠道「三失」（失控/失时/失准）在此收口。</div>
+  </>
+);
+
 export default function P14() {
   const [ready, setReady] = useState(false);
   const [archive, setArchive] = useState<ArchiveShape | null>(null);
@@ -43,7 +50,7 @@ export default function P14() {
   const chanDefs = archive?.channels ?? [];
 
   return (
-    <Bridge left={<PageNav current="P14" />}>
+    <Bridge right={rightPanel} left={<PageNav current="P14" />}>
       <PageHead title="渠道运营" tag="P14 · CHANNELS" extra={<Tag tone="holo">每 30 分钟自动巡检</Tag>} />
       {!ready ? (<><SkeletonBlock lines={2} h={44} /><SkeletonBlock lines={4} /></>) : (
         <div className="space-y-3">

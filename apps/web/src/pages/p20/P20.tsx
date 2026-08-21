@@ -48,6 +48,13 @@ function renderValue(v: unknown, depth = 0): React.ReactNode {
   );
 }
 
+const rightPanel = (
+  <>
+    <div className="mb-2 px-1 text-[11px] tracking-[.2em] text-ink3">档案即配置 · ARCHIVE</div>
+    <div className="rounded-lg border border-gline bg-card p-3 text-xs leading-relaxed text-ink3">改档案即改系统行为边界：保底价与 R2 同源、审批矩阵与 R4/R11 同源、损耗基线与 R20 同源。</div>
+  </>
+);
+
 export default function P20() {
   const [ready, setReady] = useState(false);
   const [archive, setArchive] = useState<Archive | null>(null);
@@ -62,7 +69,7 @@ export default function P20() {
   }, []);
 
   return (
-    <Bridge left={<PageNav current="P20" />}>
+    <Bridge right={rightPanel} left={<PageNav current="P20" />}>
       <PageHead title="一店一档" tag="P20 · ARCHIVE" extra={<Tag tone="gold">五类 21 字段组</Tag>} />
       {!ready ? (<><SkeletonBlock lines={2} h={44} /><SkeletonBlock lines={4} /></>) : !archive ? (
         <EmptyState icon="🗂️" title="档案未建立" hint="一店一档是 Agent 生成内容前的必读三要素之一（L3.7）。" />

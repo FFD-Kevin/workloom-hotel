@@ -15,6 +15,13 @@ interface FaqKb {
   last_mined_at?: string | null;
 }
 
+const rightPanel = (
+  <>
+    <div className="mb-2 px-1 text-[11px] tracking-[.2em] text-ink3">语音前台 · PHONE</div>
+    <div className="rounded-lg border border-gline bg-card p-3 text-xs leading-relaxed text-ink3">夜间默认转值班手机而非叫醒店长。民宿版旗舰卖点：把夜晚还给业主。</div>
+  </>
+);
+
 export default function P16() {
   const [ready, setReady] = useState(false);
   const [calls, setCalls] = useState<Ev[]>([]);
@@ -45,7 +52,7 @@ export default function P16() {
   const hitRate = calls.length ? Math.round((hits / calls.length) * 100) : 0;
 
   return (
-    <Bridge left={<PageNav current="P16" />}>
+    <Bridge right={rightPanel} left={<PageNav current="P16" />}>
       <PageHead title="AI 语音前台" tag="P16 · PHONE CONCIERGE" extra={<Tag tone="go">24h 在线</Tag>} />
       {!ready ? (<><SkeletonBlock lines={2} h={44} /><SkeletonBlock lines={4} /></>) : (
         <div className="space-y-3">

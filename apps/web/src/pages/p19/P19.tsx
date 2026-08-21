@@ -19,6 +19,13 @@ const QUESTIONS: Array<{ key: Q; label: string }> = [
 
 interface ReportResult { kind: string; rows: Array<Record<string, unknown>> }
 
+const rightPanel = (
+  <>
+    <div className="mb-2 px-1 text-[11px] tracking-[.2em] text-ink3">收益分析 · BI</div>
+    <div className="rounded-lg border border-gline bg-card p-3 text-xs leading-relaxed text-ink3">从做报表到问问题：数据已在事件库，报表是提问的即时答案。自由问答随 LLM 取数接线开放。</div>
+  </>
+);
+
 export default function P19() {
   const [ready, setReady] = useState(false);
   const [q, setQ] = useState<Q>("channel_revenue");
@@ -40,7 +47,7 @@ export default function P19() {
   const maxRevenue = Math.max(1, ...(result?.rows.map((r) => Number(r.revenue ?? 0)) ?? [1]));
 
   return (
-    <Bridge left={<PageNav current="P19" />}>
+    <Bridge right={rightPanel} left={<PageNav current="P19" />}>
       <PageHead title="收益分析" tag="P19 · REVENUE" extra={<Tag tone="holo">问数即答</Tag>} />
       <div className="mb-3 flex flex-wrap gap-2">
         {QUESTIONS.map((x) => (
