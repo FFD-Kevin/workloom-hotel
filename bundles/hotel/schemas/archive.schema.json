@@ -1,7 +1,7 @@
 {
   "$id": "workloom://bundles/hotel/schemas/archive",
   "title": "一店一档字段组（酒店行业版 v2 · §2.2 槽①）",
-  "description": "五类档案 20 字段组：基础类/业务类/运营类/治理类/记忆类。分两期策略——一期保激活（required 仅 property+forbidden，对齐起飞前检查单 F2.10），二期随种子客户 know-how 入库渐进完备。Agent 生成内容前必读『档案+阶段+目标』三要素（L3.7），缺一拒绝执行。",
+  "description": "五类档案 21 字段组：基础类/业务类/运营类/治理类/记忆类。分两期策略——一期保激活（required 仅 property+forbidden，对齐起飞前检查单 F2.10），二期随种子客户 know-how 入库渐进完备。Agent 生成内容前必读『档案+阶段+目标』三要素（L3.7），缺一拒绝执行。",
   "type": "object",
   "required": [
     "property",
@@ -163,6 +163,10 @@
     "faq_kb": {
       "type": "object",
       "description": "【运营类】FAQ 知识库（phone-concierge 同源）：高频问题 top20（question/answer/source_call_ids 来源通话归因/confirmed 店长确认标记）/萃取状态 last_mined_at/本周新增候选 pending_candidates"
+    },
+    "goals": {
+      "type": "object",
+      "description": "【业务类】经营目标：年度/月度目标（occ/adr/revpar/营收/差评率/复购率）+ 分解到渠道与房型 + 追踪口径（goal.tracking 事件按周回写达成率与预测偏差）"
     }
   }
 }

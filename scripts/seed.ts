@@ -240,6 +240,12 @@ function yunqiArchive(): Record<string, unknown> {
       { name: "快捷酒店用品", kind: "consumable", backup: false },
       { name: "顺达维修", kind: "maintenance", backup: true },
     ],
+    goals: {
+      year: { revenue: 1_200_000, occ: 0.80, adr: 500, revpar: 400, bad_review_rate: 0.02, repurchase_rate: 0.28 },
+      month_2026_08: { revenue: 108_000, occ: 0.83, adr: 512, note: "暑期旺季冲刺" },
+      breakdown: { channels: { "美团": 0.38, "携程": 0.34, "飞猪": 0.16, "直连": 0.12 }, room_types: { "RT-DLX-KING": 0.45, "RT-FAM-TWIN": 0.33, "RT-BIZ-KING": 0.22 } },
+      tracking: "goal.tracking 事件按周回写达成率与偏差归因（p12 仪表盘数据源）",
+    },
     approval_matrix: {
       refund_review_threshold: 500,
       procurement_review_threshold: 1000,

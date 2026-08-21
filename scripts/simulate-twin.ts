@@ -460,10 +460,27 @@ async function main(): Promise<void> {
     push(pkg);
     // 内容营销：每周 2–3 篇
     if (d % 3 === 1) push(evContentPublish(at(d, int(15, 20))), "T-103");
-    // 周频：FAQ 萃取 + 断点周报
+    // 周频：FAQ 萃取 + 断点周报 + 经营目标追踪（p12 仪表盘数据源）
     if (d % 7 === 6) {
       push(evFaqMine(at(d, 3, 5), FAQ_TOPICS[(d / 7) % FAQ_TOPICS.length] as string, int(3, 6)));
       push(evWeeklyReport(at(d, 4, 0)));
+      const wk = Math.floor(d / 7) + 1;
+      const occNow = 0.78 + (rand() - 0.5) * 0.08;
+      push({
+        event_id: nextId(), who: { type: "system", id: "goal-tracker" }, context: ctx(at(d, 6, 0)),
+        object: { type: "store", id: WS_ID },
+        decision: {
+          action: "goal.tracking",
+          params: { week: wk, month: "2026-08" },
+          after: {
+            occ: { target: 0.83, actual: Number(occNow.toFixed(2)), pace: occNow >= 0.83 * (wk / 4.3) ? "on_track" : "behind" },
+            revenue: { target: 108000, actual: int(68000, 118000) },
+            attribution: occNow < 0.8 ? ["竞对云栖轻奢降价事件 ×2", "台风天退订 ×3"] : [],
+          },
+          basis: ["月目标 vs 时序进度比对，偏差超阈值自动归因（p12 仪表盘）"],
+        },
+        rule_impact: [],
+      });
     }
     // 特种场景锚点（围栏 v3 + 断点闭环演示剧本）
     if (d === 4) { push(evParityBlock(at(d, 14, 20))); push(evParityFixed(at(d, 16, 5))); }
