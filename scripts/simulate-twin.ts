@@ -425,9 +425,45 @@ async function main(): Promise<void> {
   for (let d = 0; d < DAYS; d++) {
     const dow = new Date(START.getTime() + d * 86_400_000).getDay();
     const weekend = dow === 5 || dow === 6;
+    // 主店每日经营快照（P18 驾驶舱/P19 走势数据源；与姊妹店同口径）
+    const dayOcc = Math.min(0.97, Math.max(0.62, 0.78 + (weekend ? 0.09 : 0) + (rand() - 0.5) * 0.1));
+    const dayAdr = Math.round(496 * (1 + (weekend ? 0.06 : 0) + (rand() - 0.5) * 0.08));
+    push({
+      event_id: nextId(), who: { type: "system", id: "cockpit-daily" }, context: ctx(at(d, 23, 55)),
+      object: { type: "store", id: WS_ID },
+      decision: {
+        action: "store.daily.summary",
+        after: { occ: Number(dayOcc.toFixed(2)), adr: dayAdr, revpar: Math.round(dayOcc * dayAdr), rooms: 86 },
+        basis: ["当日订单/收款聚合快照（驾驶舱 KPI 数据源）"],
+      },
+      rule_impact: [],
+    });
     // 订单与入退（周末峰值）
     const orders = weekend ? int(11, 14) : int(7, 10);
     for (let k = 0; k < orders; k++) push(evOrderConfirm(at(d, int(8, 22))));
+    // 全链样板单 ×2/日：同一订单号贯穿 确认→入住→退房（P13 穿透演示锚点）
+    for (let k = 0; k < 2; k++) {
+      const od = `OD-${880000 + d * 10 + k}`;
+      const rt = pick(ROOM_TYPES);
+      push({
+        event_id: nextId(), who: agentWho("frontdesk-agent"), context: ctx(at(d, int(8, 12)), pick(CHANNELS)),
+        object: { type: "order", id: od },
+        decision: { action: "order.confirm", params: { available: int(1, 9), room_type: rt.id, amount: rt.base * 2 }, after: { status: "confirmed" }, basis: ["信息完整校验通过", "可售库存充足"] },
+        rule_impact: [],
+      });
+      push({
+        event_id: nextId(), who: agentWho("frontdesk-agent"), context: ctx(at(d, 14, int(0, 59))),
+        object: { type: "order", id: od },
+        decision: { action: "pms.checkin", after: { room_assigned: true, room: `${int(2, 8)}0${int(1, 8)}`, eta_min: 3 }, basis: ["智能排房（画像+房况避坑）", "人脸核验通过"] },
+        rule_impact: [],
+      });
+      push({
+        event_id: nextId(), who: agentWho("frontdesk-agent"), context: ctx(at(d + 1, 11, int(0, 59))),
+        object: { type: "order", id: od },
+        decision: { action: "pms.checkout", after: { settled: true, deposit_refund_min: 4, invoice_sent: true }, basis: ["自动查房达标+自动结算", "电子发票 2 分钟开出"] },
+        rule_impact: [],
+      });
+    }
     for (let k = 0; k < Math.round(orders * 0.8); k++) {
       push(evCheckinOut(at(d, int(9, 11)), "checkout"));
       push(evCheckinOut(at(d, int(14, 17)), "checkin"));

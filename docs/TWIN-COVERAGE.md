@@ -62,7 +62,7 @@
 
 ## 三点五、前端接线状态（v2.4.0 起）
 
-P10/P11/P12 已为真实 API 接线页（apps/web + twinRouter），数据源=事件库与一店档，无独立模拟源；P1–P9 底座页原已接线。UI 用例 82 条为验收基准。
+P10–P20 全部为真实 API 接线页（apps/web + twinRouter：incidents/priceHealth/goals/events/objectTrail/archive/stores/report），数据源=事件库与一店一档，无独立模拟源；P1–P9 底座页原已接线。UI 用例 90 条为验收基准。移动端：≤860px 自动隐藏侧栏主区全宽。
 
 ## 四、版本纪律
 

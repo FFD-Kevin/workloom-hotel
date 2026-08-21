@@ -1638,6 +1638,155 @@ const twinRouter = router({
       client.release();
     }
   }),
+
+  /** 通用事件流（P13–P19 各页数据源；read-only、workspace 作用域、RLS 内） */
+  events: protectedProcedure
+    .input(z.object({ actions: z.array(z.string()).min(1).max(12), limit: z.number().int().min(1).max(200).default(60) }))
+    .query(async ({ ctx, input }) => {
+      return queryEventsByActions(scopeOf(ctx.identity), input.actions, input.limit);
+    }),
+
+  /** 单对象全链穿透（P13 订单/房间时间线：按 object.id 正序回放） */
+  objectTrail: protectedProcedure
+    .input(z.object({ objectId: z.string().min(1).max(64), limit: z.number().int().min(1).max(100).default(50) }))
+    .query(async ({ ctx, input }) => {
+      const scope = scopeOf(ctx.identity);
+      const app = getAppPool();
+      const client = await app.connect();
+      try {
+        await client.query("BEGIN");
+        await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
+        await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
+        const r = await client.query<{ payload: Record<string, unknown> }>(
+          `SELECT payload FROM biz_events
+           WHERE workspace_id=$1 AND payload->'object'->>'id' = $2
+           ORDER BY seq ASC LIMIT $3`,
+          [scope.workspaceId, input.objectId, input.limit],
+        );
+        await client.query("COMMIT");
+        return r.rows.map((x) => x.payload);
+      } catch (err) {
+        await client.query("ROLLBACK").catch(() => undefined);
+        throw err;
+      } finally {
+        client.release();
+      }
+    }),
+
+  /** P20 一店一档全景（21 字段组） */
+  archive: protectedProcedure.query(async ({ ctx }) => {
+    const scope = scopeOf(ctx.identity);
+    const app = getAppPool();
+    const client = await app.connect();
+    try {
+      await client.query("BEGIN");
+      await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
+      await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
+      const prof = await client.query<{ archive: unknown; forbidden: unknown }>(
+        `SELECT archive, forbidden FROM profiles WHERE workspace_id=$1`,
+        [scope.workspaceId],
+      );
+      await client.query("COMMIT");
+      return prof.rows[0] ?? null;
+    } catch (err) {
+      await client.query("ROLLBACK").catch(() => undefined);
+      throw err;
+    } finally {
+      client.release();
+    }
+  }),
+
+  /** P18 多店驾驶舱：同租户各工作区最新经营快照 + 昨夜决策包（逐工作区 RLS 上下文轮询） */
+  stores: protectedProcedure.query(async ({ ctx }) => {
+    const scope = scopeOf(ctx.identity);
+    const app = getAppPool();
+    const client = await app.connect();
+    try {
+      await client.query("BEGIN");
+      await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
+      const wss = await client.query<{ id: string; name: string }>(
+        `SELECT id, name FROM workspaces WHERE tenant_id=$1 ORDER BY created_at`,
+        [scope.tenantId],
+      );
+      const out: Array<Record<string, unknown>> = [];
+      for (const ws of wss.rows) {
+        await client.query("SELECT set_config('app.workspace_id', $1, true)", [ws.id]);
+        const daily = await client.query<{ payload: Record<string, unknown> }>(
+          `SELECT payload FROM biz_events
+           WHERE workspace_id=$1 AND payload->'decision'->>'action'='store.daily.summary'
+           ORDER BY seq DESC LIMIT 1`,
+          [ws.id],
+        );
+        const pkg = await client.query<{ payload: Record<string, unknown> }>(
+          `SELECT payload FROM biz_events
+           WHERE workspace_id=$1 AND payload->'decision'->>'action'='night.package.deliver'
+           ORDER BY seq DESC LIMIT 1`,
+          [ws.id],
+        );
+        const counts = await client.query<{ n: string }>(
+          `SELECT count(*)::text AS n FROM biz_events WHERE workspace_id=$1`,
+          [ws.id],
+        );
+        out.push({
+          workspaceId: ws.id, name: ws.name,
+          daily: daily.rows[0]?.payload ?? null,
+          nightPackage: pkg.rows[0]?.payload ?? null,
+          eventCount: Number(counts.rows[0]?.n ?? 0),
+        });
+      }
+      await client.query("COMMIT");
+      return out;
+    } catch (err) {
+      await client.query("ROLLBACK").catch(() => undefined);
+      throw err;
+    } finally {
+      client.release();
+    }
+  }),
+
+  /** P19 收益分析：预设问数（真实聚合自事件库；自然语言自由查询在 LLM 接线后开放） */
+  report: protectedProcedure
+    .input(z.object({ question: z.enum(["channel_revenue", "occ_trend", "price_attribution"]) }))
+    .query(async ({ ctx, input }) => {
+      const scope = scopeOf(ctx.identity);
+      if (input.question === "channel_revenue") {
+        const evs = await queryEventsByActions(scope, ["order.confirm"], 200);
+        const byChannel = new Map<string, { orders: number; revenue: number }>();
+        for (const ev of evs) {
+          const ch = String((ev.context as Record<string, unknown>)?.channel ?? "直连");
+          const amount = Number(((ev.decision as Record<string, unknown>)?.params as Record<string, unknown>)?.amount ?? 0);
+          const cur = byChannel.get(ch) ?? { orders: 0, revenue: 0 };
+          cur.orders += 1; cur.revenue += amount;
+          byChannel.set(ch, cur);
+        }
+        return { kind: input.question, rows: [...byChannel.entries()].map(([channel, v]) => ({ channel, ...v })) };
+      }
+      if (input.question === "occ_trend") {
+        const evs = await queryEventsByActions(scope, ["store.daily.summary"], 30);
+        const rows = evs
+          .map((ev) => ({
+            date: String((ev.context as Record<string, unknown>)?.time ?? "").slice(0, 10),
+            occ: ((ev.decision as Record<string, unknown>)?.after as Record<string, unknown>)?.occ ?? null,
+            adr: ((ev.decision as Record<string, unknown>)?.after as Record<string, unknown>)?.adr ?? null,
+            revpar: ((ev.decision as Record<string, unknown>)?.after as Record<string, unknown>)?.revpar ?? null,
+          }))
+          .reverse();
+        return { kind: input.question, rows };
+      }
+      const evs = await queryEventsByActions(scope, ["price.adjust"], 60);
+      const rows = evs.map((ev) => {
+        const d = ev.decision as Record<string, unknown>;
+        return {
+          time: String((ev.context as Record<string, unknown>)?.time ?? ""),
+          object: String((ev.object as Record<string, unknown>)?.label ?? (ev.object as Record<string, unknown>)?.id ?? ""),
+          before: (d.before as Record<string, unknown>)?.price ?? null,
+          after: (d.after as Record<string, unknown>)?.price ?? null,
+          rule: (ev.rule_impact as Array<{ rule_id?: string }>)?.[0]?.rule_id ?? "",
+          basis: (d.basis as string[]) ?? [],
+        };
+      });
+      return { kind: input.question, rows };
+    }),
 });
 
 export const appRouter = router({
