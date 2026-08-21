@@ -1,8 +1,8 @@
 # 客户级 Patch：无人酒店（围栏松紧=紧，无人需严控；夜班为核心王牌场景）
-# 叠加于 hotel-baseline/v2 之上，只可收紧不可放宽（F2.3 单调守卫）
+# 叠加于 hotel-baseline/v3 之上，只可收紧不可放宽（F2.3 单调守卫）
 version: hotel-patch-unmanned/v1
 applies_to: unmanned
-base: hotel-baseline/v2
+base: hotel-baseline/v3
 patches:
   - rule_id: R1
     tighten:

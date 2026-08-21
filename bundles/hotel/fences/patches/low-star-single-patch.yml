@@ -1,8 +1,8 @@
 # 客户级 Patch：低星单体酒店（围栏松紧=中，有人兜底）
-# 叠加于 hotel-baseline/v2 之上，只可收紧不可放宽（F2.3 单调守卫）
+# 叠加于 hotel-baseline/v3 之上，只可收紧不可放宽（F2.3 单调守卫）
 version: hotel-patch-low-star-single/v1
 applies_to: low_star_single
-base: hotel-baseline/v2
+base: hotel-baseline/v3
 patches:
   - rule_id: R1
     tighten:
