@@ -70,7 +70,7 @@ corepack enable && pnpm install && cp .env.example .env
 # A3 anti-bypass: only the gateway role may INSERT into biz_events)
 psql -U postgres -c "CREATE DATABASE workloom;"
 psql -U postgres -d workloom -c "CREATE EXTENSION vector;"
-pnpm db:migrate && pnpm db:seed   # 5 migrations + demo seed (hotel workspace ws-yunqi)
+pnpm db:migrate && pnpm db:seed   # 5 migrations + demo seed (service-store demo workspace)
 pnpm typecheck && pnpm test       # typecheck + vitest 168 (DB integration below)
 pnpm db:verify-chain              # full hash-chain recomputation
 pnpm suite                        # 371 scenario cases (incl. HTTP E2E with a real spawned server)
@@ -81,7 +81,7 @@ RUN_DB_TESTS=1 pnpm -C packages/base test
 ```
 
 **Fit / not a fit**:
-- ✅ Fit: **a general-purpose agent collaboration foundation** — any organization with clear output metrics and lots of repetitive handling: service businesses (hotels/F&B/retail), **social-media marketing teams** (topic planning / copywriting / scheduling / engagement / review), **AI video & content-creation teams** (scripts / storyboards / assets / publishing / comment ops); teams that need AI agents inside the org, on the production line, and under accountability. Domain capabilities load as pluggable bundles; `bundles/hotel` is the first reference implementation.
+- ✅ Fit: **a general-purpose agent collaboration foundation** — any organization with clear output metrics and lots of repetitive handling: service businesses (F&B/retail/local services), **social-media marketing teams** (topic planning / copywriting / scheduling / engagement / review), **AI video & content-creation teams** (scripts / storyboards / assets / publishing / comment ops); teams that need AI agents inside the org, on the production line, and under accountability. Domain capabilities load as pluggable bundles; `bundles/` ships a service-store reference implementation.
 - ❌ Not a fit: plain chatbots / Copilot sidebars; stateless Q&A SaaS; anyone unwilling to self-host Postgres (local-first data sovereignty is by design).
 
 **Source-of-truth docs**: [`CHANGELOG.md`](CHANGELOG.md) releases · [`docs/DECISIONS.md`](docs/DECISIONS.md) ADRs · [`docs/AUDIT.md`](docs/AUDIT.md) audit history · [`docs/SUITE.md`](docs/SUITE.md) 371-case list · [`docs/03-功能清单-用户版.md`](docs/03-功能清单-用户版.md) full feature list (中文).
@@ -155,7 +155,7 @@ WorkLoom's buyer is not the IT department — it's the **business owner**: the s
 
 | Cockpit | WorkLoom | Business meaning |
 |---|---|---|
-| **Destination** | Business goals (Quest) | Not "features" — "raise RevPAR 8% this month" |
+| **Destination** | Business goals (Quest) | Not "features" — "raise revenue 8% this month" |
 | **Autopilot** | Quest + night-shift execution | Set the goal; the squad decomposes, executes, inspects — around the clock |
 | **No-fly zones** | Three-level fences (auto/approval/forbidden) | Money, contracts, customer data: nothing executes without approval |
 | **Instrument panel** | KPI + inspection alerts | Live business metrics; anomalies light up red and @ the owner |
@@ -165,7 +165,7 @@ WorkLoom's buyer is not the IT department — it's the **business owner**: the s
 ### 2.2 Three "no longer"
 
 - **Spend is no longer buying software**: no per-seat annual fees for shelfware — you hire a "digital squad" against a business goal. Goal first, output second.
-- **Output is no longer process metrics**: WorkLoom doesn't report "AI invocations" — it reports "all OTA complaints answered overnight, channel price gaps converged, N churning orders recovered this month."
+- **Output is no longer process metrics**: WorkLoom doesn't report "AI invocations" — it reports "all online complaints answered overnight, channel price gaps converged, N churning orders recovered this month."
 - **Data is no longer the price**: organizational memory lives in the company's own database (local PostgreSQL + pgvector), feeding no third party. The longer you use AI, the thicker *your* data asset grows.
 
 ### 2.3 The goal: rebuild the service industry. First landing: hospitality
@@ -176,12 +176,12 @@ WorkLoom is exactly that container — domain capabilities load as **pluggable b
 
 | Domain | Typical digital employees | Business-grade output |
 |---|---|---|
-| **Service businesses** (hotels/F&B/retail) | revenue manager, channel reconciler, review responder | RevPAR, review response time, price-parity convergence |
+| **Service businesses** (F&B/retail/local services) | revenue management, channel reconciler, review responder | revenue metrics, review response time, price-parity convergence |
 | **Social-media marketing** | topic planner, copywriter, publisher, engagement responder | publishing cadence, response time, lead conversion |
 | **AI video & content creation** | script drafter, storyboard breaker, asset generator, comment ops | pipeline throughput, on-time publishing, viral-playbook accumulation |
 | **Sales-driven e-commerce / store ops** | inspection alerts, support triage, night-shift reconciliation | anomaly detection time, recovered orders |
 
-`bundles/hotel` is the first reference implementation (three ready-made skills — revenue-manager, channel-reconciler, review-crisis — ~30 min from download to production). Bundles for social-media marketing and content creation are on the roadmap (see below). To land in a new domain, **only the bundle changes — skills, fence baselines, inspection checks; the base code stays untouched** (enforced by the H-15 acceptance assertion).
+The `bundles/` service-store reference implementation ships three ready-made skills (revenue management, channel reconciliation, review crisis response) — ~30 min from download to production. Bundles for social-media marketing and content creation are on the roadmap (see below). To land in a new domain, **only the bundle changes — skills, fence baselines, inspection checks; the base code stays untouched** (enforced by the H-15 acceptance assertion).
 
 ---
 
@@ -197,7 +197,7 @@ General-purpose AI office assistants (Tencent **WorkBuddy**, Alibaba **QwenWork 
 | **Relation to IM** | IM is a remote-control entry (phone commands the PC) | IM is the ontology: message = event, approval = native message type |
 | **Collaboration granularity** | Single-person task decomposition | Goal → steps → skill assembly as an org-level pipeline, 7×24 night squads |
 | **Data ownership** | Personal accounts / cloud-first | On the company's own machine: data sovereignty + RLS multi-tenancy |
-| **Output language** | Personal artifacts: documents and spreadsheets | Business language: RevPAR, complaint response time, recovered orders |
+| **Output language** | Personal artifacts: documents and spreadsheets | Business language: revenue, complaint response time, recovered orders |
 
 In one sentence: **general AI office tools make an employee's 8 hours more efficient; WorkLoom makes a company's 24 hours run themselves.** They don't conflict — employees can keep writing docs with WorkBuddy, while at the organizational layer WorkLoom weaves AI into a governable, measurable, accountable digital workforce.
 
@@ -233,7 +233,7 @@ All data lives in the company's own PostgreSQL 17 + pgvector, multi-tenant isola
 
 WorkLoom's **skills** system is a skill marketplace with three levels — **official** (shipped with industry bundles), **team** (built inside a workspace), **industry** (shared across organizations after mandatory desensitization). Users can install ready-made skills or author their own in natural language.
 
-### 5.1 A real case (one example · hotel bundle): the GM says "answer every bad review within 2 hours"
+### 5.1 A real case (one example · service store): the store manager says "answer every bad review within 2 hours"
 
 ```
 One sentence from the GM
@@ -242,8 +242,8 @@ One sentence from the GM
    │
    ▼ Auto-decomposed into task-card steps
    │
-   ├─ Step 1 Monitor reviews  ── skill: review-crisis (official, hotel bundle)
-   │        └─ Night squad watches OTA channels 7×24; new bad review detected in 5 min
+   ├─ Step 1 Monitor reviews  ── skill: review-crisis (official, industry bundle)
+   │        └─ Night squad watches online review channels 7×24; new bad review detected in 5 min
    │
    ├─ Step 2 Draft response   ── agent drafts from organizational memory
    │        └─ WorkData recall surfaces how similar past reviews were handled
@@ -358,7 +358,7 @@ Five layers, top to bottom: **Experience** (bridge web / IM channels / Mac deskt
 
 | Doc | For | Contents |
 |---|---|---|
-| [酒店店长使用指南](docs/01-酒店店长使用指南.md) | Hotel GMs | Install → configure → daily use, zero jargon (中文) |
+| [门店店长使用指南](docs/01-门店店长使用指南.md) | Store managers | Install → configure → daily use, zero jargon (中文) |
 | [新客户首次接入完整流程](docs/02-新客户首次接入完整流程.md) | New customers, any industry | Generic onboarding, ~30 min (中文) |
 | [功能清单（用户版）](docs/03-功能清单-用户版.md) | Everyone | Full feature list by scenario (中文) |
 | [测试套件用例清单](docs/SUITE.md) | Developers / AI assistants | All 371 scenario cases, exported from the suite runner (中文) |
@@ -392,7 +392,7 @@ pnpm doctor            # environment self-check
 pnpm dev               # server(:8787) + web(:5173); demo login: pick "王店长"
 ```
 
-Layout: `apps/{server, web, site, desktop}` + `packages/{shared, db, base, runtime}` + `bundles/hotel` + `vendor/{dsh, dsh-im}`, a pnpm monorepo. Core foundation: **`packages/base/workdata` (the WorkData data brain)**. Full 371-case list: [`docs/SUITE.md`](docs/SUITE.md); CI gates: `.github/workflows/ci.yml`.
+Layout: `apps/{server, web, site, desktop}` + `packages/{shared, db, base, runtime}` + `bundles/` (industry packs) + `vendor/{dsh, dsh-im}`, a pnpm monorepo. Core foundation: **`packages/base/workdata` (the WorkData data brain)**. Full 371-case list: [`docs/SUITE.md`](docs/SUITE.md); CI gates: `.github/workflows/ci.yml`.
 
 ## Security design
 
