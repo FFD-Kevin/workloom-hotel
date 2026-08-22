@@ -22,6 +22,7 @@ import P18 from "./pages/p18/P18";
 import P19 from "./pages/p19/P19";
 import P20 from "./pages/p20/P20";
 import DevMatrix from "./pages/dev/DevMatrix";
+import Onboarding from "./pages/onboarding/Onboarding";
 import { Bridge } from "./shell/Bridge";
 
 /** 阶段三路由：页面自包 Bridge（注入真实左右栏）；/dev 矩阵保持壳内平铺 */
@@ -52,6 +53,7 @@ export default function App() {
       <Route path="/p18" element={<P18 />} />
       <Route path="/p19" element={<P19 />} />
       <Route path="/p20" element={<P20 />} />
+      <Route path="/onboarding" element={<Onboarding />} />
       <Route path="/dev" element={<Bridge><DevMatrix /></Bridge>} />
       <Route path="*" element={<P0 />} />
     </Routes>
