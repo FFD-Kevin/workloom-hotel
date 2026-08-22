@@ -3,6 +3,7 @@ import P1 from "./pages/p1/P1";
 import P2 from "./pages/p2/P2";
 import P9 from "./pages/p9/P9";
 import P21 from "./pages/p21/P21";
+import P0 from "./pages/p0/P0";
 import P3 from "./pages/p3/P3";
 import P4 from "./pages/p4/P4";
 import P5 from "./pages/p5/P5";
@@ -27,7 +28,8 @@ import { Bridge } from "./shell/Bridge";
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<P1 />} />
+      <Route path="/" element={<P0 />} />
+      <Route path="/p1" element={<P1 />} />
       <Route path="/p2/:threadId" element={<P2 />} />
       <Route path="/p9" element={<P9 />} />
       <Route path="/p21" element={<P21 />} />
@@ -51,7 +53,7 @@ export default function App() {
       <Route path="/p19" element={<P19 />} />
       <Route path="/p20" element={<P20 />} />
       <Route path="/dev" element={<Bridge><DevMatrix /></Bridge>} />
-      <Route path="*" element={<P1 />} />
+      <Route path="*" element={<P0 />} />
     </Routes>
   );
 }
