@@ -202,7 +202,7 @@ function yunqiArchive(): Record<string, unknown> {
       briefing: { daily: "08:30", weekly: "Mon 09:00", monthly: "1st 10:00", channel: "both" },
       circuit_breaker: { window_days: 14, kpi_floor: { occ: 0.7 }, tightened: false },
       grant: {
-        event_id: "E-GRANT-DEMO01", granted_by: "MEM-001",
+        event_id: "E-SEED-GRANT01", granted_by: "MEM-001",
         granted_at: new Date(Date.now() - 9 * 86400e3).toISOString(),
         disclosure_version: "risk-v1",
         clauses: ["自主调价", "自主采购", "自主对外回复", "试用降档规则", "AI 非法律责任主体·授权人承担经营决策责任"],
@@ -369,7 +369,7 @@ const CHANNELS = ["美团", "携程", "飞猪"] as const;
 
 /** 生成一条剧本事件（按序号轮转场景，保证 R1–R6 均有命中样本） */
 function makeEvent(i: number, time: Date, presets: Preset[]): SeedEvent {
-  const id = `E-${EVENT_BASE + i}`;
+  const id = `E-SEED-${EVENT_BASE + i}`;
   const scene = i % 10;
   const baseCtx = {
     tenant_id: TENANT_ID,
@@ -830,7 +830,7 @@ async function main(): Promise<void> {
   // CEO 晨报事件（剧场汇报气泡/董事长视图简报流的数据源；幂等键 E-8999）
   {
     const ev = {
-      event_id: "E-8999",
+      event_id: "E-SEED-8999",
       who: { type: "agent", id: "captain", version: "v1.0" },
       context: { tenant_id: TENANT_ID, workspace_id: WS_ID, time: new Date().toISOString(), stage: "stable", store: WS_NAME },
       object: { type: "workspace", id: WS_ID, label: WS_NAME },
@@ -911,15 +911,15 @@ async function main(): Promise<void> {
       14,
       JSON.stringify({ done: 9, pending: 3, need_human: 2, credits_used: 96, credits_est: 118 }),
       new Date(yesterday.setHours(22, 0, 0, 0)).toISOString(),
-      `E-${EVENT_BASE + EVENT_COUNT}`,
+      `E-SEED-${EVENT_BASE + EVENT_COUNT}`,
     ],
   );
   console.log(`✓ 夜班班次 nr-${runDate}（package_generated，围栏快照 ${FENCE_VERSION}）`);
 
   // 组织记忆 + 归因（F1.4）
   const memories = [
-    { id: "mem-occ-friday", kind: "pattern", content: "周五晚大床房需求弹性高，18:00 前提价转化损失最小", source: ["E-8801"] },
-    { id: "mem-review-sop", kind: "sop", content: "差评回复结构：致歉→核实→已采取措施→改进承诺，不承诺档案外补偿", source: ["E-8802"] },
+    { id: "mem-occ-friday", kind: "pattern", content: "周五晚大床房需求弹性高，18:00 前提价转化损失最小", source: ["E-SEED-8801"] },
+    { id: "mem-review-sop", kind: "sop", content: "差评回复结构：致歉→核实→已采取措施→改进承诺，不承诺档案外补偿", source: ["E-SEED-8802"] },
   ];
   for (const m of memories) {
     await gw.query(
@@ -938,7 +938,7 @@ async function main(): Promise<void> {
 
   // —— 验收（附录 H-1）：回读本批次 100 条，逐条过 zod，五元完整率必须 100%
   // 按本批显式 ID 清单回读（不用字符串范围：库里可能存在历史遗留事件，词法区间会误纳）
-  const batchIds = Array.from({ length: EVENT_COUNT }, (_, i) => `E-${EVENT_BASE + 1 + i}`);
+  const batchIds = Array.from({ length: EVENT_COUNT }, (_, i) => `E-SEED-${EVENT_BASE + 1 + i}`);
   const check = await gw.query(
     `SELECT payload FROM biz_events
      WHERE tenant_id=$1 AND workspace_id=$2 AND event_id = ANY($3::text[])
