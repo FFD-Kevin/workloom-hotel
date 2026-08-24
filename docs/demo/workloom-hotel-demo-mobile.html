@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WorkLoom Hotel · 云栖酒店 — 高保真 DEMO（移动端）</title>
+<style>
+:root{
+  --bg950:#050a1a; --card:#0d1737; --panel:#0a1128;
+  --line:#22305e; --gline:#6b5a2e; --gold:#e9b558; --gold2:#ffd98a;
+  --holo:#45e0ff; --ink:#eef2ff; --ink2:#c4cdf0; --ink3:#7c87b0;
+  --go:#6adf8a; --warn:#ff8a8a; --amber:#ffbe6a;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#02040c;color:var(--ink);font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif;font-size:13px;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;
+ background-image:radial-gradient(60% 45% at 18% 8%, rgba(36,27,77,.5), transparent 70%),radial-gradient(50% 40% at 85% 20%, rgba(58,42,110,.35), transparent 70%)}
+button{font-family:inherit;cursor:pointer}
+/* 手机壳 390px */
+.phone{width:390px;height:min(844px,94vh);border:1px solid #2a3a6e;border-radius:36px;overflow:hidden;position:relative;
+ background:linear-gradient(to bottom,#0a1230,#050a1a);box-shadow:0 40px 100px rgba(0,0,0,.7),0 0 0 8px #0a0f22,0 0 0 9px #22305e;display:flex;flex-direction:column}
+.notch{position:absolute;top:10px;left:50%;transform:translateX(-50%);width:120px;height:22px;background:#02040c;border-radius:12px;z-index:20}
+.statusbar{display:flex;justify-content:space-between;padding:12px 22px 4px;font-size:11px;color:var(--ink3);flex:none}
+.mhead{display:flex;align-items:center;gap:8px;padding:8px 16px;border-bottom:1px solid var(--line);flex:none}
+.mhead .d{width:12px;height:12px;transform:rotate(45deg);border-radius:2px;background:linear-gradient(135deg,#ffe2a0,#c89030);box-shadow:0 0 10px rgba(255,160,60,.6)}
+.mhead .t{background:linear-gradient(90deg,#fff6e3,var(--gold));-webkit-background-clip:text;background-clip:text;color:transparent;font-weight:900;font-size:13px}
+.mhead .ws{font-size:11px;color:var(--ink3)}
+.mhead .sp{flex:1}
+.npill{display:flex;align-items:center;gap:5px;border:1px solid rgba(106,223,138,.4);border-radius:999px;padding:2px 9px;font-size:10px;color:var(--go)}
+.npill i{width:6px;height:6px;border-radius:50%;background:var(--go);box-shadow:0 0 6px var(--go);animation:pl 2s infinite}
+@keyframes pl{50%{opacity:.4}}
+#screen{flex:1;overflow-y:auto;padding:14px 14px 8px;position:relative}
+#screen::-webkit-scrollbar{width:0}
+.simline{font-size:10px;color:var(--ink3);background:rgba(233,181,88,.05);border:1px solid rgba(107,90,46,.4);border-radius:6px;padding:4px 8px;margin-bottom:10px}
+.simline b{color:var(--amber)}
+.route-tag{font-family:ui-monospace,monospace;font-size:9px;color:var(--holo);border:1px solid rgba(69,224,255,.3);border-radius:4px;padding:0 5px}
+/* Tab bar */
+.tabbar{display:flex;border-top:1px solid var(--line);background:rgba(5,10,26,.96);flex:none;padding:6px 4px 14px}
+.tabbar button{flex:1;background:none;border:0;color:var(--ink3);font-size:10px;display:flex;flex-direction:column;align-items:center;gap:3px;padding:4px 0}
+.tabbar button .ic{width:22px;height:22px;border:1px solid var(--line);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--ink3)}
+.tabbar button.on{color:var(--gold)}
+.tabbar button.on .ic{border-color:var(--gline);color:var(--gold);box-shadow:0 0 8px rgba(233,181,88,.25)}
+.tabbar .badge{position:absolute;top:-3px;right:12px;background:var(--warn);color:#fff;font-size:9px;border-radius:8px;padding:0 5px;line-height:14px}
+.tabbar button{position:relative}
+/* 组件 */
+.card{border:1px solid var(--line);border-radius:12px;background:var(--card);padding:12px;margin-bottom:10px}
+.ptitle{font-size:11px;letter-spacing:.18em;color:var(--ink3);margin-bottom:10px}
+.tag{display:inline-block;border:1px solid var(--line);border-radius:4px;padding:1px 7px;font-size:10px;color:var(--ink2)}
+.tag.g{border-color:var(--gline);color:var(--gold)}
+.tag.ok{border-color:rgba(106,223,138,.5);color:var(--go)}
+.tag.warn{border-color:rgba(255,138,138,.5);color:var(--warn)}
+.tag.amber{border-color:rgba(255,190,106,.55);color:var(--amber)}
+.tag.holo{border-color:rgba(69,224,255,.4);color:var(--holo)}
+.btn{border:1px solid var(--line);border-radius:8px;padding:7px 12px;font-size:12px;color:var(--ink2);background:transparent}
+.btn.ok{border-color:rgba(106,223,138,.5);color:var(--go)}
+.btn.warn{border-color:rgba(255,138,138,.5);color:var(--warn)}
+.btn.g{border-color:var(--gline);color:var(--gold);background:rgba(233,181,88,.08)}
+.btn.done{opacity:.5;pointer-events:none}
+.btn.sm{padding:4px 10px;font-size:11px}
+.row{display:flex;align-items:center;gap:8px}
+.mono{font-family:ui-monospace,monospace;font-size:10px;color:var(--ink3)}
+.stat{border:1px solid var(--line);border-radius:10px;background:var(--card);padding:10px 4px;text-align:center;flex:1}
+.stat .v{font-size:19px;font-weight:800;color:var(--gold2)}
+.stat .k{font-size:10px;color:var(--ink3);margin-top:2px}
+.grid3{display:flex;gap:8px}
+.hbar{display:flex;align-items:center;gap:8px;margin:6px 0;font-size:11px;color:var(--ink2)}
+.hbar .lb{width:64px;flex:none;color:var(--ink3);text-align:right}
+.hbar .bar{flex:1;height:7px;border-radius:4px;background:#131d42;overflow:hidden}
+.hbar .fill{height:100%;border-radius:4px;background:linear-gradient(90deg,#8a6a25,var(--gold))}
+.hbar .fill.c{background:linear-gradient(90deg,#1a6a86,var(--holo))}
+.hbar .vl{width:52px;flex:none}
+.diff-del{text-decoration:line-through;color:var(--warn);opacity:.75}
+.diff-add{color:var(--go);background:rgba(106,223,138,.08);border-radius:3px;padding:0 3px}
+.note{border-left:2px solid var(--gline);padding:5px 10px;font-size:11px;color:var(--ink3);background:rgba(233,181,88,.04);border-radius:0 6px 6px 0}
+.bubble{border:1px solid var(--gline);border-radius:12px;background:rgba(13,23,55,.9);padding:11px 13px;font-size:12px;line-height:1.7}
+input.inp{width:100%;border:1px solid var(--line);border-radius:999px;background:var(--card);color:var(--ink);padding:9px 14px;font-size:12px;outline:none;font-family:inherit}
+input.inp::placeholder{color:var(--ink3)}
+.kbd-chip{border:1px solid var(--line);border-radius:999px;padding:5px 11px;font-size:11px;color:var(--ink3);background:transparent}
+/* 剧场 */
+.stage{position:relative;height:230px;margin-bottom:10px}
+.holobody{position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);width:150px;height:150px}
+.holobody .or{position:absolute;border-radius:50%;border:1px solid;transform:rotateX(68deg)}
+@keyframes hspin{to{transform:rotateX(68deg) rotate(360deg)}}
+.sat{position:absolute;width:9px;height:9px;border-radius:50%;border:0;transform:translate(-50%,-50%)}
+.sat small{position:absolute;top:11px;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:9px;color:var(--ink3);opacity:0}
+.sat:active small{opacity:1}
+.subt{overflow:hidden;border:1px solid var(--line);border-radius:8px;background:rgba(8,14,34,.6);padding:5px 0;margin-bottom:10px}
+.subt .in{display:flex;gap:24px;white-space:nowrap;font-size:10px;color:var(--ink3);animation:tk 30s linear infinite;width:max-content}
+@keyframes tk{to{transform:translateX(-50%)}}
+.askcard{border:1px solid rgba(255,190,106,.4);border-radius:12px;background:rgba(255,190,106,.05);padding:11px;box-shadow:0 0 30px rgba(255,190,106,.1)}
+/* toast */
+#toast{position:absolute;left:50%;bottom:86px;transform:translateX(-50%);z-index:60;background:#101c44;border:1px solid var(--gline);color:var(--gold2);border-radius:8px;padding:7px 14px;font-size:11px;opacity:0;transition:opacity .25s;pointer-events:none;max-width:84%;text-align:center}
+#toast.show{opacity:1}
+/* 三手势条 */
+.gest{display:flex;gap:6px;margin-top:8px}
+.gest .btn{flex:1;text-align:center}
+.swipecard{position:relative;overflow:hidden}
+.swipecard .hint{font-size:10px;color:var(--ink3);text-align:center;margin-top:6px}
+.msgbub{max-width:86%;border:1px solid var(--line);border-radius:12px;padding:8px 11px;font-size:12px;line-height:1.6;margin-bottom:8px}
+.msgbub.me{margin-left:auto;background:var(--panel)}
+.msgbub.ai{border-color:var(--gline)}
+.demo-note{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:99;font-size:10px;letter-spacing:.2em;color:var(--gold);border:1px solid var(--gline);border-radius:999px;padding:4px 14px;background:rgba(5,10,26,.9)}
+</style>
+</head>
+<body>
+<div class="demo-note">DEMO · 镜像生产 /p0 /p3 /p4 /p22 · 云栖酒店</div>
+<div class="phone">
+  <div class="notch"></div>
+  <div class="statusbar"><span>08:30</span><span>WorkLoom Hotel</span><span>5G ▰▰▰</span></div>
+  <div class="mhead">
+    <span class="d"></span><span class="t">WorkLoom</span>
+    <span class="ws">云栖酒店</span>
+    <span class="sp"></span>
+    <button class="npill" data-toast="夜班班组运行中 · 昨夜 9 项已完成"><i></i>夜班 9 完成</button>
+  </div>
+  <div id="screen"></div>
+  <div class="tabbar" id="tabbar"></div>
+  <div id="toast"></div>
+</div>
+<script>
+/* 展示字典层（镜像 apps/web/src/lib/display.ts 口径） */
+const TICKET_STATUS_TEXT={created:"已受理",assigned:"已分派",processing:"处理中",done:"已完成",closed:"已关闭"};
+const TICKET_KIND_TEXT={delivery:"送物服务",repair:"维修报修",complaint:"投诉建议",other:"其他需求",service_request:"服务请求"};
+const TICKET_PRIORITY_TEXT={normal:"普通",high:"加急",urgent:"紧急"};
+const TICKET_ACTOR_TEXT={c_user:"住客",staff:"员工",agent:"AI 员工",system:"系统"};
+const APPROVAL_STATUS_TEXT={pending:"待裁决",approved:"已批准",rejected:"已驳回",edited:"已改派",escalated:"已升级"};
+const INTENT_TEXT={chat:"闲聊",kb_qa:"知识问答",biz_query:"业务查询",service_request:"服务请求",complaint:"投诉"};
+const COMMON_STATUS_TEXT={open:"进行中",running:"进行中",completed:"已完成",delivered:"已送达",pending_review:"待审查",active:"运行中",paused:"已暂停"};
+const ACTION_TEXT={"调整房价":"调整房价","回复点评":"回复点评","确认订单":"确认订单","订单退款":"订单退款","同步库存":"同步库存","语音前台接听":"语音前台接听","智能排房":"智能排房","夜班记录":"夜班记录","创建工单":"创建工单","分派工单":"分派工单","办结工单":"办结工单","CEO 晨报":"CEO 晨报","channel.parity.fixed":"修复渠道倒挂","检索知识库":"检索知识库","room.inspect":"客房质检"};
+const ACTION_PART_TEXT={create:"创建",assign:"分派",advance:"推进",complete:"办结",escalate:"升级",confirm:"确认",adjust:"调整",reply:"回复",publish:"发布"};
+function actionText(a){const h=ACTION_TEXT[a];if(h)return h;const p=a.split(".");const t=p[p.length-1];return ACTION_PART_TEXT[t]||t.replace(/_/g," ")}
+function dictText(d,v){if(!v)return "—";return d[v]||String(v).replace(/_/g," ")}
+function shortId(id){if(!id)return "—";const m=String(id).match(/(\d+)$/);return m?`···${m[1]}`:id}
+function cronText(e){const k={"30 8 * * *":"每天 08:30","0 22 * * *":"每天 22:00","*/30 * * * *":"每 30 分钟","0 3 * * 0":"每周日 03:00"};if(k[e])return k[e];const d=e.match(/^(\d{1,2}) (\d{1,2}) \* \* \*$/);if(d)return `每天 ${d[2].padStart(2,"0")}:${d[1].padStart(2,"0")}`;return e}
+function confidenceText(s){if(s==null)return "—";if(s>=0.72)return "高置信";if(s>=0.45)return "中置信";return "低置信"}
+function latencyText(ms){if(ms==null)return "—";if(ms<1000)return `${Math.round(ms)}ms`;return `${(ms/1000).toFixed(1)}s`}
+
+/* 种子数据（与 PC demo 同源：scripts/seed.ts） */
+const D={
+briefing:"董事长，早报已备：昨夜班组完成 14 项作业（评论/巡检/对账各线正常），1 件差评处置请您拍板；本周 OCC 与 RevPAR 趋势见节拍控制台。试用期边界降一档执行中。",
+agents:[["frontdesk-agent","前台Agent","正常"],["pricing-agent","调价Agent","表扬"],["review-agent","评价Agent","关注"],["content-agent","内容Agent","正常"],["reconcile-agent","对账Agent","正常"],["competitor-agent","竞对Agent","正常"],["inspection-agent","巡检Agent","正常"],["housekeeper-agent","客房Agent","正常"],["phone-agent","语音前台Agent","表扬"],["desktop-agent","桌面Agent","辅导"],["owner-cockpit","业主驾驶舱Agent","正常"]],
+ticker:[["确认订单","前台Agent"],["调整房价","调价Agent"],["回复点评","评价Agent"],["同步库存","对账Agent"],["语音前台接听","语音前台Agent"],["智能排房","前台Agent"],["夜班记录","夜班班组"],["channel.parity.fixed","竞对Agent"],["检索知识库","AI 员工"]],
+night:{done:9,pending:3,need_human:2,credits:96},
+approvals:[
+ {id:"···8871",ev:"E-SEED-8871",title:"差评应急回复（携程 2 分评价）",rule:"R6 差评必审",who:"评价Agent",tier:"L4 董事长级",
+  rationale:"致歉→核实→已采取检修措施→改进承诺四段式；不承诺档案外补偿。",
+  before:"（未回复）",after:"已核实空调异响并安排检修，当晚响应不及时诚恳致歉……",status:"pending"},
+ {id:"···9064",ev:"事件 ···9064",title:"担保订单退款 ¥1,180（超 ¥500 阈值）",rule:"R4 大额退款必审",who:"对账Agent",tier:"L3 集团CEO级",
+  rationale:"客人 18:00 后取消担保订单，称航班取消；建议全额退款维护口碑。",
+  before:"待退款 ¥1,180",after:"全额退款 + 致歉券 ¥50",status:"pending"},
+ {id:"···8820",ev:"E-SEED-8820",title:"周五亲子双床房调价 ¥588 → ¥628",rule:"R1 涨幅自动上限",who:"调价Agent",tier:"L2 公司CEO级",
+  rationale:"周五晚亲子需求弹性高，18:00 前提价转化损失最小（组织记忆）。",
+  before:"¥588",after:"¥628（+6.8%）",status:"approved"}],
+tickets:[
+ {id:"···001",user:"住客小李",kind:"repair",title:"8306 空调不制冷",st:"processing",pri:"high",dept:"工程部",assignee:"王师傅",sla:"剩余 1 小时 42 分",
+  tl:[["create","c_user","住客小李","对话中建单"],["assign","agent","agt-service-desk","智能分派 → 工程部"],["start","staff","王师傅","已接单，前往 8306"]]},
+ {id:"···002",user:"张伟",kind:"delivery",title:"送两瓶矿泉水到 1208",st:"assigned",pri:"normal",dept:"客房部",assignee:null,sla:"剩余 55 分",
+  tl:[["create","c_user","张伟","服务台自助提交"],["assign","agent","agt-service-desk","智能分派 → 客房部"]]},
+ {id:"···003",user:"住客小李",kind:"complaint",title:"隔壁房间深夜噪音扰民",st:"done",pri:"high",dept:"值班经理",assignee:"刘经理",sla:"已于时限内办结",rating:5,
+  tl:[["create","c_user","住客小李","投诉类必建单"],["assign","agent","agt-service-desk","智能分派 → 值班经理"],["start","staff","刘经理","现场处理中"],["complete","staff","刘经理","已沟通提醒并赠果盘致歉"],["rate","c_user","住客小李","满意度 5 星"]]}],
+convs:[["张伟（金卡会员）","退房时间是几点？会员能延迟吗？","【退房时间】标准退房 12:00 前；金卡会员可免费延迟至 14:00。","kb_qa",0.95,24],
+["住客小李","房间空调好像不制冷，能找人看看吗？8306","已为您生成维修工单，工程部会尽快上门处理，进度实时通知您。","service_request",0.91,28]],
+notifs:[["住客小李","维修工单「8306 空调不制冷」已受理，王师傅处理中"],["住客小李","投诉工单已办结：已沟通提醒并赠果盘致歉"],["张伟","送物工单「送两瓶矿泉水到 1208」已受理"]],
+svcStats:[["有据率","96%"],["首答延迟","26ms"],["满意度","5.0 分"],["SLA 达标","100%"]],
+squad:[["巡检Agent","昨夜巡检 3 轮 · 检出 3 项"],["评价Agent","差评草稿 1 件待审"],["对账Agent","三轮比对差异 0 笔"],["竞对Agent","倒挂修复 ¥438→¥458"],["语音前台Agent","夜间来电 9 通"],["内容Agent","飞猪首图已排期 06:00"],["前台Agent","确认订单 23 笔"]],
+triggers:[["夜班 22:00 战队出征","0 22 * * *"],["差评 SLA 扫描","*/30 * * * *"],["公司CEO 晨报","30 8 * * *"],["FAQ 周萃取","0 3 * * 0"]]};
+
+const $=s=>document.querySelector(s);
+let toastT=null;
+function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("show");clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove("show"),2200)}
+document.addEventListener("click",e=>{
+  const b=e.target.closest("[data-toast]");if(b)toast(b.getAttribute("data-toast"));
+  const f=e.target.closest("[data-flip]");if(f){const[d,o]=f.getAttribute("data-flip").split("|");f.textContent=d;f.classList.add("done");if(o)toast(o);}
+});
+function stat(v,k){return `<div class="stat"><div class="v">${v}</div><div class="k">${k}</div></div>`}
+function hbar(lb,pct,vl,c){return `<div class="hbar"><span class="lb">${lb}</span><div class="bar"><div class="fill ${c||""}" style="width:${pct}%"></div></div><span class="vl">${vl}</span></div>`}
+function decide(id,g){const el=document.querySelector(`[data-apr="${id}"]`);if(el){el.style.opacity=.5;el.querySelectorAll("button").forEach(b=>b.disabled=true);const s=el.querySelector(".apr-st");if(s)s.textContent=g==="approve"?"已批准":"已驳回";}toast(`已${g==="approve"?"批准":"驳回"}，全链留痕（${shortId(id)}）`)}
+
+/* ================= 五 Tab ================= */
+const TABS=[["theater","剧场","剧"],["p3","战报","报"],["p4","审批","审"],["svc","服务前台","服"],["me","我的","我"]];
+let cur="theater";
+
+const SCREENS={};
+/* —— 剧场（精简，镜像 /p0） —— */
+SCREENS.theater=()=>`
+<div class="simline">⚠ <b>模拟数据</b> · 镜像生产页面与种子数据 <span class="route-tag" style="float:right">真实路由 /</span></div>
+<div class="row" style="margin-bottom:8px"><span style="font-size:12px;color:var(--ink3)">经营剧场 · 公司CEO</span><span class="tag amber" style="margin-left:auto">试用期</span></div>
+<div class="stage">
+ <div class="holobody">
+  <div class="or" style="inset:0;border-color:rgba(200,162,74,.53);animation:hspin 9s linear infinite"></div>
+  <div class="or" style="inset:12px;border-color:rgba(200,162,74,.33);animation:hspin 7s linear infinite reverse"></div>
+  <div class="or" style="inset:24px;border-color:rgba(200,162,74,.2);animation:hspin 5s linear infinite"></div>
+  <svg viewBox="0 0 120 160" style="position:absolute;inset:0;margin:auto;width:96px;height:120px">
+   <defs><radialGradient id="mcore" cx="50%" cy="42%" r="55%"><stop offset="0%" stop-color="#ffd98a" stop-opacity=".95"/><stop offset="60%" stop-color="#c8a24a" stop-opacity=".35"/><stop offset="100%" stop-color="#c8a24a" stop-opacity="0"/></radialGradient></defs>
+   <ellipse cx="60" cy="26" rx="14" ry="16" fill="none" stroke="#ffd98a" stroke-opacity=".85" stroke-width="1.4"/>
+   <path d="M42 52 Q60 42 78 52 L86 108 Q60 122 34 108 Z" fill="none" stroke="#ffd98a" stroke-opacity=".7" stroke-width="1.4"/>
+   <ellipse cx="60" cy="72" rx="17" ry="22" fill="url(#mcore)"/></svg>
+ </div>
+ ${D.agents.map((a,i)=>{const ang=i/D.agents.length*Math.PI*2;const rx=132+(i%3)*16,ry=52+(i%3)*7;
+  const c=a[2]==="表扬"?"#6adf8a":a[2]==="辅导"?"#ff8a8a":a[2]==="关注"?"#ffbe6a":"#8ad8ff";
+  return `<button class="sat" style="left:calc(50% + ${Math.cos(ang)*rx}px);top:calc(46% + ${Math.sin(ang)*ry}px);background:${c};box-shadow:0 0 8px ${c}" data-toast="${a[1]} · ${a[0]} · 绩效态：${a[2]}"><small>${a[1]}</small></button>`}).join("")}
+</div>
+<div class="bubble" style="margin-bottom:10px"><span id="mspeech"></span><span style="color:var(--gold);animation:pl 1s infinite">▌</span></div>
+<div class="askcard" style="margin-bottom:10px">
+ <div style="font-size:10px;letter-spacing:.2em;color:var(--amber);margin-bottom:6px">请您决策 · ${D.approvals.filter(a=>a.status==="pending").length} 件</div>
+ ${D.approvals.filter(a=>a.status==="pending").slice(0,1).map(q=>`
+ <div data-apr="${q.id}">
+  <div style="font-size:12px"><b>${q.title}</b></div>
+  <div class="mono">审批 ${shortId(q.id)} · ${q.rule}</div>
+  <div style="font-size:11px;color:var(--holo);margin-top:4px">CEO 意见：${q.rationale}</div>
+  <div class="gest"><button class="btn ok sm" onclick="decide('${q.id}','approve')">✓ 批准</button>
+  <button class="btn warn sm" onclick="decide('${q.id}','reject')">✕ 驳回</button>
+  <span class="apr-st tag amber" style="margin-left:auto;align-self:center">待裁决</span></div></div>`).join("")}
+ <div style="font-size:10px;color:var(--amber);margin-top:6px" data-toast="跳转审批 Tab 查看全部">其余 1 件 → 审批 Tab</div>
+</div>
+<div class="subt"><div class="in">${D.ticker.concat(D.ticker).map(e=>`<span><b style="color:var(--ink2)">${actionText(e[0])}</b> · ${e[1]}</span>`).join("")}</div></div>
+<div class="row" style="gap:6px;flex-wrap:wrap;margin-bottom:8px">
+ <button class="kbd-chip" data-flip="已派发 ✓|已立项执行，进展主动汇报">今日怎么样</button>
+ <button class="kbd-chip" onclick="go('p4')">批一下请示</button>
+ <button class="kbd-chip" onclick="go('p3')">昨夜夜班汇报</button></div>
+<div class="row"><input class="inp" placeholder="像跟 公司CEO 说话一样输入……" onkeydown="if(event.key==='Enter'){toast('收到，已立项执行（问询 / 安排任务 / 逐步商量）');this.value=''}"><button class="btn g sm" data-toast="已发送">发送</button></div>`;
+
+/* —— 战报（镜像 /p3） —— */
+SCREENS.p3=()=>`
+<div class="simline">⚠ <b>模拟数据</b> · 夜班交接班消息 <span class="route-tag" style="float:right">真实路由 /p3</span></div>
+<div class="row" style="margin-bottom:8px"><b style="font-size:15px">掌上战报 · 夜班交接</b><span class="tag ok" style="margin-left:auto">已生成 · 08:30</span></div>
+<div class="grid3" style="margin-bottom:10px">${stat(D.night.done,"已完成")}${stat(D.night.pending,"待审")}${stat(D.night.need_human,"需介入")}</div>
+<div class="note" style="margin-bottom:10px">三手势：采纳（权重 1）/ 编辑后采纳（权重 2）/ 驳回（权重 3）；驳回必填原因。</div>
+${D.approvals.filter(a=>a.status==="pending").map(q=>`
+<div class="card swipecard" data-apr="${q.id}">
+ <div class="row" style="justify-content:space-between"><b style="font-size:12px">${q.title}</b><span class="apr-st tag amber">待裁决</span></div>
+ <div class="mono" style="margin-top:3px">事件 ${shortId(q.ev)} · ${q.rule} · ${q.who}</div>
+ <div style="font-size:11px;margin-top:6px"><span class="diff-del">${q.before}</span> → <span class="diff-add">${q.after}</span></div>
+ <div style="font-size:11px;color:var(--ink2);margin-top:5px">${q.rationale}</div>
+ <div class="gest">
+  <button class="btn ok sm" onclick="decide('${q.id}','approve')">✓ 采纳</button>
+  <button class="btn sm" data-flip="已改派 ✓|编辑后采纳（权重 2）已写回">✎ 编辑后采纳</button>
+  <button class="btn warn sm" onclick="decide('${q.id}','reject')">✕ 驳回</button></div>
+ <div class="hint">← 左滑驳回 · 长按编辑 · 右滑采纳 →</div></div>`).join("")}
+<div class="card" style="border-color:rgba(255,138,138,.4)">
+ <b style="color:var(--warn);font-size:12px">求援卡 · 需介入 2 件</b>
+ <div style="font-size:11px;color:var(--ink2);margin-top:5px">① 担保订单客人失联（R5 硬阻断转人工）<br>② 夜间电梯困人误报复核</div>
+ <div class="gest"><button class="btn warn sm" data-flip="已派单 ✓|已派单 → 值班经理，SLA 计时开始">一键派单</button>
+ <button class="btn sm" data-toast="二次确认：再次点击紧急制动（≤60 秒全端生效）" onclick="this.textContent='⚠ 再点确认制动';this.dataset.toast=''">⛔ 紧急制动</button></div></div>
+<div class="card"><div class="ptitle">峰谷计量</div>${hbar("积分消耗",81,"96 / 118 估")}${hbar("已完成",64,"9 / 14 项")}</div>`;
+
+/* —— 审批（镜像 /p4 三手势） —— */
+SCREENS.p4=()=>`
+<div class="simline">⚠ <b>模拟数据</b> · 决断队列统一投影 <span class="route-tag" style="float:right">真实路由 /p4</span></div>
+<div class="row" style="margin-bottom:8px"><b style="font-size:15px">决断队列</b><span class="tag amber" style="margin-left:auto">2 待裁决</span></div>
+${D.approvals.map(q=>`
+<div class="card" data-apr="${q.id}">
+ <div class="row" style="justify-content:space-between"><b style="font-size:12px">${q.title}</b>
+ <span class="apr-st tag ${q.status==="approved"?"ok":"amber"}">${dictText(APPROVAL_STATUS_TEXT,q.status)}</span></div>
+ <div class="mono" style="margin-top:3px">${q.tier} · ${actionText({"···8871":"回复点评","···9064":"订单退款","···8820":"调整房价"}[q.id])} · ${shortId(q.id)}</div>
+ <div style="font-size:11px;margin-top:6px"><span class="diff-del">${q.before}</span> → <span class="diff-add">${q.after}</span></div>
+ <div style="margin-top:6px"><span class="tag amber">${q.rule}</span></div>
+ <div class="note" style="margin-top:6px">为什么这样改：${q.rationale}</div>
+ <div class="gest">
+  <button class="btn ok sm" onclick="decide('${q.id}','approve')">✓ 采纳</button>
+  <button class="btn sm" data-flip="已改派 ✓|编辑后采纳（权重 2）已写回">✎ 编辑</button>
+  <button class="btn warn sm" onclick="decide('${q.id}','reject')">✕ 驳回</button></div></div>`).join("")}
+<div class="note">今日已审 6 件：采纳 4 / 编辑后采纳 1 / 驳回 1（驳回原因进偏好模式）；快照 24 小时有效，高危双人审。</div>`;
+
+/* —— 服务前台（镜像 /p22 工单+SLA） —— */
+SCREENS.svc=()=>`
+<div class="simline">⚠ <b>模拟数据</b> · AI 服务前台运行态 <span class="route-tag" style="float:right">真实路由 /p22</span></div>
+<div class="row" style="margin-bottom:8px"><b style="font-size:15px">服务前台 · 工单台</b><span class="tag holo" style="margin-left:auto">SLA 达标 100%</span></div>
+<div class="grid3" style="margin-bottom:10px">${D.svcStats.map(s=>stat(s[1],s[0])).join("")}</div>
+<div class="row" style="gap:6px;margin-bottom:10px;flex-wrap:wrap">${["全部","处理中","已分派","已完成"].map((f,i)=>`<button class="kbd-chip" style="${i===0?"border-color:var(--gold);color:var(--gold)":""}" data-toast="已按「${f}」过滤">${f}</button>`).join("")}</div>
+${D.tickets.map(t=>`
+<div class="card">
+ <div class="row" style="justify-content:space-between"><b style="font-size:12px">${t.title}</b>
+ <span class="tag ${t.st==="done"?"ok":t.st==="processing"?"holo":"amber"}">${dictText(TICKET_STATUS_TEXT,t.st)}</span></div>
+ <div class="mono" style="margin-top:3px">工单 ${shortId(t.id)} · ${dictText(TICKET_KIND_TEXT,t.kind)} · ${dictText(TICKET_PRIORITY_TEXT,t.pri)} · ${t.user}</div>
+ <div style="font-size:11px;color:var(--ink2);margin-top:5px">${t.dept}${t.assignee?" · "+t.assignee:""} · SLA：${t.sla}</div>
+ ${t.st==="done"?`<div style="margin-top:5px"><span class="tag g">满意度 ${t.rating} 星</span></div>`:""}
+ <div style="margin-top:8px;border-top:1px dashed var(--line);padding-top:8px">
+  ${t.tl.map(e=>`<div class="row" style="margin:4px 0;gap:6px"><span class="tag ${e[0]==="rate"?"g":e[0]==="complete"?"ok":""}" style="font-size:9px">${dictText({create:"创建",assign:"分派",start:"开工",complete:"办结",rate:"评价"},e[0])}</span>
+  <span style="font-size:10px;color:var(--ink3)">${dictText(TICKET_ACTOR_TEXT,e[1])} · ${e[2]}：${e[3]}</span></div>`).join("")}</div>
+ <div class="gest">${t.st==="assigned"?`<button class="btn sm" data-flip="已开工 ✓|推进工单 ${shortId(t.id)}">开始处理</button>`:t.st==="processing"?`<button class="btn ok sm" data-flip="已办结 ✓|办结结果已推送 C 端通知">办结并通知</button>`:""}
+ <button class="btn sm" data-toast="已催办：SLA 倒计时优先调度">催办</button></div></div>`).join("")}
+<div class="card"><div class="ptitle">住客会话 · 进行中</div>
+ ${D.convs.map(c=>`<div style="margin-bottom:10px">
+  <div class="row"><b style="font-size:12px">${c[0]}</b><span class="tag ok" style="margin-left:auto">${dictText(COMMON_STATUS_TEXT,"open")}</span></div>
+  <div class="msgbub me">${c[1]}</div>
+  <div class="msgbub ai">${c[2]}</div>
+  <div class="mono">${dictText(INTENT_TEXT,c[3])} · ${confidenceText(c[4])} ${c[4]} · ${latencyText(c[5])}</div></div>`).join("")}</div>
+<div class="card"><div class="ptitle">通知 · 已送达 ×3</div>
+ ${D.notifs.map(n=>`<div style="font-size:11px;color:var(--ink3);margin:5px 0">→ ${n[0]}：${n[1]} <span class="tag ok" style="font-size:9px">${dictText(COMMON_STATUS_TEXT,"delivered")}</span></div>`).join("")}</div>`;
+
+/* —— 我的（夜班/班组/一键收权） —— */
+SCREENS.me=()=>`
+<div class="simline">⚠ <b>模拟数据</b> · 监督者视角 <span class="route-tag" style="float:right">镜像 /p9 /p21 口径</span></div>
+<div class="card"><div class="row"><span style="width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#2a3a7a,#141c3f);display:flex;align-items:center;justify-content:center;border:1px solid var(--gline);font-size:16px">王</span>
+ <div><b>王店长</b><div class="mono">MEM-001 · 经营者 · 云栖酒店</div></div>
+ <span class="tag g" style="margin-left:auto">已深度授权</span></div></div>
+<div class="card"><div class="ptitle">夜班班组 · 运行中</div>
+ <div class="row" style="justify-content:space-between;margin-bottom:8px"><span style="font-size:12px;color:var(--ink2)">夜窗 22:00–08:00 · 战报 08:30</span><span class="tag ok">${dictText(COMMON_STATUS_TEXT,"active")}</span></div>
+ ${D.squad.map(s=>`<div class="row" style="margin:6px 0"><span style="width:6px;height:6px;border-radius:50%;background:var(--holo);box-shadow:0 0 6px var(--holo)"></span>
+ <span style="font-size:12px;color:var(--ink2)">${s[0]}</span><span class="mono" style="margin-left:auto">${s[1]}</span></div>`).join("")}
+ <div class="gest" style="margin-top:10px"><button class="btn warn sm" data-toast="二次确认：再次点击一键暂停全部夜班动作（G5 ≤60 秒）" onclick="if(this.dataset.arm){this.textContent='已暂停 · 点击恢复';this.dataset.arm='';toast('夜班班组已暂停，断点挂起可续跑')}else{this.dataset.arm='1';this.textContent='⚠ 再点确认暂停'}">⛔ 一键暂停班组</button>
+ <button class="btn sm" onclick="go('p3')">看战报</button></div></div>
+<div class="card"><div class="ptitle">触发器节拍</div>
+ ${D.triggers.map(t=>`<div class="row" style="margin:6px 0"><span style="font-size:12px;color:var(--ink2)">${t[0]}</span><span class="mono" style="margin-left:auto">${cronText(t[1])}</span></div>`).join("")}</div>
+<div class="card" style="border-color:rgba(255,138,138,.4)"><div class="ptitle" style="color:var(--warn)">数字CEO 治理</div>
+ <div class="row" style="margin-bottom:6px"><span class="tag amber">模式：试用期（第 2 天 / 共 7 天）</span><span class="tag ok">熔断：未触发</span></div>
+ <div style="font-size:11px;color:var(--ink2);line-height:1.9">自治：调价带 85%–115% · 采购 ≤¥5,000 · 活动 ≤¥2,000<br>今日裁决：L2 ×1（已批准）· L3 ×1 · L4 ×1 待您定</div>
+ <div class="gest" style="margin-top:10px"><button class="btn warn" data-toast="二次确认：再次点击一键收权，公司CEO 降级为「仅汇报」" onclick="if(this.dataset.arm){this.textContent='已收权 · 仅汇报';this.classList.add('done');toast('已一键收权：自治动作全部冻结并留痕')}else{this.dataset.arm='1';this.textContent='⚠ 再点确认收权'}">⛔ 一键收权</button>
+ <button class="btn g" onclick="go('p4')">去审批</button></div></div>
+<div class="card"><div class="ptitle">组织记忆</div>
+ <div style="font-size:11px;color:var(--ink2);line-height:1.9">「周五弹性规律」：周五晚大床房需求弹性高，18:00 前提价转化损失最小<br>「差评回复 SOP」：致歉→核实→措施→承诺</div></div>`;
+
+function go(t){cur=t;render()}
+function render(){
+  $("#screen").innerHTML=SCREENS[cur]();
+  $("#tabbar").innerHTML=TABS.map(t=>`<button class="${cur===t[0]?"on":""}" onclick="go('${t[0]}')"><span class="ic">${t[2]}</span>${t[1]}${t[0]==="p4"?'<span class="badge">2</span>':""}</button>`).join("");
+  $("#screen").scrollTop=0;
+  if(cur==="theater"){const el=$("#mspeech");if(el){const txt=D.briefing;let n=0;const id=setInterval(()=>{n++;el.textContent=txt.slice(0,n);if(n>=txt.length)clearInterval(id)},20)}}
+}
+render();
+</script>
+</body>
+</html>
