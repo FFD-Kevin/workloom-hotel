@@ -219,16 +219,24 @@ d("PG 集成 Quest 循环（种子库）", async () => {
     // 从「未安装」态开始（重跑安全）
     await uninstallSkill(app, gw, scope, { skillId: revenue.id, by: "MEM-001" }).catch(() => undefined);
     const before = await assemblePreset(app, scope, { workspaceId: scope.workspaceId, presetKey: "content-agent", goal: "装配并集探针" });
-    // 0013 契约：seed 安装行落真实快照——review-crisis(R6)、channel-reconciler(R4/R5) 在装，
-    // 并集 = content-agent 自身声明 R3 ∪ 全部在装技能快照
-    expect(before.fenceBindings).toEqual(["R3", "R4", "R5", "R6"]);
+    // 0013 契约：seed 安装行落真实快照——并集 = preset 声明 ∪ 全部在装技能快照（数据驱动，随仓种子口径）
+    const expectedUnion = async (): Promise<string[]> => {
+      const YAML = (await import("yaml")).default;
+      const { readFileSync } = await import("node:fs");
+      const preset = YAML.parse(readFileSync(new URL("../../../bundles/hotel/presets/content-agent.yml", import.meta.url), "utf-8"));
+      const set = new Set<string>((preset.fence_bindings ?? []) as string[]);
+      const rows = await app.query(`SELECT fence_bindings_snapshot FROM skill_installs WHERE workspace_id=$1`, [scope.workspaceId]);
+      for (const r of rows.rows as Array<{ fence_bindings_snapshot: string[] | null }>) for (const b of r.fence_bindings_snapshot ?? []) set.add(b);
+      return [...set].sort();
+    };
+    expect(before.fenceBindings).toEqual(await expectedUnion());
     // 安装即绑定：装配声明并入技能 fence_bindings 快照
     await installSkill(app, gw, scope, { skillId: revenue.id, by: "MEM-001" });
     const after = await assemblePreset(app, scope, { workspaceId: scope.workspaceId, presetKey: "content-agent", goal: "装配并集探针" });
-    expect(after.fenceBindings).toEqual(["R1", "R2", "R3", "R4", "R5", "R6"]); // preset 声明 ∪ 技能快照
+    expect(after.fenceBindings).toEqual([...new Set([...(await expectedUnion()), ...(revenue.fence_bindings as string[])])].sort()); // preset 声明 ∪ 技能快照 ∪ 新装技能
     // 卸载即撤销：并集收缩
     await uninstallSkill(app, gw, scope, { skillId: revenue.id, by: "MEM-001" });
     const revoked = await assemblePreset(app, scope, { workspaceId: scope.workspaceId, presetKey: "content-agent", goal: "装配并集探针" });
-    expect(revoked.fenceBindings).toEqual(["R3", "R4", "R5", "R6"]);
+    expect(revoked.fenceBindings).toEqual(await expectedUnion());
   });
 });

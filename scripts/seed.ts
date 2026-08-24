@@ -17,7 +17,8 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import pg from "pg";
 import YAML from "yaml";
-import { safeParseBusinessEvent } from "@workloom/shared";
+import { safeParseReplayAwareEvent } from "@workloom/base/workdata";
+import { eventHash as _eh } from "@workloom/base/workdata";
 // #32 修复：哈希链统一生产口径（events.ts 的 canonicalJson/eventHash）——
 // 此前种子用 JSON.stringify 键序算哈希，与生产 canonicalJson 口径不一致，
 // 种子 100 条事件用生产验证器重算全部不符（链上两种算法混杂）
@@ -696,8 +697,9 @@ async function main(): Promise<void> {
       [skillId, s.name, s.description, JSON.stringify(s.fenceBindings), s.body],
     );
     await q(
-      `INSERT INTO skill_installs (skill_id, workspace_id, installed_by)
-       VALUES ($1,$2,'MEM-001') ON CONFLICT (skill_id, workspace_id) DO NOTHING`,
+      `INSERT INTO skill_installs (skill_id, workspace_id, installed_by, installed_version, fence_bindings_snapshot)
+       SELECT $1,$2,'MEM-001', s.version, s.fence_bindings FROM skills s WHERE s.id=$1
+       ON CONFLICT (skill_id, workspace_id) DO NOTHING`,
       [skillId, WS_ID],
     );
   }
@@ -803,7 +805,7 @@ async function main(): Promise<void> {
   let dupSkipped = 0;
   for (let i = 1; i <= EVENT_COUNT; i++) {
     const ev = makeEvent(i, times[i - 1] as Date, presets);
-    const checked = safeParseBusinessEvent(ev);
+    const checked = safeParseReplayAwareEvent(ev as never);
     if (!checked.success) {
       throw new Error(`种子事件 ${ev.event_id} 未过附录 E 校验：${checked.error.message}`);
     }
@@ -843,7 +845,7 @@ async function main(): Promise<void> {
       receipt: { synced: true, snapshot_uri: "data/snapshots/e-8999.png", verified_at: new Date().toISOString() },
       model_trace: { model_id: "mock-hotel-001", tier: "standard", window: "peak", credits: 1 },
     };
-    const checked = safeParseBusinessEvent(ev);
+    const checked = safeParseReplayAwareEvent(ev as never);
     if (!checked.success) throw new Error(`晨报事件未过校验：${checked.error.message}`);
     const payload = JSON.stringify(checked.data);
     const hash = eventHash(prevHash, checked.data);
@@ -929,9 +931,9 @@ async function main(): Promise<void> {
       [m.id, TENANT_ID, WS_ID, m.kind, m.content, m.source],
     );
     await gw.query(
-      `INSERT INTO memory_usage (memory_id, event_id) VALUES ($1,$2)
+      `INSERT INTO memory_usage (memory_id, event_id, workspace_id) VALUES ($1,$2,$3)
        ON CONFLICT (memory_id, event_id) DO NOTHING`,
-      [m.id, m.source[0]],
+      [m.id, m.source[0], WS_ID],
     );
   }
   console.log(`✓ 组织记忆 ×${memories.length}（含来源事件归因）`);
@@ -947,7 +949,7 @@ async function main(): Promise<void> {
   );
   let valid = 0;
   for (const row of check.rows) {
-    if (safeParseBusinessEvent(row.payload).success) valid += 1;
+    if (safeParseReplayAwareEvent(row.payload as never).success) valid += 1;
   }
   const rate = check.rowCount ? valid / check.rowCount : 0;
   console.log(`✓ 验收（H-1）：回读 ${check.rowCount} 条，五元字段完整 ${valid} 条，完整率 ${(rate * 100).toFixed(1)}%`);

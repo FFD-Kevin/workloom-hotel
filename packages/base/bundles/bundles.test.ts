@@ -45,9 +45,10 @@ describe("草稿骨架与校验（P7E5/§2.3，文件级）", () => {
     expect(() => removeDraft("hotel")).toThrowError(/仅草稿态/);
   });
 
-  it("页面注册表覆盖九大页（UI 用例同步校验基准）", () => {
+  it("页面注册表覆盖全系列页（UI 用例同步校验基准）", () => {
     expect(REGISTERED_PAGES).toContain("p7");
-    expect(REGISTERED_PAGES.length).toBe(9);
+    expect(REGISTERED_PAGES).toContain("p22");
+    expect(REGISTERED_PAGES.length).toBe(25);
   });
 });
 
@@ -87,12 +88,12 @@ describe.runIf(RUN_DB)("行业装配 PG 集成（F2.10 铁律）", async () => {
     expect(p.filledCount).toBe(6);
     expect(p.checks.map((c) => c.ok)).toEqual([true, true, true, true, true]);
     expect(p.canActivate).toBe(true);
-    // 班组卡：7 preset 全注册且围栏绑定合法（P7E2）
-    expect(p.agents.length).toBe(7);
+    // 班组卡：11 preset 全注册且围栏绑定合法（P7E2）
+    expect(p.agents.length).toBe(11); // hotel 版班组 11 preset
     expect(p.agents.every((a) => a.fenceOk)).toBe(true);
-    // 槽摘要口径：档案 7 字段组 · forbidden 硬约束 2 条；UI 6 页 · 42 条
+    // 槽摘要口径：档案 21 字段组 · forbidden 硬约束 2 条；UI 19 页 · 90 条
     expect(p.slots[0]!.summary).toContain("字段组");
-    expect(p.slots[5]!.summary).toBe("6 页 · 状态用例 42 条同步");
+    expect(p.slots[5]!.summary).toBe("19 页 · 状态用例 90 条同步"); // hotel 版 19 页 90 用例
   });
 
   it("校验留痕：recheck 写 bundle.check_run 事件（P7E3 留痕可查）", async () => {

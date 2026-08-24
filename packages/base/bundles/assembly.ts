@@ -26,7 +26,12 @@ export function bundlesRoot(): string {
 }
 
 /** 已注册工作台页面（P7E3 ⑤「UI 用例同步」校验基准；新增页面须同步此表与 cases.json） */
-export const REGISTERED_PAGES = ["p1", "p2", "p3", "p4", "p5", "p6", "p7", "p8", "p9"] as const;
+// 页面注册表（全系列仓超集白名单：wl-im 九大页 + 行业版扩展页；UI 用例同步校验基准）
+export const REGISTERED_PAGES = [
+  "p0", "p1", "p2", "p3", "p4", "p5", "p6", "p7", "p8", "p9",
+  "p10", "p11", "p12", "p13", "p14", "p15", "p16", "p17", "p18", "p19", "p20", "p21", "p22",
+  "onboarding", "dev",
+] as const;
 
 export type SlotId = "archive" | "enums" | "tools" | "fences" | "presets" | "ui";
 export interface SlotState {
