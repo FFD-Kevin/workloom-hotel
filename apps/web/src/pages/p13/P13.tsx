@@ -3,6 +3,7 @@
  * 数据源：twin.events(order.confirm/reconcile/refund) + twin.objectTrail（单订单正序回放）
  */
 import { useEffect, useState } from "react";
+import { actionText } from "../../lib/display";
 import { ensureDemoLogin, trpc } from "../../lib/trpc";
 import { Bridge } from "../../shell/Bridge";
 import { EmptyState, SkeletonBlock, SystemDivider } from "../../components/hud";
@@ -73,7 +74,7 @@ export default function P13() {
                   <span className="mt-1 inline-block h-2 w-2 shrink-0 rounded-full bg-go" />
                   <div className="text-xs">
                     <span className="font-mono text-ink3">{fmtTime(ev.context.time)}</span>
-                    <span className="mx-2 font-semibold text-ink2">{ev.decision.action}</span>
+                    <span className="mx-2 font-semibold text-ink2">{actionText(ev.decision.action)}</span>
                     <span className="text-ink3">{ev.who?.type === "agent" ? `Agent ${ev.who.id}` : ev.who?.id}</span>
                     {ev.rule_impact?.[0] ? <span className="ml-2"><Tag tone="holo">{ev.rule_impact[0].rule_id} {ev.rule_impact[0].result}</Tag></span> : null}
                     {ev.decision.basis?.[0] ? <div className="mt-0.5 text-[11px] text-ink3">{ev.decision.basis[0]}</div> : null}

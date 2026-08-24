@@ -158,6 +158,21 @@ export const ACTION_TEXT_EXT: Record<string, string> = {
   "portrait_set.confirm": "确认定妆照",
   "pipeline.started": "启动制作管线",
   "pipeline.gate": "管线质量门",
+  // 酒店域（twin 事件动作码）
+  "order.confirm": "确认订单",
+  "order.reconcile": "订单对账",
+  "order.refund": "订单退款",
+  "price.publish": "发布价格",
+  "inventory.sync": "同步库存",
+  "inventory.sync.restore": "恢复库存上架",
+  "channel.parity.fixed": "修复渠道倒挂",
+  "review.reply": "回复点评",
+  "alert.escalate": "告警升级",
+  "incident.report": "断点上报",
+  "incident.resolve": "断点处置",
+  "room.assign": "智能排房",
+  "room.inspect": "客房质检",
+  "voice.answer": "语音前台接听",
 };
 
 const ACTION_PART_TEXT: Record<string, string> = {
