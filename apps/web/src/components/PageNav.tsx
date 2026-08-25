@@ -6,12 +6,12 @@ const NAV: Array<{ group: string; items: Array<{ path: string; label: string; ta
   {
     group: "经营驾驶",
     items: [
-      { path: "/", label: "经营剧场·首页", tag: "P0" },
-      { path: "/p1", label: "主甲板·晨报", tag: "P1" },
+      { path: "/", label: "经营主页·首页", tag: "P0" },
+      { path: "/p1", label: "工作台·晨报", tag: "P1" },
       { path: "/p12", label: "经营目标", tag: "P12" },
       { path: "/p18", label: "多店驾驶舱", tag: "P18" },
       { path: "/p19", label: "收益分析", tag: "P19" },
-      { path: "/p3", label: "掌上战报·交接", tag: "P3" },
+      { path: "/p3", label: "掌上日报·交接", tag: "P3" },
     ],
   },
   {
@@ -36,10 +36,10 @@ const NAV: Array<{ group: string; items: Array<{ path: string; label: string; ta
   {
     group: "夜班与组织",
     items: [
-      { path: "/p9", label: "守夜战队频道", tag: "P9" },
+      { path: "/p9", label: "夜班中心频道", tag: "P9" },
       { path: "/p10", label: "断点看板", tag: "P10" },
       { path: "/p21", label: "董事长视图", tag: "P21" },
-      { path: "/p4", label: "决断队列", tag: "P4" },
+      { path: "/p4", label: "审批中心", tag: "P4" },
       { path: "/p5", label: "围栏管制台", tag: "P5" },
       { path: "/p6", label: "技能市场", tag: "P6" },
       { path: "/p7", label: "组织记忆", tag: "P7" },
@@ -48,7 +48,7 @@ const NAV: Array<{ group: string; items: Array<{ path: string; label: string; ta
   },
   {
     group: "档案",
-    items: [{ path: "/p20", label: "一店一档", tag: "P20" }],
+    items: [{ path: "/p20", label: "门店档案", tag: "P20" }],
   },
 ];
 

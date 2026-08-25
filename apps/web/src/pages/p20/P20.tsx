@@ -1,5 +1,5 @@
 /**
- * P20 一店一档全景（槽①：五类 21 字段组——Agent 生成内容前必读三要素之一 L3.7）
+ * P20 门店档案全景（槽①：五类 21 字段组——Agent 生成内容前必读三要素之一 L3.7）
  * 数据源：twin.archive（profiles.archive 全量 + forbidden 硬约束独立列）
  */
 import { useEffect, useState } from "react";
@@ -70,9 +70,9 @@ export default function P20() {
 
   return (
     <Bridge right={rightPanel} left={<PageNav current="P20" />}>
-      <PageHead title="一店一档" tag="P20 · ARCHIVE" extra={<Tag tone="gold">五类 21 字段组</Tag>} />
+      <PageHead title="门店档案" tag="P20 · ARCHIVE" extra={<Tag tone="gold">五类 21 字段组</Tag>} />
       {!ready ? (<><SkeletonBlock lines={2} h={44} /><SkeletonBlock lines={4} /></>) : !archive ? (
-        <EmptyState icon="🗂️" title="档案未建立" hint="一店一档是 Agent 生成内容前的必读三要素之一（L3.7）。" />
+        <EmptyState icon="🗂️" title="档案未建立" hint="门店档案是 Agent 生成内容前的必读三要素之一（L3.7）。" />
       ) : (
         <div className="space-y-3">
           {SECTIONS.map((sec) => {

@@ -1,12 +1,12 @@
 /**
- * P8 船员名册（F9：通讯录 · 人机混编，Agent 是一等公民 IM.3；PRD P8-①②③④⑤ 逐条对账）
+ * P8 团队成员（F9：通讯录 · 人机混编，Agent 是一等公民 IM.3；PRD P8-①②③④⑤ 逐条对账）
  *  - 人类成员卡（P8E2：圆头像；角色与权限范围展示 经营者/只读/集团；三端权限一致 F5.6；
  *    在线状态=近 24h 事件留痕推导，不伪造 presence）
  *  - Agent 成员卡（P8E1：方头像+版本角标+LV 徽章+段位；围栏绑定 tags；技能包；
  *    30 天工时=动作数/采纳率/积分 · 峰谷占比 G9，全部事件库聚合投影 L6.3；
  *    夜班窗口 22:00–08:00 内 night_shift preset 自动上线·青脉冲（M4）；
  *    只读 preset 标绿无写工具（L9.1）；加载校验失败标红+原因（F2.10 错误态））
- *  - 加装 preset（P8E3 → P7 舰船换装坞，§2.3 行业 Bundle 分发；非管理员无入口 E2.6 隐藏非置灰）
+ *  - 加装 preset（P8E3 → P7 装配中心，§2.3 行业 Bundle 分发；非管理员无入口 E2.6 隐藏非置灰）
  *  - 成员档案 p8_agent（P8E1 点击进档案）：身份与归属（Agent ID/版本 who.version 归因必需/工作区/来源 Bundle）/
  *    航道许可围栏授权（P8E1·F2.10 声明对账，悬空标红）/技能包（→P6）/运行约束/
  *    30 天战绩（动作/采纳率/被驳回/积分·峰谷，驳回原因进偏好模式 F1.7）/
@@ -125,7 +125,7 @@ function HumanCard({ h }: { h: HumanRow }) {
       <div className="mt-2 border-t border-line/60 pt-2 text-micro leading-relaxed text-ink3">
         {ROLE_SCOPE[h.role] ?? ""}
         <div className="mt-1 flex gap-3">
-          <span>30 天决断 <b className="font-orb text-holo">{h.stats.decided30}</b></span>
+          <span>30 天审批 <b className="font-orb text-holo">{h.stats.decided30}</b></span>
           <span>派遣 <b className="font-orb text-holo">{h.stats.dispatched30}</b></span>
           <span>沉淀 <b className="font-orb text-holo">{h.stats.settled30}</b></span>
         </div>
@@ -255,11 +255,11 @@ function RosterHome() {
     <>
       <div className="mb-2 px-1 text-[11px] tracking-[.2em] text-ink3">名册 · ROSTER</div>
       <div className="mb-1.5 rounded-lg border border-line bg-card px-3 py-2.5">
-        <div className="text-caption font-bold text-ink">人类船员 · {humans.length}</div>
+        <div className="text-caption font-bold text-ink">人类成员 · {humans.length}</div>
         <div className="mt-0.5 text-micro text-ink3">{humans.filter((h) => h.online).length} 人在线（近 24h 留痕）</div>
       </div>
       <div className="mb-1.5 rounded-lg border border-line bg-card px-3 py-2.5">
-        <div className="text-caption font-bold text-ink">Agent 船员 · {agents.length} preset</div>
+        <div className="text-caption font-bold text-ink">Agent 成员 · {agents.length} preset</div>
         <div className="mt-0.5 text-micro text-ink3">
           workloom-hotel 装配 · {data?.nightWindow.open ? `夜班窗口内 ${onlineAgents} 名在线` : "夜班窗口外 · 待命"}
         </div>
@@ -295,7 +295,7 @@ function RosterHome() {
     <Bridge left={left} right={right}>
       <div className="flex min-h-full flex-col">
         <div className="mb-3 flex items-baseline gap-3">
-          <h2 className="text-h1 font-black tracking-wider">船员名册</h2>
+          <h2 className="text-h1 font-black tracking-wider">团队成员</h2>
           <span className="text-[11px] tracking-[.2em] text-ink3">P8 · CREW · 人机混编通讯录 IM.3</span>
         </div>
 
@@ -314,19 +314,19 @@ function RosterHome() {
           <EmptyState
             icon="👥"
             title="新工作区暂无成员卡片"
-            hint="仅行业 Bundle 官方 preset 可用——从 P7 舰船换装坞装配后此处点亮"
-            actionLabel={canManage ? "＋ 加装船员 preset" : undefined}
+            hint="仅行业 Bundle 官方 preset 可用——从 P7 装配中心装配后此处点亮"
+            actionLabel={canManage ? "＋ 加装成员 preset" : undefined}
             onAction={canManage ? () => nav("/p7") : undefined}
           />
         ) : (
           <>
-            <div className="mb-2 text-[11px] tracking-[.2em] text-ink3">人类船员 · {humans.length}</div>
+            <div className="mb-2 text-[11px] tracking-[.2em] text-ink3">人类成员 · {humans.length}</div>
             <div className="mb-5 grid grid-cols-3 gap-3">
               {humans.map((h) => <HumanCard key={h.memberNo} h={h} />)}
             </div>
 
             <div className="mb-2 text-[11px] tracking-[.2em] text-ink3">
-              Agent 船员 · {agents.length} preset（workloom-hotel 装配）· 夜班窗口 {data?.nightWindow.range} 自动上线
+              Agent 成员 · {agents.length} preset（workloom-hotel 装配）· 夜班窗口 {data?.nightWindow.range} 自动上线
             </div>
             <div className="grid grid-cols-3 gap-3">
               {agents.map((a) => <AgentCard key={a.id} a={a} onOpen={(id) => nav(`/p8/agent/${encodeURIComponent(id)}`)} />)}
@@ -340,7 +340,7 @@ function RosterHome() {
                   onClick={() => nav("/p7")}
                   className="cursor-pointer rounded-lg gold-grad px-4 py-2 text-caption font-black text-ongold"
                 >
-                  ＋ 加装船员 preset（→P7 舰船换装坞 §2.3）
+                  ＋ 加装成员 preset（→P7 装配中心 §2.3）
                 </button>
                 <span className="text-micro text-ink3">未声明 fence_bindings 的 Agent 系统级禁写（F2.10）</span>
               </div>
@@ -409,7 +409,7 @@ function AgentProfilePage({ agentId }: { agentId: string }) {
   /* 左栏：船员列表（点击切换档案） */
   const left = (
     <>
-      <div className="mb-2 px-1 text-[11px] tracking-[.2em] text-ink3">Agent 船员 · AGENTS</div>
+      <div className="mb-2 px-1 text-[11px] tracking-[.2em] text-ink3">Agent 成员 · AGENTS</div>
       {roster.map((a) => (
         <button
           key={a.id}
@@ -501,7 +501,7 @@ function AgentProfilePage({ agentId }: { agentId: string }) {
                   <div className="flex justify-between"><span className="text-ink3">版本（who.version 归因）</span><span className="font-mono text-ink2">{p.agent.version}</span></div>
                   <div className="flex justify-between"><span className="text-ink3">工作区</span><span className="text-ink2">{p.workspaceName}</span></div>
                   <div className="flex justify-between"><span className="text-ink3">来源 Bundle</span><span className="text-ink2">{p.bundle}</span></div>
-                  <div className="flex justify-between"><span className="text-ink3">战队</span><span className="text-ink2">{p.agent.nightShift ? "守夜战队 · 夜班窗口自动上线" : "日常班组"}</span></div>
+                  <div className="flex justify-between"><span className="text-ink3">战队</span><span className="text-ink2">{p.agent.nightShift ? "夜班中心 · 夜班窗口自动上线" : "日常班组"}</span></div>
                 </div>
                 <div className="mt-2.5 border-t border-line/60 pt-2">
                   <LevelBadge level={p.game.level} rank={p.game.rank} name={p.agent.name} version={p.agent.version} />
@@ -532,7 +532,7 @@ function AgentProfilePage({ agentId }: { agentId: string }) {
               <div className="rounded-msg border border-line bg-card p-3.5">
                 <div className="mb-2 text-caption font-bold text-holo">装备 · 技能包</div>
                 {p.skills.length === 0 ? (
-                  <div className="text-caption text-ink3">暂无技能包（→P6 装备库安装）</div>
+                  <div className="text-caption text-ink3">暂无技能包（→P6 技能中心安装）</div>
                 ) : (
                   <div className="space-y-1.5">
                     {p.skills.map((s) => (
@@ -540,7 +540,7 @@ function AgentProfilePage({ agentId }: { agentId: string }) {
                         key={s.id}
                         type="button"
                         onClick={() => nav("/p6")}
-                        title="技能包行 → P6 装备库"
+                        title="技能包行 → P6 技能中心"
                         className="flex w-full cursor-pointer items-center gap-2 rounded-lg border border-line bg-bg800/40 px-2.5 py-1.5 text-left text-caption hover:border-gline"
                       >
                         <span className="min-w-0 flex-1 truncate text-ink2">🎒 {s.name} <span className="font-mono text-micro text-ink3">v{s.version}</span></span>

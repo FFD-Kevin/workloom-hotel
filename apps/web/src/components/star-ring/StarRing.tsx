@@ -1,11 +1,11 @@
 /**
- * 星环 StarRing · 全局 Ask 入口（右侧固定通栏 AskRail 形态；AI 原生工作空间 · 交互层）
+ * AI 助手 StarRing · 全局 Ask 入口（右侧固定通栏 AskRail 形态；AI 原生工作空间 · 交互层）
  *
  * 交互策略（2026-08-25 定稿）：
  *  - PC 端：右侧固定通栏对话框——贴界面最右、从顶到底的瘦长完整对话模块，任何页面常驻；
  *    可收起为 56px 图标条（收起后随时展开，不是隐藏）
  *  - 移动端 B 端：底部 Tab 首个即对话（生产移动壳落地时按此口径；demo 已镜像）
- *  - 栏内构成：头部（✦ Ask · 星环对话 + 待批 badge + 进剧场 + 收起）/ 消息流 / 情境快捷钮 / 输入栏
+ *  - 栏内构成：头部（✦ Ask · AI 助手 + 待批 badge + 进经营主页 + 收起）/ 消息流 / 情境快捷钮 / 输入栏
  *  - 上下文感知：useLocation 读当前路由预置情境 chips（/p22 服务前台、/p13 订单、/p15 口碑等）
  *  - 输入分流：问句走 ask（threads.dispatch 意图路由 → ask 即时应答，P2 同口径）；明确任务走 quest（立项 → P2）
  *  - 待审批数：approvals.list({status:"pending"}) 10s 轮询（D6「其余」口径）
@@ -27,7 +27,7 @@ const CONTEXT_CHIPS: Array<[prefix: string, chips: string[]]> = [
   ["/p2", ["这线程卡在哪一步", "预估剩余积分消耗"]],
   ["/p1", ["昨夜经营有什么异常", "今天优先级最高的三件事"]],
 ];
-const DEFAULT_CHIPS = ["汇报当前经营概况", "有哪些待我决断的事项"];
+const DEFAULT_CHIPS = ["汇报当前经营概况", "有哪些待我审批的事项"];
 
 interface RingMsg {
   id: number;
@@ -141,18 +141,18 @@ export function StarRing() {
         });
       } else if (isQuestion(text)) {
         if (r.mode === "ask" && r.answer) {
-          pushMsg({ role: "agent", action: "星环参谋 · 应答", receipt: "synced", refId: r.threadId, text: r.answer });
+          pushMsg({ role: "agent", action: "AI 助手 · 应答", receipt: "synced", refId: r.threadId, text: r.answer });
         } else {
           pushMsg({
             role: "agent", action: "已转立项处理", receipt: "unverified", refId: r.threadId,
-            text: `该问句被路由为任务（${r.mode ?? "quest"}），线程 ${r.threadId ?? "—"} 已建立，可到 P2 任务舱跟进。`,
+            text: `该问句被路由为任务（${r.mode ?? "quest"}），线程 ${r.threadId ?? "—"} 已建立，可到 P2 任务中心跟进。`,
             linkTo: r.threadId ? `/p2/${encodeURIComponent(r.threadId)}` : undefined,
           });
         }
       } else {
         pushMsg({
           role: "agent", action: "总导演已接单", receipt: "unverified", refId: r.threadId,
-          text: `已立项 ${r.threadId ?? "—"}（状态 ${r.status ?? "queued"}）：「${text}」。点击跳任务舱跟进执行。`,
+          text: `已立项 ${r.threadId ?? "—"}（状态 ${r.status ?? "queued"}）：「${text}」。点击跳任务中心跟进执行。`,
           linkTo: r.threadId ? `/p2/${encodeURIComponent(r.threadId)}` : undefined,
         });
       }
@@ -160,7 +160,7 @@ export function StarRing() {
       setInput(text);
       pushMsg({
         role: "agent", action: "调用失败", receipt: "failed",
-        text: `星环连接中断：${e instanceof Error ? e.message : String(e)}。输入已保留，可重试（E1.1 优雅降级）。`,
+        text: `AI 助手连接中断：${e instanceof Error ? e.message : String(e)}。输入已保留，可重试（E1.1 优雅降级）。`,
       });
     } finally {
       setSending(false);
@@ -206,7 +206,7 @@ export function StarRing() {
             </span>
           )}
         </button>
-        <div className="text-[10px] tracking-[.25em] text-gold [writing-mode:vertical-rl]">ASK · 星环</div>
+        <div className="text-[10px] tracking-[.25em] text-gold [writing-mode:vertical-rl]">ASK · AI 助手</div>
         <div className="flex-1" />
         <button
           type="button"
@@ -229,7 +229,7 @@ export function StarRing() {
           <ClapperIcon size={18} />
         </span>
         <div className="min-w-0">
-          <div className="text-caption font-black tracking-wider text-gold">Ask · 星环对话</div>
+          <div className="text-caption font-black tracking-wider text-gold">Ask · AI 助手</div>
           <div className="font-mono text-[10px] text-ink3">{pathname} · 全局常驻</div>
         </div>
         {pendingCount > 0 && (
@@ -240,7 +240,7 @@ export function StarRing() {
         <span className="flex-1" />
         <button type="button" onClick={() => nav("/p0")}
           className="cursor-pointer rounded border border-gline px-2 py-0.5 text-micro text-gold hover:bg-card">
-          进剧场 →
+          进经营主页 →
         </button>
         <button type="button" onClick={() => setCollapsed(true)}
           title="收起为图标条"
@@ -254,7 +254,7 @@ export function StarRing() {
         {msgs.length === 0 ? (
           <div className="mt-8 space-y-2 text-center text-caption text-ink3">
             <div className="text-gold/80">有事随时说——问句即时应答（ask）<br />明确任务自动立项（quest）</div>
-            <div className="text-micro">点下方情境钮快速开始，或双击标题进剧场</div>
+            <div className="text-micro">点下方情境钮快速开始，或双击标题进经营主页</div>
           </div>
         ) : (
           msgs.map((m) => m.role === "human" ? (
@@ -262,7 +262,7 @@ export function StarRing() {
           ) : (
             <AgentActionMessage
               key={m.id}
-              sender="星环参谋"
+              sender="AI 助手"
               version=""
               action={m.action ?? "应答"}
               eventId={m.refId ?? "—"}
@@ -270,7 +270,7 @@ export function StarRing() {
             >
               {m.text}
               {m.linkTo && (
-                <a href={m.linkTo} className="ml-1 text-holo underline">→ 任务舱跟进</a>
+                <a href={m.linkTo} className="ml-1 text-holo underline">→ 任务中心跟进</a>
               )}
             </AgentActionMessage>
           ))

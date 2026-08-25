@@ -1,5 +1,5 @@
 /**
- * P12 经营目标页（目标设定与追踪：一店一档 goals 字段组 × goal.tracking 周频回写）
+ * P12 经营目标页（目标设定与追踪：门店档案 goals 字段组 × goal.tracking 周频回写）
  *  - 年度/月度目标卡（OCC/ADR/RevPAR/营收）+ 渠道·房型分解
  *  - 周频达成追踪：目标 vs 时序进度（behind → 琥珀预警）+ 偏差自动归因
  *  - 数据源：twin.goals（profiles.archive.goals + biz_events goal.tracking）
