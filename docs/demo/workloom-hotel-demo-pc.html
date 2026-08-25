@@ -289,32 +289,7 @@ channels:[
  {name:"飞猪",kind:"OTA",price:438,parity:false,status:"online",isNew:false},
  {name:"抖音",kind:"直播",price:null,parity:null,status:"online",isNew:true},
  {name:"小红书",kind:"内容",price:null,parity:null,status:"online",isNew:true}],
-kb:{cols:[
-  {id:"kbc-guest-guide",name:"云栖酒店住客服务须知",docs:[{t:"云栖酒店住客服务须知",src:"upload",v:3,st:"active",chunks:12}]},
-  {id:"kbc-service-catalog",name:"商品与服务目录",docs:[{t:"商品与服务目录",src:"manual",v:1,st:"active",chunks:4},{t:"云栖轩中餐厅菜单（官网）",src:"official_site",v:2,st:"pending_review",chunks:6}]}],
- site:{url:"https://www.yunqi-hotel.example",fp:"fp-a91c",cron:"0 3 * * *",st:"active"}},
-convs:[
- {id:"···001",user:"张伟（金卡会员）",ch:"微信小程序",msgs:[
-  ["user","退房时间是几点？会员能延迟吗？",null,null,null],
-  ["assistant","【退房时间】本店标准退房时间为每日中午 12:00 前。您是金卡会员，可免费延迟至 14:00 退房。","kb_qa",0.95,24],
-  ["user","早餐几点开始？收费吗？",null,null,null],
-  ["assistant","【早餐】中西自助早餐 07:00-10:30 供应，68 元/位；住店会员免费。地点：一层云栖餐厅。","kb_qa",0.93,21]]},
- {id:"···002",user:"住客小李",ch:"H5",msgs:[
-  ["user","房间空调好像不制冷，能找人看看吗？8306",null,null,null],
-  ["assistant","很抱歉给您带来不便。我已为您生成维修工单，工程部会尽快上门处理，进度会实时通知您。","service_request",0.91,28]]}],
-tickets:[
- {id:"···001",user:"住客小李",kind:"repair",title:"8306 空调不制冷",st:"processing",pri:"high",dept:"工程部",assignee:"王师傅",sla:"剩余 1 小时 42 分",
-  tl:[["create","c_user","住客小李","用户对话中建单"],["assign","agent","agt-service-desk","智能分派 → 工程部"],["start","staff","王师傅","已接单，携带工具前往 8306"]]},
- {id:"···002",user:"张伟",kind:"delivery",title:"送两瓶矿泉水到 1208",st:"assigned",pri:"normal",dept:"客房部",assignee:null,sla:"剩余 55 分",
-  tl:[["create","c_user","张伟","服务台自助提交"],["assign","agent","agt-service-desk","智能分派 → 客房部"]]},
- {id:"···003",user:"住客小李",kind:"complaint",title:"隔壁房间深夜噪音扰民",st:"done",pri:"high",dept:"值班经理",assignee:"刘经理",sla:"已于时限内办结",rating:5,
-  result:"已与隔壁房客沟通并提醒静音，赠送您一份果盘致歉。",
-  tl:[["create","c_user","住客小李","投诉类必建单"],["assign","agent","agt-service-desk","智能分派 → 值班经理"],["start","staff","刘经理","现场处理中"],["complete","staff","刘经理","已沟通提醒并赠果盘致歉"],["rate","c_user","住客小李","满意度 5 星"]]}],
-notifs:[
- ["···001","住客小李","您的维修工单「8306 空调不制冷」已受理，工程部王师傅处理中。"],
- ["···002","住客小李","您的投诉工单「隔壁房间深夜噪音扰民」已办结：已与隔壁房客沟通提醒，并赠果盘致歉。欢迎评价。"],
- ["···003","张伟","您的送物工单「送两瓶矿泉水到 1208」已受理，客房部将尽快送达。"]],
-svcStats:[["会话（7 天）",42],["知识问答占比","64%"],["平均置信度","0.92（高置信）"],["有据率","96%"],["平均首答延迟","26ms"],["工单（7 天）",11],["工单完结率","91%"],["SLA 达标率","100%"],["满意度","5.0 分"]],
+kbSite:{url:"https://www.yunqi-hotel.example",fp:"fp-a91c",cron:"0 3 * * *"},
 orders:[
  {id:"o-8821",guest:"张伟 · 金卡会员",room:"雅致大床房 1208",amount:"¥528",st:"在住",steps:[
   ["下单","住客 · 携程","2 分钟前","自动放行","携程直连下单，担保支付成功"],
@@ -1013,53 +988,192 @@ VIEWS.p21=()=>shell(navLeft("p21"),
    自主调价 ✓ 自主采购 ✓ 自主对外回复 ✓<br>试用降档规则 ✓<br>AI 非法律责任主体 · 授权人承担经营决策责任<hr style="border-color:var(--line);margin:8px 0">
    <span style="color:var(--ink3)">熔断观察窗 14 天 · KPI 下限 OCC 70%</span></div>`);
 
-/* ---- P22 服务前台 ---- */
-VIEWS.p22=()=>shell(navLeft("p22"),
- `${pageHead("/p22","AI 服务前台 · 知识中台与工单台","知识库两集合 / 会话 / 工单三状态全链 / 通知 / 评测指标")}
-  <div class="card panel"><div class="row" style="justify-content:space-between"><b>C 端入口 · 住客服务台</b>
-   <span class="row">${[["H5","已就绪","ok"],["微信小程序","待配置","amber"],["支付宝","待配置","amber"]].map(c=>`<span class="tag ${c[2]}">${c[0]} · ${c[1]}</span>`).join("")}</span></div>
-   <div class="mono" style="margin-top:6px">/app/c · 二维码占位 ▦▦▦ · 渠道状态轮询 15 秒</div></div>
-  <div class="grid2 panel">
-   <div class="card" style="overflow-x:auto"><div class="ptitle">知识库 · 集合 ${D.kb.cols.length} 个</div>
-    ${D.kb.cols.map(c=>`<div style="margin-bottom:10px"><b>${c.name}</b> <span class="mono">${c.id}</span>
-     <table class="dt" style="margin-top:4px"><tr><th>文档（版本/切块）</th><th>来源</th><th>状态</th><th></th></tr>
-     ${c.docs.map(d=>`<tr><td>${d.t} <span class="mono">v${d.v} · ${d.chunks} 块</span></td><td>${dictText(SOURCE_KIND_TEXT,d.src)}</td>
-      <td><span class="tag ${d.st==="active"?"ok":"amber"}">${dictText(DOC_STATUS_TEXT,d.st)}</span></td>
-      <td>${d.st==="pending_review"?'<button class="btn ok sm" data-flip="已批准 ✓|文档已批准生效，三写同一提交联动审批台">批准</button>':'<button class="btn sm" data-flip="已停用 ✓|文档已停用，检索即刻不再命中">停用</button>'}</td></tr>`).join("")}</table></div>`).join("")}
-    <div class="note">官网源：${D.kb.site.url} · 指纹 ${D.kb.site.fp} · ${cronText(D.kb.site.cron)} 抓取 · ${dictText(COMMON_STATUS_TEXT,D.kb.site.st)}
-     <button class="btn sm" style="margin-left:8px" data-flip="已抓取 ✓|抓取官网建库完成：变更 1 篇进待审">立即抓取</button></div>
-    <div class="row" style="margin-top:10px"><input class="inp" placeholder="试检索：退房时间" onkeydown="if(event.key==='Enter')toast('命中 2 条：「退房时间」切块 · 相关度 0.95 / 0.88')"><button class="btn" data-toast="检索知识库：命中 2 条切块">检索</button></div></div>
-   <div class="card"><div class="ptitle">会话 · 进行中 ${D.convs.length}</div>
-    ${D.convs.map(c=>`<div class="card" style="margin-bottom:8px">
-     <div class="row"><b>${c.user}</b><span class="tag holo">${c.ch}</span><span class="tag ok" style="margin-left:auto">${dictText(COMMON_STATUS_TEXT,"open")}</span></div>
-     ${c.msgs.map(m=>`<div style="margin-top:6px;font-size:12px;${m[0]==="user"?"text-align:right":""}">
-      <span class="tag" style="text-align:left;max-width:92%;line-height:1.6;${m[0]==="assistant"?"border-color:var(--gline)":""}">${m[1]}</span>
-      ${m[2]?`<div class="mono" style="margin-top:2px">${dictText(INTENT_TEXT,m[2])} · ${confidenceText(m[3])} ${m[3]} · ${latencyText(m[4])}</div>`:""}</div>`).join("")}
-     </div>`).join("")}
-    <div class="ptitle" style="margin-top:6px">通知 · 已送达 ${D.notifs.length}</div>
-    ${D.notifs.map(n=>`<div style="font-size:11px;color:var(--ink3);margin:4px 0">→ ${n[1]}：${n[2]} <span class="tag ok" style="font-size:10px">${dictText(COMMON_STATUS_TEXT,"delivered")}</span></div>`).join("")}</div></div>
-  <div class="card panel"><div class="ptitle">工单台 · 状态过滤</div>
-   <div class="row" style="margin-bottom:8px">${["全部","处理中","已分派","已完成"].map((f,i)=>`<button class="kbd-chip" style="${i===0?"border-color:var(--gold);color:var(--gold)":""}" data-toast="已按「${f}」过滤工单">${f}</button>`).join("")}</div>
-   <table class="dt"><tr><th>工单</th><th>类型</th><th>标题</th><th>优先级</th><th>状态</th><th>部门/受理人</th><th>SLA</th><th>操作</th></tr>
-   ${D.tickets.map(t=>`<tr><td class="mono">${shortId(t.id)}</td><td>${dictText(TICKET_KIND_TEXT,t.kind)}</td><td>${t.title}</td>
-    <td><span class="tag ${t.pri==="high"?"amber":""}">${dictText(TICKET_PRIORITY_TEXT,t.pri)}</span></td>
-    <td><span class="tag ${t.st==="done"?"ok":t.st==="processing"?"holo":"amber"}">${dictText(TICKET_STATUS_TEXT,t.st)}</span></td>
-    <td>${t.dept}${t.assignee?" · "+t.assignee:""}</td><td class="mono">${t.sla}</td>
-    <td>${t.st==="assigned"?`<button class="btn sm" data-flip="已开工 ✓|推进工单：${shortId(t.id)} 开始处理">开始处理</button>`:t.st==="processing"?`<button class="btn ok sm" data-flip="已办结 ✓|办结工单：结果已推送 C 端通知">办结</button>`:`<span class="tag ok">满意度 ${t.rating} 星</span>`}
-    <button class="btn sm" onclick='ticketTl(${JSON.stringify(t.id)})'>时间线</button></td></tr>`).join("")}</table></div>
-  <div class="card"><div class="ptitle">服务报表 · 评测指标</div>
-   <div class="grid4">${D.svcStats.map(s=>stat(s[1],s[0])).join("")}</div></div>`,
- `<div class="glabel">服务前台 · 口径</div>
-  <div class="card" style="font-size:12px;line-height:2.2;color:var(--ink2)">
-   工单全链：创建 → 智能分派 → 推进 → 办结 → 满意度评价<br>超时自动升级（工单超时升级）<hr style="border-color:var(--line);margin:8px 0">
-   <span style="color:var(--ink3)">写操作全部落五元事件；住客侧实时收进度通知。</span></div>`);
-function ticketTl(id){const t=D.tickets.find(x=>x.id===id);modal(`
- <div style="font-size:11px;letter-spacing:.2em;color:var(--holo)">工单时间线 · ${shortId(t.id)}</div>
- <div style="font-size:14px;font-weight:700;margin:4px 0">${t.title}</div>
- ${t.tl.map(e=>`<div class="row" style="margin:8px 0"><span class="tag ${e[0]==="rate"?"g":e[0]==="complete"?"ok":""}">${dictText({create:"创建",assign:"分派",start:"开工",complete:"办结",rate:"评价"},e[0])}</span>
- <span style="font-size:12px;color:var(--ink2)">${dictText(TICKET_ACTOR_TEXT,e[1])} · ${e[2]}</span><span style="font-size:11px;color:var(--ink3)">${e[3]}</span></div>`).join("")}
- ${t.result?`<div class="note" style="margin-top:8px">办结结果：${t.result}（满意度 ${t.rating} 星）</div>`:""}
+/* ---- P22 服务前台（新版结构：知识中台 / 工单台 / 服务报表 三页签；种子已扩容：FAQ 10 文档 385 块） ---- */
+/* 知识库文档 ×13（住客常见问答 10 文档 385 块 + 商品与服务目录 3 文档；另 1 篇待审） */
+const P22_DOCS=[
+ ["住客常见问答·餐饮美食","手工录入",1,44,"faq"],["住客常见问答·网络与设施","手工录入",1,38,"faq"],
+ ["住客常见问答·交通位置","手工录入",1,44,"faq"],["住客常见问答·酒店特色与服务","手工录入",1,38,"faq"],
+ ["住客常见问答·周边攻略","手工录入",1,40,"faq"],["住客常见问答·入住与退房","手工录入",1,40,"faq"],
+ ["住客常见问答·客房设施与用品","手工录入",1,38,"faq"],["住客常见问答·送物服务","手工录入",1,32,"faq"],
+ ["住客常见问答·维修报修","手工录入",1,30,"faq"],["住客常见问答·会员与账务","手工录入",1,41,"faq"],
+ ["商品与服务目录","手工录入",1,4,"cat"],["送物服务全目录（46 种）","手工录入",1,4,"cat"],
+ ["维修报修指引（56 项）","手工录入",1,5,"cat"]];
+/* 工单 ×8（含 SLA 超时样例 ···007；状态经 TICKET_STATUS_TEXT 中文化） */
+const P22_TK=[
+ {id:"···001",st:"处理中",kind:"维修报修",pri:"加急",title:"8306 空调不制冷",dept:"工程部",who:"王师傅",sla:"今天 14:00",overdue:false,tl:[["创建工单","住客 · 住客小李","用户对话中建单"],["分派工单","AI 员工 · 服务台Agent","智能分派 → 工程部"],["推进工单","员工 · 王师傅","已接单，携带工具前往 8306"]]},
+ {id:"···002",st:"已分派",kind:"送物服务",pri:"",title:"送两瓶矿泉水到 1208",dept:"客房部",who:"",sla:"今天 14:00",overdue:false,tl:[["创建工单","住客 · 张伟","服务台自助提交"],["分派工单","AI 员工 · 服务台Agent","智能分派 → 客房部"]]},
+ {id:"···003",st:"已完成",kind:"投诉建议",pri:"加急",title:"隔壁房间深夜噪音扰民",dept:"值班经理",who:"刘经理",sla:"—",overdue:false,rate:5,tl:[["创建工单","住客 · 住客小李","投诉类必建单"],["办结工单","员工 · 刘经理","已沟通提醒并赠果盘致歉"],["工单满意度评价","住客 · 住客小李","满意度 5 星"]]},
+ {id:"···004",st:"已完成",kind:"送物服务",pri:"",title:"送矿泉水×2 + 牙刷套装到 2508",dept:"客房部",who:"配送机器人·小云",sla:"—",overdue:false,rate:5,tl:[["创建工单","住客 · 王总","对话中确认送物"],["办结工单","员工 · 配送机器人·小云","已送达 2508 并电话确认"]]},
+ {id:"···005",st:"处理中",kind:"维修报修",pri:"加急",title:"1832 房空调不制冷",dept:"工程部",who:"王师傅",sla:"今天 13:30",overdue:false,tl:[["创建工单","住客 · Mr. Smith","对话中建单（加急）"],["推进工单","员工 · 王师傅","已携检测设备前往 1832"]]},
+ {id:"···006",st:"已分派",kind:"送物服务",pri:"",title:"儿童餐椅 + 温奶器送到 1208",dept:"客房部",who:"",sla:"今天 15:00",overdue:false,tl:[["创建工单","住客 · 李女士","服务台自助提交"],["分派工单","AI 员工 · 服务台Agent","智能分派 → 客房部"]]},
+ {id:"···007",st:"已受理",kind:"维修报修",pri:"",title:"2021 房 WiFi 频繁掉线",dept:"",who:"",sla:"已超时",overdue:true,tl:[["创建工单","住客 · 张先生","支付宝小程序提交"],["工单超时升级","系统","受理超时已升级为加急，值班经理介入督办"]]},
+ {id:"···008",st:"已完成",kind:"其他需求",pri:"加急",title:"预约 08-26 06:30 送机（萧山 T3，7 座商务）",dept:"前厅部",who:"礼宾-小周",sla:"—",overdue:false,rate:5,tl:[["创建工单","住客 · 王总","电话登记转入"],["办结工单","员工 · 礼宾-小周","送机完成，行程单已推送"]]}];
+/* 今日会话 ×6（多客群：金卡/白金/游客/外籍） */
+const P22_CONV=[
+ ["张伟","金卡 M-GOLD-10086","微信小程序","退房时间咨询（金卡可延至 14:00）+ 早餐","知识问答","95%"],
+ ["住客小李","游客","H5","8306 空调报修 → 转维修工单","服务请求","91%"],
+ ["李女士","金卡 M-GOLD-31520","微信小程序","早餐儿童收费 + WiFi 密码","知识问答","96%"],
+ ["王总","白金卡 M-PLAT-20888","微信小程序","送矿泉水×2 + 牙具到 2508 → 送物工单","服务请求","93%"],
+ ["Mr. Smith","外籍游客","H5","英文报修：1832 房空调不制冷 → 加急工单","服务请求","90%"],
+ ["张先生","游客","支付宝","萧山机场交通方案与费用","知识问答","92%"]];
+/* 通知 ×8（模拟通道 · 已送达投影） */
+const P22_NOTIF=[
+ ["···001","住客小李","维修工单「8306 空调不制冷」已受理，工程部王师傅处理中"],
+ ["···002","住客小李","投诉工单「隔壁房间深夜噪音扰民」已办结：已沟通提醒并赠果盘致歉"],
+ ["···003","张伟","送物工单「送两瓶矿泉水到 1208」已受理，客房部将尽快送达"],
+ ["···004","王总","送物工单「送矿泉水×2 + 牙刷套装到 2508」已办结：机器人送达并电话确认"],
+ ["···005","Mr. Smith","维修工单「1832 房空调不制冷」已受理（加急），工程部王师傅处理中"],
+ ["···006","李女士","送物工单「儿童餐椅 + 温奶器送到 1208」已受理，客房部将尽快送达"],
+ ["···007","张先生","维修工单「2021 房 WiFi 频繁掉线」受理超时已升级加急，值班经理介入督办"],
+ ["···008","王总","送机预约已完成，行程单已推送至微信"]];
+VIEWS.p22=()=>shell(
+ `<div class="glabel">服务前台 · SERVICE DESK</div>
+  ${[["kb","▤ 知识中台","集合 3 · 文档 13 · 待审 1"],["tk","▦ 工单台","在列 8 · SLA 超时 1"],["st","▥ 服务报表","会话 6 · 问答 8"]].map(t=>`
+  <a href="javascript:void 0" class="card hov" id="p22nav-${t[0]}" style="display:block;margin-bottom:6px;padding:8px 12px;${t[0]==="kb"?"border-color:var(--gline);color:var(--gold)":""}" onclick="p22tab('${t[0]}')">
+   <span style="font-size:12px">${t[1]}</span><div class="mono" style="margin-top:2px">${t[2]}</div></a>`).join("")}
+  <button class="btn" style="width:100%;margin-top:8px" onclick="location.hash='p1'">← 返回主甲板</button>`,
+ `${pageHead("/p22","AI 服务前台 · 知识中台与工单台","知识库三集合（住客常见问答 385 块）/ 会话×6 / 工单×8 全链 / 通知×8 / 金标评测")}
+  <div class="card panel" style="border-color:var(--gline);display:flex;gap:14px;align-items:center">
+   <svg width="52" height="52" viewBox="-1 -1 14 14" style="border:1px solid var(--line);border-radius:8px;background:#fff;flex:none" aria-label="二维码占位"><path id="p22QrPath" fill="#0a1230"/></svg>
+   <div style="flex:1"><b>◉ C 端服务前台入口</b>
+    <div class="mono" style="margin-top:3px">/app/c ↗ · 知识问答（带引用、不臆造）· 订单/会员查询 · 工单流转与结果推送</div>
+    <div class="row" style="margin-top:7px">${[["H5 · 已就绪","ok"],["微信小程序 · 待配置",""],["支付宝 · 待配置",""]].map(c=>`<span class="tag ${c[1]}">${c[0]}</span>`).join("")}</div></div>
+   <button class="btn g" data-toast="打开 C 端服务前台（/app/c）">打开 C 端 ↗</button></div>
+  <div class="row panel" style="gap:8px;border-bottom:1px solid var(--line);padding-bottom:10px">
+   ${[["kb","▤ 知识库"],["tk","▦ 工单台"],["st","▥ 服务报表"]].map((t,i)=>`<button class="btn ${i===0?"g":""}" id="p22tb-${t[0]}" onclick="p22tab('${t[0]}')">${t[1]}</button>`).join("")}</div>
+
+  <div id="p22-kb">
+   <div class="ptitle">知识集合（3）</div>
+   <div class="row" style="flex-wrap:wrap;gap:6px;margin-bottom:12px" id="p22ColChips">
+    <button class="kbd-chip" style="border-color:var(--gold);color:var(--gold)" onclick="p22ColFilter('',this)">全部</button>
+    <button class="kbd-chip" title="十大类 385 条住客高频问题与标准答案（AI 服务前台核心知识源）" onclick="p22ColFilter('faq',this)">住客常见问答 · 10 文档 385 块</button>
+    <button class="kbd-chip" title="送物清单、餐饮、康体 SPA 等服务与价格" onclick="p22ColFilter('cat',this)">商品与服务目录 · 3 文档</button>
+    <button class="kbd-chip" title="官网抓取来源" onclick="p22ColFilter('site',this)">官网源 · 每天 03:00 抓取</button></div>
+   <div class="ptitle">文档（<span id="p22DocCount">13</span>）</div>
+   <div class="card panel" style="padding:0;overflow:hidden"><table class="dt">
+    <tr><th>标题</th><th>来源</th><th>版本</th><th>状态</th><th>切块数</th><th></th></tr>
+    <tbody id="p22DocRows"></tbody></table></div>
+   <div class="ptitle">待审区（待审核 · 1）</div>
+   <div class="card panel" style="border-color:rgba(255,190,106,.35)" id="p22PendDoc">
+    <div class="row"><span style="font-size:16px">▧</span>
+     <div style="flex:1"><b style="font-size:12px">云栖酒店住客服务须知 <span class="mono">v2</span></b>
+      <div class="mono" style="margin-top:2px">手工录入 · 提交于 今天 09:12</div></div>
+     <button class="btn ok sm" onclick="p22Approve()">✓ 批准生效</button></div>
+    <div class="mono" style="margin-top:6px">批准即发布：文档状态/五元事件/approvals 审批行三写同一 COMMIT（围栏动作「发布知识文档」，审批台可见）。</div></div>
+   <div class="grid2">
+    <div class="card"><div class="ptitle">◎ 官网源（登记 / 立即抓取 / 检查更新）</div>
+     <div class="row"><input class="inp" value="https://www.yunqi-hotel.example" readonly><button class="btn g sm" data-toast="抓取源已登记：···site（指纹 fp-a91c）">登记</button></div>
+     <div class="row" style="margin-top:8px"><button class="btn sm" data-flip="已抓取 ✓|抓取完成：结构化条目入知识库（LLM 结构化正常）">⚡ 立即抓取</button>
+      <button class="btn sm" data-toast="指纹比对：官网暂无更新">◎ 检查更新</button></div>
+     <div class="mono" style="margin-top:8px">调度 每天 03:00 · 状态 <span style="color:var(--go)">运行中</span></div></div>
+    <div class="card"><div class="ptitle">◎ 试检索（混合检索投影）</div>
+     <div class="row"><input class="inp" id="p22QIn" value="早餐在哪里吃" onkeydown="if(event.key==='Enter')p22Search()"><button class="btn g sm" onclick="p22Search()">检索</button></div>
+     <div id="p22Hits" style="margin-top:8px"></div></div></div></div>
+
+  <div id="p22-tk" style="display:none">
+   <div class="row" style="flex-wrap:wrap;gap:6px;margin-bottom:12px" id="p22TkChips">
+    <span style="font-size:12px;color:var(--ink2)">状态</span>
+    ${["全部","已受理","已分派","处理中","已完成","已关闭"].map((f,i)=>`<button class="kbd-chip" style="${i===0?"border-color:var(--gold);color:var(--gold)":""}" onclick="p22TkFilter('${i===0?"":f}',this)">${f}</button>`).join("")}
+    <span style="color:var(--line);margin:0 4px">|</span><span style="font-size:12px;color:var(--ink2)">部门</span>
+    ${["客服部","工程部","客房部","前厅部"].map(d=>`<button class="kbd-chip" data-toast="已按部门过滤：${d}">${d}</button>`).join("")}</div>
+   <div id="p22TkList"></div></div>
+
+  <div id="p22-st" style="display:none">
+   <div class="ptitle">今日运营总览（2026-08-25 · 会话/工单聚合投影）</div>
+   <div class="grid3 panel">${[["今日会话","6"],["问答量","8"],["平均置信度","93%"],["有据率（带引用回答）","100%"],["平均首答延迟","25ms"],["今日工单","8"],["工单完结率","38%"],["SLA 超时","1"],["满意度均分","5"]].map(s=>stat(s[1],s[0])).join("")}</div>
+   <div class="ptitle">今日会话（6 · 住客/会员多客群）</div>
+   <div class="card panel" style="padding:0;overflow:hidden"><table class="dt">
+    <tr><th>住客</th><th>客群/会员</th><th>渠道</th><th>主题</th><th>意图</th><th>置信度</th><th>状态</th></tr>
+    ${P22_CONV.map(c=>`<tr><td>${c[0]}</td><td class="mono">${c[1]}</td><td class="mono">${c[2]}</td><td>${c[3]}</td><td>${c[4]}</td><td style="color:var(--holo)">${c[5]}</td><td><span class="tag holo">进行中</span></td></tr>`).join("")}</table></div>
+   <div class="ptitle">通知推送箱（8 · 模拟通道）</div>
+   <div class="card panel" style="padding:0;overflow:hidden"><table class="dt">
+    <tr><th>编号</th><th>住客</th><th>内容</th><th>状态</th></tr>
+    ${P22_NOTIF.map(n=>`<tr><td class="mono">${n[0]}</td><td>${n[1]}</td><td>${n[2]}</td><td><span class="tag ok">已送达</span></td></tr>`).join("")}</table></div>
+   <div class="card panel" style="border-color:var(--gline)"><div class="ptitle">金标评测 · v2.0-faq385（385 问回归）</div>
+    <div class="grid4">${["忠实度","答案相关性","有据率","安全合规"].map(k=>`<div class="stat"><div class="v" style="color:var(--go)">100%</div><div class="k">${k}</div></div>`).join("")}</div>
+    <div class="mono" style="margin-top:8px">p95 首答延迟 <b style="color:var(--holo)">39ms</b> · 满意度 <b style="color:var(--gold)">5.0</b> · 语料 住客常见问答 385 块全量回归</div></div>
+   <div class="card"><div class="ptitle">解读</div>
+    <div style="font-size:11px;line-height:2.1;color:var(--ink2)">
+     <span style="color:var(--go)">· 有据率 100% 达标——回答基本带知识引用，不臆造。</span><br>
+     <span style="color:var(--warn)">· SLA 超时 1 单——请到工单台优先处理超时工单（···007 已升级加急，值班经理介入督办）。</span><br>
+     · 今日工单 8 单，完结率 38%，满意度均分 5。<br>· 平均首答延迟 25ms（会话消息投影）。</div></div></div>`,
+ `<div class="glabel">数据口径 · GOVERNANCE</div>
+  <div class="card" style="font-size:12px;line-height:2.2;color:var(--ink2);margin-bottom:10px">全部数据来自 service 路由；写操作落五元事件，批准生效联动 approvals 审批台。</div>
+  <div class="card" style="margin-bottom:10px"><div class="mono" style="margin-bottom:2px">待审知识</div><b style="font-size:16px;color:var(--amber)">1</b> <span class="mono">篇（待审核）</span></div>
+  <div class="card" style="margin-bottom:10px"><div class="mono" style="margin-bottom:2px">SLA 超时</div><b style="font-size:16px;color:var(--warn)">1</b> <span class="mono">单</span></div>
+  <div class="card" style="font-size:12px;line-height:2.2;color:var(--ink2)">工单状态机：新建 → 已分派 → 处理中 → 已完成/已关闭；非法跃迁拒绝。</div>`);
+function p22tab(t){
+ ["kb","tk","st"].forEach(k=>{
+  $("#p22-"+k).style.display=k===t?"block":"none";
+  const nav=$("#p22nav-"+k);if(nav){nav.style.borderColor=k===t?"var(--gline)":"";nav.style.color=k===t?"var(--gold)":"";}
+  const tb=$("#p22tb-"+k);if(tb)tb.classList.toggle("g",k===t);});
+}
+function p22RenderDocs(f){
+ const rows=P22_DOCS.filter(d=>!f||d[4]===f);
+ $("#p22DocCount").textContent=f==="site"?0:rows.length;
+ $("#p22DocRows").innerHTML=f==="site"
+  ?`<tr><td colspan="6" style="color:var(--ink3)">官网源已登记（指纹 fp-a91c · 每天 03:00 抓取），抓取产物结构化条目进入对应集合，暂无独立文档。</td></tr>`
+  :rows.map(d=>`<tr><td>${d[0]}</td><td>${d[1]}</td><td class="mono">v${d[2]}</td>
+   <td><span class="tag ok">生效中</span></td><td style="color:var(--holo)">${d[3]}</td>
+   <td style="text-align:right"><button class="btn sm" data-toast="文档详情：检索索引内容预览 + 生效中/已停用切换">详情</button></td></tr>`).join("");
+}
+function p22ColFilter(f,btn){
+ document.querySelectorAll("#p22ColChips .kbd-chip").forEach(b=>{b.style.borderColor="";b.style.color="";});
+ btn.style.borderColor="var(--gold)";btn.style.color="var(--gold)";
+ p22RenderDocs(f);
+}
+function p22Search(){
+ const q=($("#p22QIn").value||"").trim()||"早餐在哪里吃";
+ const hits=[
+  ["住客常见问答·餐饮美食","早餐在哪里用餐？","早餐在酒店一层云栖餐厅用餐，提供中西式自助餐，含热菜、面点、粥品、水果、现磨咖啡等约60款餐品。","0.87"],
+  ["住客常见问答·餐饮美食","早餐几点开始、到几点结束？","早餐供应时间为每日07:00-10:30，周末及法定节假日延长至11:00收餐，位于酒店一层云栖餐厅。","0.82"],
+  ["商品与服务目录","餐饮","中西自助早餐 68 元/位（住店会员免费）；云栖轩中餐厅 11:00-21:00；客房送餐至 23:00。","0.71"]];
+ $("#p22Hits").innerHTML=`<div class="mono" style="margin-bottom:6px">「${esc(q)}」命中 ${hits.length} 块（相关度 0..1 归一化）</div>`+hits.map(h=>`
+  <div style="border:1px solid var(--line);border-radius:6px;background:var(--panel);padding:7px 9px;margin-bottom:6px">
+   <div class="row" style="justify-content:space-between"><span style="font-size:11px;color:var(--ink2)">${h[0]} · ${h[1]}</span><span style="color:var(--holo);font-size:11px">${h[3]}</span></div>
+   <div style="font-size:11px;color:var(--ink3);margin-top:3px;line-height:1.7">${h[2]}</div></div>`).join("");
+}
+function p22Approve(){
+ $("#p22PendDoc").innerHTML=`<div style="font-size:12px;color:var(--go)">✓ 「云栖酒店住客服务须知」v2 已批准生效——文档状态/五元事件/approvals 审批行三写同一 COMMIT（事件 ···9021，围栏动作「发布知识文档」，审批台可见）</div>`;
+ toast("批准生效，已联动审批台");
+}
+function p22TkTag(st){const c=st==="已完成"?"ok":st==="处理中"?"holo":st==="已分派"?"g":st==="已受理"?"amber":"";return `<span class="tag ${c}">${st}</span>`}
+function p22RenderTk(f){
+ const rows=P22_TK.filter(t=>!f||t.st===f);
+ $("#p22TkList").innerHTML=rows.map(t=>{const i=P22_TK.indexOf(t);return `
+  <div class="card" style="margin-bottom:8px;${t.overdue?"border-color:rgba(255,138,138,.5)":""}">
+   <div class="row" style="flex-wrap:wrap">
+    <span class="mono">${t.id}</span>${p22TkTag(t.st)}<span class="tag">${t.kind}</span>
+    ${t.pri?`<span class="tag amber">${t.pri}</span>`:""}
+    ${t.overdue?'<span class="tag warn">SLA 超时</span>':""}
+    <span style="flex:1"></span>
+    <button class="btn sm" onclick="p22TkTl(${i})">时间线</button>
+    ${t.st==="已受理"?`<button class="btn g sm" onclick="p22TkAct(${i},'assign')">分派</button>`:""}
+    ${t.st==="已分派"?`<button class="btn sm" style="border-color:rgba(69,224,255,.4);color:var(--holo)" onclick="p22TkAct(${i},'start')">▶ 开始处理</button>`:""}
+    ${(t.st==="处理中"||t.st==="已分派")?`<button class="btn ok sm" onclick="p22TkAct(${i},'done')">✓ 办结</button>`:""}
+    ${t.rate?`<span class="tag g">满意度 ${t.rate} 星</span>`:""}</div>
+   <div style="font-size:12px;margin-top:6px">${t.title}</div>
+   <div class="mono" style="margin-top:4px">${t.dept?("部门 "+t.dept):"未分派"}${t.who?(" · 处理人 "+t.who):""} · SLA ${t.sla}</div></div>`}).join("");
+}
+function p22TkFilter(f,btn){
+ document.querySelectorAll("#p22TkChips .kbd-chip").forEach(b=>{b.style.borderColor="";b.style.color="";});
+ if(btn){btn.style.borderColor="var(--gold)";btn.style.color="var(--gold)";}
+ p22RenderTk(f);
+}
+function p22TkAct(i,act){
+ const t=P22_TK[i];
+ if(act==="assign"){t.st="已分派";t.dept="工程部";toast("工单 "+t.id+" 已分派 工程部");}
+ if(act==="start"){t.st="处理中";toast("工单 "+t.id+" 开始处理（已分派 → 处理中 状态机断言）");}
+ if(act==="done"){t.st="已完成";toast("工单 "+t.id+" 已办结——结果已推送通知 C 端（模拟发送）");}
+ p22RenderTk("");
+}
+function p22TkTl(i){const t=P22_TK[i];modal(`
+ <div style="font-size:11px;letter-spacing:.2em;color:var(--holo)">工单时间线 · ${t.id}</div>
+ <div style="font-size:14px;font-weight:700;margin:4px 0">${t.title} <span style="font-size:11px">${p22TkTag(t.st)}</span></div>
+ ${t.tl.map((e,j)=>`<div class="row" style="margin:8px 0"><span class="tag ${j===t.tl.length-1?"g":""}">${e[0]}</span>
+ <span style="font-size:12px;color:var(--ink2)">${e[1]}</span><span style="font-size:11px;color:var(--ink3)">${e[2]}</span></div>`).join("")}
  <button class="btn" style="width:100%;margin-top:12px" onclick="$('#modal').classList.remove('open')">关闭</button>`)}
+function p22Qr(){const cells=[];for(let y=0;y<12;y++)for(let x=0;x<12;x++){const f=(x<4&&y<4)||(x>7&&y<4)||(x<4&&y>7);const on=f?(x%3!==1||y%3!==1):(x*7+y*13)%5<2;if(on)cells.push(`M${x} ${y}h1v1h-1z`);}const p=$("#p22QrPath");if(p)p.setAttribute("d",cells.join(""));}
 
 /* ================= 路由与外壳 ================= */
 const DNAV=[["p0","剧场","/"],["floor","职场","/"],["p1","主甲板","/p1"],["p2","任务舱","/p2"],["p3","战报","/p3"],["p4","决断","/p4"],["p5","围栏","/p5"],["p6","装备","/p6"],["p8","名册","/p8"],["p9","守夜","/p9"],["p10","断点","/p10"],["p11","价健","/p11"],["p13","订单","/p13"],["p14","渠道","/p14"],["p15","口碑","/p15"],["p16","语音","/p16"],["p17","前厅","/p17"],["p18","多店","/p18"],["p19","收益","/p19"],["p20","档案","/p20"],["p21","董事长","/p21"],["p22","服务前台","/p22"]];
@@ -1084,6 +1198,7 @@ function route(){
   document.querySelectorAll("#demonav a").forEach(a=>a.classList.toggle("on",a.dataset.h===v));
   if(v==="floor")requestAnimationFrame(drawFloor);
   if(v==="p0")startP0();
+  if(v==="p22"){p22RenderDocs("");p22RenderTk("");p22Search();p22Qr();}
   window.scrollTo(0,0);
 }
 let typing=null;

@@ -160,7 +160,8 @@ tickets:[
 convs:[["张伟（金卡会员）","退房时间是几点？会员能延迟吗？","【退房时间】标准退房 12:00 前；金卡会员可免费延迟至 14:00。","kb_qa",0.95,24],
 ["住客小李","房间空调好像不制冷，能找人看看吗？8306","已为您生成维修工单，工程部会尽快上门处理，进度实时通知您。","service_request",0.91,28]],
 notifs:[["住客小李","维修工单「8306 空调不制冷」已受理，王师傅处理中"],["住客小李","投诉工单已办结：已沟通提醒并赠果盘致歉"],["张伟","送物工单「送两瓶矿泉水到 1208」已受理"]],
-svcStats:[["有据率","96%"],["首答延迟","26ms"],["满意度","5.0 分"],["SLA 达标","100%"]],
+svcStats:[["有据率","100%"],["p95 首答","39ms"],["满意度","5.0 分"],["SLA 超时","1 单"]],
+kbCols:[["住客常见问答","10 文档 · 385 块","餐饮44/网络38/交通44/特色38/周边40/入退40/客房38/送物32/报修30/会员41"],["商品与服务目录","3 文档","含送物服务全目录（46 种）· 维修报修指引（56 项）"],["官网源","每天 03:00 抓取","指纹 fp-a91c · 运行中 · 另 1 篇住客服务须知 v2 待审核"]],
 squad:[["巡检Agent","昨夜巡检 3 轮 · 检出 3 项"],["评价Agent","差评草稿 1 件待审"],["对账Agent","三轮比对差异 0 笔"],["竞对Agent","倒挂修复 ¥438→¥458"],["语音前台Agent","夜间来电 9 通"],["内容Agent","飞猪首图已排期 06:00"],["前台Agent","确认订单 23 笔"]],
 triggers:[["夜班 22:00 战队出征","0 22 * * *"],["差评 SLA 扫描","*/30 * * * *"],["公司CEO 晨报","30 8 * * *"],["FAQ 周萃取","0 3 * * 0"]]};
 
@@ -264,8 +265,11 @@ ${D.approvals.map(q=>`
 /* —— 服务前台（镜像 /p22 工单+SLA） —— */
 SCREENS.svc=()=>`
 <div class="simline">⚠ <b>模拟数据</b> · AI 服务前台运行态 <span class="route-tag" style="float:right">真实路由 /p22</span></div>
-<div class="row" style="margin-bottom:8px"><b style="font-size:15px">服务前台 · 工单台</b><span class="tag holo" style="margin-left:auto">SLA 达标 100%</span></div>
+<div class="row" style="margin-bottom:8px"><b style="font-size:15px">服务前台 · 工单台</b><span class="tag warn" style="margin-left:auto">SLA 超时 1 单</span></div>
 <div class="grid3" style="margin-bottom:10px">${D.svcStats.map(s=>stat(s[1],s[0])).join("")}</div>
+<div class="card"><div class="ptitle">知识库 · 3 集合 13 文档（金标四维 100%）</div>
+ ${D.kbCols.map(c=>`<div style="margin-bottom:8px"><div class="row"><b style="font-size:12px">${c[0]}</b><span class="tag holo" style="margin-left:auto">${c[1]}</span></div>
+ <div class="mono" style="margin-top:3px">${c[2]}</div></div>`).join("")}</div>
 <div class="row" style="gap:6px;margin-bottom:10px;flex-wrap:wrap">${["全部","处理中","已分派","已完成"].map((f,i)=>`<button class="kbd-chip" style="${i===0?"border-color:var(--gold);color:var(--gold)":""}" data-toast="已按「${f}」过滤">${f}</button>`).join("")}</div>
 ${D.tickets.map(t=>`
 <div class="card">
