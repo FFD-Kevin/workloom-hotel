@@ -9,6 +9,7 @@
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { EmergencyBrake, NightStatusPill } from "../components/hud";
+import { StarRing } from "../components/star-ring/StarRing";
 import { SimBanner } from "../components/SimBanner";
 import { COMMON_STATUS_TEXT, dictText } from "../lib/display";
 import { PlanSwitcher } from "./PlanSwitcher";
@@ -148,6 +149,8 @@ export function Bridge({
           </div>
         </div>
       </div>
+      {/* 星环 StarRing：全局 Ask 入口（所有页面生效；⌘K 唤起，双击进 /p0 剧场） */}
+      <StarRing />
     </div>
   );
 }
