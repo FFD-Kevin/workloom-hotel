@@ -248,12 +248,12 @@ const TICKET_PRIORITY_TEXT={normal:"普通",high:"加急",urgent:"紧急"};
 const TICKET_ACTOR_TEXT={c_user:"住客",staff:"员工",agent:"AI 员工",system:"系统"};
 const DOC_STATUS_TEXT={active:"生效中",disabled:"已停用",pending_review:"待审核"};
 const SOURCE_KIND_TEXT={upload:"文档上传",official_site:"官网抓取",manual:"手工录入"};
-const APPROVAL_STATUS_TEXT={pending:"待裁决",approved:"已批准",rejected:"已驳回",edited:"已改派",escalated:"已升级"};
+const APPROVAL_STATUS_TEXT={pending:"待审批",approved:"已批准",rejected:"已驳回",edited:"已改派",escalated:"已升级"};
 const INTENT_TEXT={chat:"闲聊",kb_qa:"知识问答",biz_query:"业务查询",service_request:"服务请求",complaint:"投诉"};
 const FENCE_LEVEL_TEXT={auto:"自动放行",review:"人工复核",block:"硬阻断"};
 const COMMON_STATUS_TEXT={active:"运行中",online:"在线",paused:"已暂停",open:"进行中",running:"进行中",completed:"已完成",failed:"已失败",draft:"草稿",submitted:"已提交",scheduled:"已排期",published:"已发布",archived:"已归档",delivered:"已送达",sent:"已发送",replied:"已回复",已熔断:"已隔离",pending:"待处理",pending_review:"待审查",pending_approval:"待审批",expired:"已过期",rolled_back:"已回滚",ready:"就绪"};
 const THREAD_MODE_TEXT={quest:"主线任务",ask:"问询",agent:"委托执行"};
-const ACTION_TEXT={"调整房价":"调整房价","price.query":"查询房价","回复评论":"回复评论","更新组织记忆":"更新组织记忆","夜班记录":"夜班记录","生成夜班日报":"生成夜班日报","夜班交接":"夜班交接","触发定时任务":"触发定时任务","创建工单":"创建工单","分派工单":"分派工单","推进工单":"推进工单","办结工单":"办结工单","工单超时升级":"工单超时升级","工单满意度评价":"工单满意度评价","service.chat":"服务前台对话","发布知识文档":"发布知识文档","新建知识集合":"新建知识集合","知识文档入库":"知识文档入库","检索知识库":"检索知识库","抓取官网建库":"抓取官网建库","CEO 晨报":"CEO 晨报","CEO 裁决":"CEO 裁决","签署授权宪章":"签署授权宪章","宪章状态流转":"宪章状态流转",
+const ACTION_TEXT={"调整房价":"调整房价","price.query":"查询房价","回复评论":"回复评论","更新组织记忆":"更新组织记忆","夜班记录":"夜班记录","生成夜班日报":"生成夜班日报","夜班交接":"夜班交接","触发定时任务":"触发定时任务","创建工单":"创建工单","分派工单":"分派工单","推进工单":"推进工单","办结工单":"办结工单","工单超时升级":"工单超时升级","工单满意度评价":"工单满意度评价","service.chat":"服务前台对话","发布知识文档":"发布知识文档","新建知识集合":"新建知识集合","知识文档入库":"知识文档入库","检索知识库":"检索知识库","抓取官网建库":"抓取官网建库","CEO 晨报":"CEO 晨报","CEO 决策":"CEO 决策","签署授权宪章":"签署授权宪章","宪章状态流转":"宪章状态流转",
 "确认订单":"确认订单","订单对账":"订单对账","订单退款":"订单退款","发布价格":"发布价格","同步库存":"同步库存","inventory.sync.restore":"恢复库存上架","channel.parity.fixed":"修复渠道倒挂","回复点评":"回复点评","告警升级":"告警升级","incident.report":"断点上报","incident.resolve":"断点处置","智能排房":"智能排房","room.inspect":"客房质检","语音前台接听":"语音前台接听"};
 const ACTION_PART_TEXT={create:"创建",assign:"分派",advance:"推进",complete:"办结",escalate:"升级",submit:"提交",approve:"审批",publish:"发布",update:"更新",confirm:"确认",query:"查询",adjust:"调整",reply:"回复"};
 function actionText(a){const h=ACTION_TEXT[a];if(h)return h;const p=a.split(".");const t=p[p.length-1];return ACTION_PART_TEXT[t]||t.replace(/_/g," ")}
@@ -304,7 +304,7 @@ triggers:[
  {id:"tg-faq-mine-sun",name:"FAQ 知识库周萃取",cron:"0 3 * * 0"},
  {id:"tg-incident-weekly",name:"断点率周报",cron:"0 4 * * 1"},
  {id:"tg-ceo-brief-0830",name:"公司CEO 晨报",cron:"30 8 * * *"},
- {id:"tg-ceo-queue-2h",name:"公司CEO 裁决巡检",cron:"7 */2 * * *"},
+ {id:"tg-ceo-queue-2h",name:"公司CEO 审批巡检",cron:"7 */2 * * *"},
  {id:"tg-ceo-deviation",name:"公司CEO 目标偏差扫描",cron:"15 */4 * * *"},
  {id:"tg-ceo-breaker",name:"公司CEO 自治熔断巡检",cron:"45 23 * * *"}],
 ticker:[
@@ -449,7 +449,7 @@ VIEWS.p0=()=>`
      <div class="row" style="margin-top:8px">
       <button class="btn ok sm" onclick="decide('${q.id}','approve')">✓ 批准</button>
       <button class="btn warn sm" onclick="decide('${q.id}','reject')">✕ 驳回</button>
-      <span class="apr-st tag amber" style="margin-left:auto">待裁决</span>
+      <span class="apr-st tag amber" style="margin-left:auto">待审批</span>
      </div>
     </div>`).join("")}
    </div>
@@ -504,7 +504,7 @@ const FLOOR_AGENTS=[
  {key:"frontdesk-agent",name:"前台Agent",st:"工作中",x:2,y:2},
  {key:"pricing-agent",name:"调价Agent",st:"工作中",x:4,y:2},
  {key:"review-agent",name:"评价Agent",st:"asking",x:4.8,y:4.5,apr:"···8871",line:"差评应急回复请您拍板（R6 差评必审）"},
- {key:"reconcile-agent",name:"对账Agent",st:"asking",x:6.7,y:4.9,apr:"···9064",line:"大额退款 ¥1,180 请您裁决（R4）"},
+ {key:"reconcile-agent",name:"对账Agent",st:"asking",x:6.7,y:4.9,apr:"···9064",line:"大额退款 ¥1,180 请您审批（R4）"},
  {key:"content-agent",name:"内容Agent",st:"工作中",x:6.5,y:2},
  {key:"housekeeper-agent",name:"客房Agent",st:"工作中",x:8,y:2.4},
  {key:"phone-agent",name:"语音前台Agent",st:"庆功",x:2.4,y:5},
@@ -599,7 +599,7 @@ VIEWS.p2=()=>shell(navLeft("p2"),
    <div class="step"><div class="ic">系</div><div class="bd"><span class="mono">E-SEED-8846 · 系统</span><div style="margin-top:4px;color:var(--ink2)">巡检检出：携程新增 2 分差评「空调半夜异响，叫醒两次没人来处理」（事件 ${shortId("E-SEED-8846")}）</div></div></div>
    <div class="step"><div class="ic">评</div><div class="bd"><span class="mono">E-SEED-8852 · 评价Agent</span><div style="margin-top:4px;color:var(--ink2)">已调取订单 o-8820 与维修工单 ···001，核实：8306 空调异响属实，工程部已检修。</div></div></div>
    <div class="step"><div class="ic">围</div><div class="bd"><span class="mono">围栏判定</span><div style="margin-top:4px"><span class="tag amber">R6 差评必审 → 人工复核</span> <span class="tag amber">R19 差评响应 SLA 升级（已 26 小时）</span></div></div></div>
-   <div class="step"><div class="ic">草</div><div class="bd"><span class="mono">E-SEED-8871 · 回复草稿（待您裁决）</span>
+   <div class="step"><div class="ic">草</div><div class="bd"><span class="mono">E-SEED-8871 · 回复草稿（待您审批）</span>
     <div style="margin-top:6px;font-size:12px;line-height:1.8">
      <div class="diff-del">（旧草稿）深表歉意，我们赠送您全额房费补偿……</div>
      <div class="diff-add">（新草稿）非常抱歉给您带来不好的体验，我们已核实空调异响问题并安排检修，当晚值班响应不及时我们诚恳致歉。已为您升级服务跟进通道，欢迎随时联系值班经理。</div>
@@ -607,7 +607,7 @@ VIEWS.p2=()=>shell(navLeft("p2"),
     <div style="font-size:11px;color:var(--ink3);margin-top:6px">依据：品牌口径「真诚克制，不承诺档案外补偿」· 组织记忆 组织记忆「差评回复 SOP」（致歉→核实→措施→承诺）</div>
     <div class="row" style="margin-top:10px" data-apr="···8871"><button class="btn ok sm" onclick="decide('···8871','approve')">✓ 采纳（权重 1）</button>
     <button class="btn sm" data-flip="已改派 ✓|编辑后采纳已写回（权重 2），评价Agent 重新生成">✎ 编辑后采纳</button>
-    <button class="btn warn sm" onclick="decide('···8871','reject')">✕ 驳回（权重 3）</button><span class="apr-st tag amber" style="margin-left:auto">待裁决</span></div></div></div>
+    <button class="btn warn sm" onclick="decide('···8871','reject')">✕ 驳回（权重 3）</button><span class="apr-st tag amber" style="margin-left:auto">待审批</span></div></div></div>
   </div>`,
  `<div class="glabel">线程上下文</div>
   <div class="card" style="margin-bottom:10px"><div class="ptitle">三要素</div>
@@ -661,7 +661,7 @@ VIEWS.p4=()=>shell(navLeft("p4"),
      <button class="btn ok sm" onclick="decide('${D.approvals[0].id}','approve')">✓ 采纳</button>
      <button class="btn sm" data-flip="已改派 ✓|编辑后采纳（权重 2）已写回">✎ 编辑后采纳</button>
      <button class="btn warn sm" onclick="decide('${D.approvals[0].id}','reject')">✕ 驳回</button>
-     <span class="apr-st tag amber" style="margin-left:auto">待裁决</span></div>
+     <span class="apr-st tag amber" style="margin-left:auto">待审批</span></div>
     <div style="font-size:11px;color:var(--ink3);margin-top:8px">执行回执位：批准后生成回复事件并同步携程，回执 ${shortId("E-SEED-8872")} 可溯。</div>
    </div></div>`,
  `<div class="glabel">队列口径</div>
@@ -1018,7 +1018,7 @@ VIEWS.p21=()=>shell(navLeft("p21"),
     ${hbar("L2 公司CEO级",30,"1 件（已批准）")}${hbar("L3 集团CEO级",60,"1 件")}${hbar("L4 董事长级",90,"1 件","c")}
     <button class="btn g sm" style="margin-top:6px" onclick="location.hash='p4'">去审批中心（/p4）</button></div>
    <div class="card"><div class="ptitle">成绩单 · 试用期</div>
-    ${hbar("裁决采纳率",86,"31 / 36")}${hbar("边界守规率",100,"0 越线")}${hbar("晨报准点率",100,"9 / 9","c")}</div>
+    ${hbar("审批采纳率",86,"31 / 36")}${hbar("边界守规率",100,"0 越线")}${hbar("晨报准点率",100,"9 / 9","c")}</div>
    <div class="card"><div class="ptitle">节拍手动触发</div>
     ${D.triggers.slice(6).map(t=>`<div class="row" style="margin:6px 0"><span style="font-size:12px;color:var(--ink2)">${t.name}</span><span class="mono">${cronText(t.cron)}</span>
     <button class="btn sm" style="margin-left:auto" data-flip="已触发 ✓|${t.name} 已手动触发一次，结果将进简报流">触发</button></div>`).join("")}</div></div>
@@ -1303,7 +1303,7 @@ function arCiteCard(){return `<div class="ar-cite">
 AR_MSGS.push(
  {role:"human",html:arHuman("有新增差评吗")},
  {role:"agent",html:arAgent({action:"AI 助手 · 应答",refId:"事件 ···8846",receipt:"synced",
-  text:"有，1 件新增：携程 2 分差评「空调半夜异响，叫醒两次没人来处理」已 26 小时未回复（引用事件 ···8846，R19 SLA 已升级店长）。评价Agent 已生成致歉→核实→措施→承诺四段式回复草稿，待您裁决（审批 ···8871 · R6 差评必审）。"})},
+  text:"有，1 件新增：携程 2 分差评「空调半夜异响，叫醒两次没人来处理」已 26 小时未回复（引用事件 ···8846，R19 SLA 已升级店长）。评价Agent 已生成致歉→核实→措施→承诺四段式回复草稿，待您审批（审批 ···8871 · R6 差评必审）。"})},
  {role:"human",html:arHuman("汇总本周差评给我")},
  {role:"agent",html:arAgent({sender:"总导演",action:"总导演已接单",refId:"线程 ···9106",receipt:"unverified",
   text:"明确任务已自动立项（quest），进展我会主动汇报。",
@@ -1361,9 +1361,9 @@ function arSyncRoute(v){
 function arAnswer(q){
  if(/检索|知识库/.test(q))return arAgent({action:"AI 助手 · 应答",refId:"事件 ···9104",receipt:"synced",text:`已检索知识库，「${esc(q.slice(0,20))}」命中 3 块，Top1 如下：`,extra:arCiteCard()});
  if(/超时/.test(q))return arAgent({action:"AI 助手 · 应答",refId:"事件 ···9105",receipt:"synced",text:"今日工单侧 1 起 SLA 超时：工单 ···007「2021 房 WiFi 频繁掉线」受理超时，系统已自动升级为加急并通知值班经理介入督办（引用事件 ···9105）。其余 7 单 SLA 正常，可去工单台跟进（/p22）。"});
- if(/差评|口碑/.test(q))return arAgent({action:"AI 助手 · 应答",refId:"事件 ···8846",receipt:"synced",text:"本周差评 2 件：① 携程 2 分「空调异响」已 26 小时未回复，回复草稿待您裁决（审批 ···8871 · R6）；② 美团 4 分「电梯等得久」已回复闭环。差评响应 SLA 达标率 75%（18h / 24h）。"});
+ if(/差评|口碑/.test(q))return arAgent({action:"AI 助手 · 应答",refId:"事件 ···8846",receipt:"synced",text:"本周差评 2 件：① 携程 2 分「空调异响」已 26 小时未回复，回复草稿待您审批（审批 ···8871 · R6）；② 美团 4 分「电梯等得久」已回复闭环。差评响应 SLA 达标率 75%（18h / 24h）。"});
  if(/汇总|报告|总结/.test(q))return arAgent({sender:"总导演",action:"总导演已接单",refId:"线程 ···9107",receipt:"unverified",text:"明确任务已自动立项（quest），产出将投递掌上日报（/p3）。",extra:arQuestCard(esc(q.slice(0,14)),"···9107","评价Agent")});
- if(/订单/.test(q))return arAgent({action:"AI 助手 · 应答",refId:"事件 ···8911",receipt:"synced",text:"今日订单侧 2 起异常均已收口：① 飞猪倒挂 4.4%——R17 硬阻断后已修复回 ¥458（回执 ···8908）；② 亲子房 PMS 同步失败——临时关房防超售，重试成功已开房（回执 ···8911）。另有大额退款 ¥1,180 待您裁决（审批 ···9064）。"});
+ if(/订单/.test(q))return arAgent({action:"AI 助手 · 应答",refId:"事件 ···8911",receipt:"synced",text:"今日订单侧 2 起异常均已收口：① 飞猪倒挂 4.4%——R17 硬阻断后已修复回 ¥458（回执 ···8908）；② 亲子房 PMS 同步失败——临时关房防超售，重试成功已开房（回执 ···8911）。另有大额退款 ¥1,180 待您审批（审批 ···9064）。"});
  if(/审批|高危|决断|待审/.test(q))return arAgent({action:"AI 助手 · 应答",refId:"事件 ···8871",receipt:"synced",text:"当前待您审批 2 件：① L4 董事长级 · 差评应急回复（R6 差评必审 · 审批 ···8871）；② L3 集团CEO级 · 大额退款 ¥1,180（R4 · 审批 ···9064）。无越围栏高危项，可去审批中心逐条审（/p4）。"});
  if(/概况|怎么样|经营/.test(q))return arAgent({action:"AI 助手 · 应答",refId:"事件 ···8999",receipt:"synced",text:"当前经营概况：OCC 78% · ADR ¥496 · RevPAR ¥387；昨夜班组 9 完成 / 3 待审 / 2 需介入；携程 2 分差评处置请您拍板，其余各线正常（晨报事件 ···8999）。"});
  return arAgent({sender:"总导演",action:"总导演已接单",refId:"线程 ···9108",receipt:"unverified",text:`已立项执行：「${esc(q.slice(0,24))}」，每一步先请您确认再动手。`,extra:arQuestCard(esc(q.slice(0,14)),"···9108","公司CEO")});
