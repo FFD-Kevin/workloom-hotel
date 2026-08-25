@@ -9,7 +9,7 @@
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { EmergencyBrake, NightStatusPill } from "../components/hud";
-import { StarRing } from "../components/star-ring/StarRing";
+import { useAskRailPadding } from "../lib/useAskRail";
 import { SimBanner } from "../components/SimBanner";
 import { COMMON_STATUS_TEXT, dictText } from "../lib/display";
 import { PlanSwitcher } from "./PlanSwitcher";
@@ -78,13 +78,8 @@ export function Bridge({
   // 当前版本（F7.2）：社区版隐藏夜班胶囊与制动杆（隐藏非置灰 E2.6；F12 权限态演示）
   const [plan, setPlan] = useState<string | null>(null);
   const community = plan === "community";
-  // AskRail 布局协作：右侧通栏 Ask 对话框常驻，主区预留其宽度（320px/收起 56px）
-  const [railW, setRailW] = useState(320);
-  useEffect(() => {
-    const onRail = (e: Event) => setRailW((e as CustomEvent<{ width: number }>).detail.width);
-    window.addEventListener("askrail-width", onRail);
-    return () => window.removeEventListener("askrail-width", onRail);
-  }, []);
+  // AskRail 布局协作：右侧通栏 Ask 对话框常驻，主区预留其宽度（320 展开/56 收起）
+  const railW = useAskRailPadding();
   return (
     <div className="min-h-screen bg-bg950" style={{ paddingRight: railW }}>
       <StarField />
@@ -156,8 +151,7 @@ export function Bridge({
           </div>
         </div>
       </div>
-      {/* 星环 StarRing：全局 Ask 入口（所有页面生效；⌘K 唤起，双击进 /p0 剧场） */}
-      <StarRing />
+      {/* 星环（AI 助手 AskRail）由 App 全局挂载（P0 等不走 Bridge 的页面同享） */}
     </div>
   );
 }
