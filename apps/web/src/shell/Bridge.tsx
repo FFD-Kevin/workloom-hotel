@@ -7,7 +7,7 @@
  * 内部数据为占位；逐页接线真实 API 在 F3–F11。
  */
 import type { ReactNode } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { EmergencyBrake, NightStatusPill } from "../components/hud";
 import { StarRing } from "../components/star-ring/StarRing";
 import { SimBanner } from "../components/SimBanner";
@@ -78,8 +78,15 @@ export function Bridge({
   // 当前版本（F7.2）：社区版隐藏夜班胶囊与制动杆（隐藏非置灰 E2.6；F12 权限态演示）
   const [plan, setPlan] = useState<string | null>(null);
   const community = plan === "community";
+  // AskRail 布局协作：右侧通栏 Ask 对话框常驻，主区预留其宽度（320px/收起 56px）
+  const [railW, setRailW] = useState(320);
+  useEffect(() => {
+    const onRail = (e: Event) => setRailW((e as CustomEvent<{ width: number }>).detail.width);
+    window.addEventListener("askrail-width", onRail);
+    return () => window.removeEventListener("askrail-width", onRail);
+  }, []);
   return (
-    <div className="min-h-screen bg-bg950">
+    <div className="min-h-screen bg-bg950" style={{ paddingRight: railW }}>
       <StarField />
       <div className="relative flex min-h-screen items-start justify-center py-8">
         <div className="relative w-bridge overflow-hidden rounded-bridge border border-line bg-gradient-to-b from-[#0a1230eb] to-[#050a1af5] shadow-[0_30px_80px_rgba(0,0,0,.55)]">
