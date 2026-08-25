@@ -151,7 +151,7 @@ export function StarRing() {
         }
       } else {
         pushMsg({
-          role: "agent", action: "总导演已接单", receipt: "unverified", refId: r.threadId,
+          role: "agent", action: "前厅 Agent 已接单", receipt: "unverified", refId: r.threadId,
           text: `已立项 ${r.threadId ?? "—"}（状态 ${r.status ?? "queued"}）：「${text}」。点击跳任务中心跟进执行。`,
           linkTo: r.threadId ? `/p2/${encodeURIComponent(r.threadId)}` : undefined,
         });

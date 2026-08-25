@@ -70,7 +70,7 @@ export default function P20() {
 
   return (
     <Bridge right={rightPanel} left={<PageNav current="P20" />}>
-      <PageHead title="门店档案" tag="P20 · ARCHIVE" extra={<Tag tone="gold">五类 21 字段组</Tag>} />
+      <PageHead title="门店档案" tag="P20 · ARCHIVE" extra={<Tag tone="gold">全景档案</Tag>} />
       {!ready ? (<><SkeletonBlock lines={2} h={44} /><SkeletonBlock lines={4} /></>) : !archive ? (
         <EmptyState icon="🗂️" title="档案未建立" hint="门店档案是 Agent 生成内容前的必读三要素之一（L3.7）。" />
       ) : (
