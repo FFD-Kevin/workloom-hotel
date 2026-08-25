@@ -6,10 +6,12 @@
 <title>WorkLoom Hotel · 云栖酒店 — 全系统高保真 DEMO（移动端 B 端）</title>
 <style>
 :root{
-  --bg950:#050a1a; --bg:#0a1230; --card:#0d1737; --panel:#0a1128;
-  --line:#22305e; --gline:#6b5a2e; --gold:#e9b558; --gold2:#ffd98a;
-  --holo:#45e0ff; --ink:#eef2ff; --ink2:#c4cdf0; --ink3:#7c87b0;
-  --go:#6adf8a; --warn:#ff8a8a; --amber:#ffbe6a;
+  --bg950:#fff5f7; --bg:#ffffff; --card:#ffffff; --panel:#fff0f4;
+  --line:rgb(255 36 66 / .14); --gline:rgb(255 36 66 / .32);
+  --gold:#ff2442; --gold2:#ff7a9e; --goldhi:#d4002a; --ongold:#ffffff;
+  --holo:#4d96ff; --holo2:#6ec6ff;
+  --go:#22c88a; --go-t:#0e7a4a; --warn:#ff4d6d; --amber:#ffaa33; --amber-t:#c87a1a; --need:#b678ff;
+  --ink:#33262b; --ink2:#8a757d; --ink3:#b9a9b0;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{background:var(--bg950);color:var(--ink);font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif;font-size:12px}
@@ -17,33 +19,33 @@ button{font-family:inherit;cursor:pointer;background:none;border:0;color:inherit
 ::-webkit-scrollbar{width:0;height:0}
 .starbg{position:fixed;inset:0;pointer-events:none;z-index:0;
  background:
- radial-gradient(60% 45% at 18% 8%, rgba(36,27,77,.55), transparent 70%),
- radial-gradient(50% 40% at 85% 20%, rgba(58,42,110,.38), transparent 70%),
- radial-gradient(70% 50% at 50% 110%, rgba(36,27,77,.45), transparent 70%);}
+ radial-gradient(60% 45% at 18% 8%, rgba(255,224,236,.9), transparent 70%),
+ radial-gradient(50% 40% at 85% 20%, rgba(232,224,255,.7), transparent 70%),
+ radial-gradient(70% 50% at 50% 110%, rgba(255,224,236,.8), transparent 70%);}
 .stars{position:fixed;inset:0;pointer-events:none;z-index:0;
  background-image:
- radial-gradient(1px 1px at 12% 22%, rgba(234,241,255,.8) 50%, transparent 51%),
- radial-gradient(1px 1px at 34% 68%, rgba(234,241,255,.5) 50%, transparent 51%),
- radial-gradient(1.5px 1.5px at 57% 15%, rgba(69,224,255,.6) 50%, transparent 51%),
- radial-gradient(1px 1px at 72% 47%, rgba(234,241,255,.7) 50%, transparent 51%),
- radial-gradient(1px 1px at 88% 78%, rgba(234,241,255,.45) 50%, transparent 51%),
- radial-gradient(1.5px 1.5px at 25% 88%, rgba(255,181,69,.5) 50%, transparent 51%),
- radial-gradient(1px 1px at 45% 40%, rgba(234,241,255,.55) 50%, transparent 51%),
- radial-gradient(1.5px 1.5px at 94% 10%, rgba(234,241,255,.5) 50%, transparent 51%);}
+ radial-gradient(1px 1px at 12% 22%, rgba(255,122,158,.35) 50%, transparent 51%),
+ radial-gradient(1px 1px at 34% 68%, rgba(255,122,158,.25) 50%, transparent 51%),
+ radial-gradient(1.5px 1.5px at 57% 15%, rgba(77,150,255,.3) 50%, transparent 51%),
+ radial-gradient(1px 1px at 72% 47%, rgba(255,122,158,.3) 50%, transparent 51%),
+ radial-gradient(1px 1px at 88% 78%, rgba(255,122,158,.22) 50%, transparent 51%),
+ radial-gradient(1.5px 1.5px at 25% 88%, rgba(182,120,255,.25) 50%, transparent 51%),
+ radial-gradient(1px 1px at 45% 40%, rgba(255,122,158,.28) 50%, transparent 51%),
+ radial-gradient(1.5px 1.5px at 94% 10%, rgba(255,122,158,.25) 50%, transparent 51%);}
 /* ====== 430x900 画布 · 390px 手机壳 ====== */
 #stage{position:relative;z-index:1;width:430px;height:900px;margin:0 auto;display:flex;align-items:center;justify-content:center}
-#phone{position:relative;width:390px;height:844px;border:1px solid var(--line);border-radius:44px;overflow:hidden;
- background:linear-gradient(to bottom,rgba(10,18,48,.94),rgba(5,10,26,.97));box-shadow:0 30px 80px rgba(0,0,0,.6),0 0 0 6px #0b1128,0 0 0 7px #2a3a6e}
+#phone{position:relative;width:390px;height:844px;border:1px solid #ecd7de;border-radius:44px;overflow:hidden;
+ background:var(--bg950);box-shadow:0 30px 80px rgba(51,38,43,.18),0 0 0 6px #faf0f3,0 0 0 7px #ecd7de}
 /* 状态栏 + 微信胶囊 */
 #statusbar{height:34px;display:flex;align-items:center;padding:0 18px 0 22px;font-size:11px;color:var(--ink2)}
 #statusbar .tm{font-weight:700;font-variant-numeric:tabular-nums}
 #statusbar .sp{flex:1}
 #statusbar svg{display:inline-block;vertical-align:-2px}
-#wxcaps{position:absolute;top:8px;right:14px;z-index:30;height:26px;border:1px solid rgba(124,135,176,.5);border-radius:13px;
- display:flex;align-items:center;gap:8px;padding:0 10px;background:rgba(5,10,26,.6)}
+#wxcaps{position:absolute;top:8px;right:14px;z-index:30;height:26px;border:1px solid rgba(51,38,43,.22);border-radius:13px;
+ display:flex;align-items:center;gap:8px;padding:0 10px;background:rgba(255,255,255,.72)}
 #wxcaps i{width:4px;height:4px;border-radius:50%;background:var(--ink2);display:inline-block}
 #wxcaps .dot3{display:flex;gap:2px}
-#wxcaps .sep{width:1px;height:14px;background:rgba(124,135,176,.4)}
+#wxcaps .sep{width:1px;height:14px;background:rgba(51,38,43,.18)}
 #wxcaps .ring{width:12px;height:12px;border-radius:50%;border:1.6px solid var(--ink2);display:inline-block;position:relative}
 #wxcaps .ring::after{content:"";position:absolute;inset:3px;border-radius:50%;background:var(--ink2)}
 /* 视口 */
@@ -55,83 +57,83 @@ button{font-family:inherit;cursor:pointer;background:none;border:0;color:inherit
 .shead .rt{font-family:ui-monospace,monospace;font-size:10px;color:var(--holo);margin-top:2px}
 .shead .chip{margin-left:auto;flex:none;margin-top:2px}
 .sect{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:700;color:var(--ink);margin:14px 0 8px;white-space:nowrap}
-.sect::before{content:"";width:3px;height:12px;border-radius:2px;background:linear-gradient(180deg,var(--gold2),var(--gold));box-shadow:0 0 8px rgba(233,181,88,.5)}
-.sect .n{margin-left:auto;font-weight:400;font-size:10px;color:var(--ink3);font-family:ui-monospace,monospace;flex:none;max-width:55%;overflow:hidden;text-overflow:ellipsis}
-.card{border:1px solid var(--line);border-radius:12px;background:var(--card);padding:12px;margin-bottom:10px}
-.chip{display:inline-flex;align-items:center;height:20px;border-radius:10px;border:1px solid var(--line);padding:0 8px;font-size:10px;color:var(--ink2);white-space:nowrap;flex:none}
+.sect::before{content:"";width:3px;height:12px;border-radius:2px;background:linear-gradient(180deg,var(--gold2),var(--gold));box-shadow:0 0 8px rgba(255,36,66,.3)}
+.sect .n{margin-left:auto;font-weight:400;font-size:10px;color:var(--ink2);font-family:ui-monospace,monospace;flex:none;max-width:55%;overflow:hidden;text-overflow:ellipsis}
+.card{border:1px solid var(--line);border-radius:16px;background:var(--card);padding:12px;margin-bottom:10px}
+.chip{display:inline-flex;align-items:center;height:20px;border-radius:999px;border:1px solid var(--line);padding:0 8px;font-size:10px;color:var(--ink2);white-space:nowrap;flex:none}
 .chip.g{border-color:var(--gline);color:var(--gold)}
-.chip.ok{border-color:rgba(106,223,138,.5);color:var(--go)}
-.chip.warn{border-color:rgba(255,138,138,.5);color:var(--warn)}
-.chip.amber{border-color:rgba(255,190,106,.55);color:var(--amber)}
-.chip.holo{border-color:rgba(69,224,255,.4);color:var(--holo)}
-.num{font-family:ui-monospace,monospace;color:var(--gold2);font-weight:700}
-.mono{font-family:ui-monospace,monospace;font-size:10px;color:var(--ink3)}
+.chip.ok{border-color:rgba(34,200,138,.5);color:var(--go-t)}
+.chip.warn{border-color:rgba(255,77,109,.5);color:var(--warn)}
+.chip.amber{border-color:rgba(255,170,51,.55);color:var(--amber-t)}
+.chip.holo{border-color:rgba(77,150,255,.4);color:var(--holo)}
+.num{font-family:ui-monospace,monospace;color:var(--goldhi);font-weight:700}
+.mono{font-family:ui-monospace,monospace;font-size:10px;color:var(--ink2)}
 .row{display:flex;align-items:center;gap:8px}
 .clamp1{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .clamp2{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.li{display:flex;align-items:center;gap:8px;height:44px;border-bottom:1px solid rgba(34,48,94,.5)}
+.li{display:flex;align-items:center;gap:8px;height:44px;border-bottom:1px solid rgba(255,36,66,.08)}
 .li:last-child{border-bottom:0}
 .li .t{flex:1;min-width:0;font-size:12px;color:var(--ink2)}
-.btn{display:inline-flex;align-items:center;justify-content:center;height:30px;border:1px solid var(--line);border-radius:8px;padding:0 12px;font-size:11px;color:var(--ink2);white-space:nowrap}
-.btn.g{border-color:var(--gline);color:var(--gold);background:rgba(233,181,88,.08)}
-.btn.ok{border-color:rgba(106,223,138,.5);color:var(--go)}
-.btn.warn{border-color:rgba(255,138,138,.5);color:var(--warn)}
-.btn.big{height:40px;border-radius:10px;font-size:12px;width:100%}
+.btn{display:inline-flex;align-items:center;justify-content:center;height:30px;border:1px solid var(--line);border-radius:999px;background:#fff;padding:0 12px;font-size:11px;color:var(--ink2);white-space:nowrap}
+.btn.g{border:0;color:var(--ongold);background:linear-gradient(135deg,var(--gold),var(--gold2))}
+.btn.ok{border-color:rgba(34,200,138,.55);color:var(--go-t)}
+.btn.warn{border-color:rgba(255,77,109,.5);color:var(--warn)}
+.btn.big{height:40px;border-radius:999px;font-size:12px;width:100%}
 .btn.done{opacity:.5;pointer-events:none}
-input.inp{flex:1;min-width:0;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--ink);padding:8px 12px;font-size:12px;outline:none;font-family:inherit;height:34px}
+input.inp{flex:1;min-width:0;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--ink);padding:8px 14px;font-size:12px;outline:none;font-family:inherit;height:34px}
 input.inp:focus{border-color:var(--gline)}
 input.inp::placeholder{color:var(--ink3)}
 .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .grid9{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.stat{border:1px solid var(--line);border-radius:12px;background:var(--card);padding:10px 4px;text-align:center}
-.stat .v{font-size:19px;font-weight:800;color:var(--gold2);font-family:ui-monospace,monospace;line-height:1.2}
-.stat .k{font-size:10px;color:var(--ink3);margin-top:3px}
-.note{border-left:2px solid var(--gline);padding:6px 10px;font-size:10px;color:var(--ink3);background:rgba(233,181,88,.04);border-radius:0 8px 8px 0;line-height:1.7}
+.stat{border:1px solid var(--line);border-radius:16px;background:var(--card);padding:10px 4px;text-align:center}
+.stat .v{font-size:19px;font-weight:800;color:var(--goldhi);font-family:ui-monospace,monospace;line-height:1.2}
+.stat .k{font-size:10px;color:var(--ink2);margin-top:3px}
+.note{border-left:2px solid var(--gline);padding:6px 10px;font-size:10px;color:var(--ink2);background:rgba(255,36,66,.04);border-radius:0 8px 8px 0;line-height:1.7}
 .diff-del{text-decoration:line-through;color:var(--warn);opacity:.8}
-.diff-add{color:var(--go)}
+.diff-add{color:var(--go-t)}
 /* 底部 Tab */
-#tabbar{position:absolute;left:0;right:0;bottom:0;height:58px;z-index:25;display:flex;border-top:1px solid var(--line);background:rgba(5,10,26,.96);padding-bottom:6px}
-#tabbar button{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:9px;color:var(--ink3);position:relative}
-#tabbar button .ic{width:22px;height:22px;border:1px solid var(--line);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--ink3)}
+#tabbar{position:absolute;left:0;right:0;bottom:0;height:58px;z-index:25;display:flex;border-top:1px solid var(--line);background:rgba(255,255,255,.96);padding-bottom:6px}
+#tabbar button{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:9px;color:var(--ink2);position:relative}
+#tabbar button .ic{width:22px;height:22px;border:1px solid var(--line);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--ink2)}
 #tabbar button.on{color:var(--gold)}
-#tabbar button.on .ic{border-color:var(--gline);color:var(--gold);box-shadow:0 0 8px rgba(233,181,88,.25)}
-#tabbar button .bdg{position:absolute;top:6px;margin-left:22px;min-width:14px;height:14px;border-radius:7px;background:#ff5470;color:#fff;font-size:8px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 3px}
+#tabbar button.on .ic{border-color:var(--gline);color:var(--gold);box-shadow:0 0 8px rgba(255,36,66,.25)}
+#tabbar button .bdg{position:absolute;top:6px;margin-left:22px;min-width:14px;height:14px;border-radius:7px;background:var(--warn);color:#fff;font-size:8px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 3px}
 /* Ask 屏底部固定输入栏（对话主屏 · 非悬浮球） */
-#askbar{position:absolute;left:0;right:0;bottom:58px;z-index:26;display:none;border-top:1px solid var(--line);background:rgba(5,10,26,.97);padding:8px 12px 10px}
+#askbar{position:absolute;left:0;right:0;bottom:58px;z-index:26;display:none;border-top:1px solid var(--line);background:rgba(255,255,255,.97);padding:8px 12px 10px}
 #askbar .chips{display:flex;gap:6px;overflow-x:auto;margin-bottom:8px;white-space:nowrap}
 #askbar .chips::-webkit-scrollbar{display:none}
 /* toast */
-#toast{position:absolute;left:50%;bottom:140px;transform:translateX(-50%);z-index:60;max-width:320px;background:#101c44;border:1px solid var(--gline);
- color:var(--gold2);border-radius:10px;padding:8px 14px;font-size:11px;line-height:1.6;box-shadow:0 8px 30px rgba(0,0,0,.5);opacity:0;transition:opacity .25s;pointer-events:none;text-align:center}
+#toast{position:absolute;left:50%;bottom:140px;transform:translateX(-50%);z-index:60;max-width:320px;background:#fff;border:1px solid var(--gline);
+ color:var(--goldhi);border-radius:10px;padding:8px 14px;font-size:11px;line-height:1.6;box-shadow:0 8px 30px rgba(51,38,43,.18);opacity:0;transition:opacity .25s;pointer-events:none;text-align:center}
 #toast.show{opacity:1}
 /* 底部弹层（工单详情） */
 #sheet{position:absolute;inset:0;z-index:50;display:none}
 #sheet.open{display:block}
-#sheet .mask{position:absolute;inset:0;background:rgba(0,0,0,.55)}
+#sheet .mask{position:absolute;inset:0;background:rgba(51,38,43,.35)}
 #sheet .box{position:absolute;left:0;right:0;bottom:0;max-height:78%;overflow-y:auto;border-top:1px solid var(--gline);border-radius:16px 16px 0 0;background:var(--bg);padding:14px 14px 20px}
-#sheet .grab{width:36px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 10px}
-/* 剧场 */
+#sheet .grab{width:36px;height:4px;border-radius:2px;background:#e9cfd8;margin:0 auto 10px}
+/* 经营主页 */
 .holo-wrap{position:relative;width:100%;height:190px;overflow:hidden}
 .holobody{position:absolute;left:50%;top:52%;transform:translate(-50%,-50%);width:130px;height:130px}
 .holobody .or{position:absolute;border-radius:50%;border:1px solid;transform:rotateX(68deg)}
 @keyframes hspin{to{transform:rotateX(68deg) rotate(360deg)}}
 .sat{position:absolute;width:10px;height:10px;border-radius:50%;border:0;z-index:6;transform:translate(-50%,-50%)}
-.sat small{position:absolute;top:12px;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:9px;color:var(--ink3)}
-.bubble{border:1px solid var(--gline);border-radius:12px;background:rgba(13,23,55,.9);padding:10px 12px;font-size:12px;line-height:1.7}
-.subt{overflow:hidden;border:1px solid var(--line);border-radius:10px;background:rgba(8,14,34,.6);padding:6px 0;margin-bottom:10px}
-.subt .in{display:flex;gap:28px;white-space:nowrap;font-size:10px;color:var(--ink3);animation:tk 30s linear infinite;width:max-content}
+.sat small{position:absolute;top:12px;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:9px;color:var(--ink2)}
+.bubble{border:1px solid var(--gline);border-radius:14px;background:var(--panel);padding:10px 12px;font-size:12px;line-height:1.7}
+.subt{overflow:hidden;border:1px solid var(--line);border-radius:10px;background:var(--panel);padding:6px 0;margin-bottom:10px}
+.subt .in{display:flex;gap:28px;white-space:nowrap;font-size:10px;color:var(--ink2);animation:tk 30s linear infinite;width:max-content}
 @keyframes tk{to{transform:translateX(-50%)}}
-.subt b{color:var(--ink2);font-weight:600}
+.subt b{color:var(--ink);font-weight:600}
 /* 时间线 */
 .tl{position:relative;padding-left:18px}
-.tl::before{content:"";position:absolute;left:5px;top:6px;bottom:6px;width:1px;background:var(--line)}
+.tl::before{content:"";position:absolute;left:5px;top:6px;bottom:6px;width:1px;background:rgba(255,36,66,.18)}
 .tl .nd{position:relative;padding-bottom:12px}
 .tl .nd:last-child{padding-bottom:0}
-.tl .nd::before{content:"";position:absolute;left:-16px;top:5px;width:7px;height:7px;border-radius:50%;background:var(--gold);box-shadow:0 0 8px rgba(233,181,88,.6)}
-.tl .nd.fut::before{background:var(--line);box-shadow:none}
+.tl .nd::before{content:"";position:absolute;left:-16px;top:5px;width:7px;height:7px;border-radius:50%;background:var(--gold);box-shadow:0 0 8px rgba(255,36,66,.35)}
+.tl .nd.fut::before{background:#e9cfd8;box-shadow:none}
 .tl .nd .a{font-size:11px;color:var(--ink);font-weight:600}
 .tl .nd .d{font-size:11px;color:var(--ink2);margin-top:2px;line-height:1.6}
-.tl .nd .m{font-size:10px;color:var(--ink3);font-family:ui-monospace,monospace;margin-top:2px}
+.tl .nd .m{font-size:10px;color:var(--ink2);font-family:ui-monospace,monospace;margin-top:2px}
 /* 矮视口适配：视口偏矮时手机壳等比缩小顶对齐，保证底 Tab 完整可见 */
 @media(max-height:905px){#stage{align-items:flex-start;height:auto;min-height:100vh}#phone{transform:scale(.94);transform-origin:top center;flex:none}}
 </style>
@@ -143,9 +145,9 @@ input.inp::placeholder{color:var(--ink3)}
  <div id="phone">
   <div id="statusbar">
    <span class="tm">08:30</span><span class="sp"></span>
-   <svg width="15" height="11" viewBox="0 0 15 11"><rect x="0" y="7" width="3" height="4" rx="1" fill="#c4cdf0"/><rect x="4" y="5" width="3" height="6" rx="1" fill="#c4cdf0"/><rect x="8" y="2.5" width="3" height="8.5" rx="1" fill="#c4cdf0"/><rect x="12" y="0" width="3" height="11" rx="1" fill="#c4cdf0" opacity=".4"/></svg>
-   <svg width="15" height="11" viewBox="0 0 16 12" style="margin-left:5px"><path d="M8 8.6a1.6 1.6 0 1 1 0 3.2 1.6 1.6 0 0 1 0-3.2zM8 4.4c1.9 0 3.6.7 4.9 1.9l-1.5 1.6A4.9 4.9 0 0 0 8 6.6c-1.3 0-2.5.5-3.4 1.3L3.1 6.3A6.9 6.9 0 0 1 8 4.4zM8 0c2.9 0 5.6 1.1 7.6 3l-1.5 1.6A8.4 8.4 0 0 0 8 2.2C5.7 2.2 3.5 3.1 1.9 4.6L.4 3A11.4 11.4 0 0 1 8 0z" fill="#c4cdf0"/></svg>
-   <svg width="23" height="11" viewBox="0 0 25 12" style="margin-left:5px"><rect x="0.5" y="0.5" width="21" height="11" rx="3" fill="none" stroke="#c4cdf0" opacity=".5"/><rect x="2" y="2" width="15" height="8" rx="1.6" fill="#6adf8a"/><rect x="23" y="4" width="2" height="4" rx="1" fill="#c4cdf0" opacity=".5"/></svg>
+   <svg width="15" height="11" viewBox="0 0 15 11"><rect x="0" y="7" width="3" height="4" rx="1" fill="#8a757d"/><rect x="4" y="5" width="3" height="6" rx="1" fill="#8a757d"/><rect x="8" y="2.5" width="3" height="8.5" rx="1" fill="#8a757d"/><rect x="12" y="0" width="3" height="11" rx="1" fill="#8a757d" opacity=".4"/></svg>
+   <svg width="15" height="11" viewBox="0 0 16 12" style="margin-left:5px"><path d="M8 8.6a1.6 1.6 0 1 1 0 3.2 1.6 1.6 0 0 1 0-3.2zM8 4.4c1.9 0 3.6.7 4.9 1.9l-1.5 1.6A4.9 4.9 0 0 0 8 6.6c-1.3 0-2.5.5-3.4 1.3L3.1 6.3A6.9 6.9 0 0 1 8 4.4zM8 0c2.9 0 5.6 1.1 7.6 3l-1.5 1.6A8.4 8.4 0 0 0 8 2.2C5.7 2.2 3.5 3.1 1.9 4.6L.4 3A11.4 11.4 0 0 1 8 0z" fill="#8a757d"/></svg>
+   <svg width="23" height="11" viewBox="0 0 25 12" style="margin-left:5px"><rect x="0.5" y="0.5" width="21" height="11" rx="3" fill="none" stroke="#8a757d" opacity=".5"/><rect x="2" y="2" width="15" height="8" rx="1.6" fill="#22c88a"/><rect x="23" y="4" width="2" height="4" rx="1" fill="#8a757d" opacity=".5"/></svg>
   </div>
   <div id="wxcaps"><span class="dot3"><i></i><i></i><i></i></span><span class="sep"></span><span class="ring"></span></div>
   <div id="view"></div>
@@ -166,7 +168,7 @@ input.inp::placeholder{color:var(--ink3)}
 
 <script>
 /* ================= 展示字典层（镜像 apps/web/src/lib/display.ts 口径） ================= */
-const APPROVAL_STATUS_TEXT={pending:"待裁决",approved:"已批准",rejected:"已驳回",edited:"已改派",escalated:"已升级"};
+const APPROVAL_STATUS_TEXT={pending:"待审批",approved:"已批准",rejected:"已驳回",edited:"已改派",escalated:"已升级"};
 function dictText(d,v){if(!v)return "—";return d[v]||String(v).replace(/_/g," ")}
 function shortId(id){if(!id)return "—";const m=String(id).match(/(\d+)$/);return m?`···${m[1]}`:id}
 function cronText(e){const k={"*/30 * * * *":"每 30 分钟","*/15 * * * *":"每 15 分钟","0 * * * *":"每小时整点","0 7 * * *":"每天 07:00","0 22 * * *":"每天 22:00","0 3 * * *":"每天 03:00","30 8 * * *":"每天 08:30","0 3 * * 0":"每周日 03:00","0 4 * * 1":"每周一 04:00","7 */2 * * *":"每 2 小时（07 分）","15 */4 * * *":"每 4 小时（15 分）","45 23 * * *":"每天 23:45"};if(k[e])return k[e];const d=e.match(/^(\d{1,2}) (\d{1,2}) \* \* \*$/);if(d)return `每天 ${d[2].padStart(2,"0")}:${d[1].padStart(2,"0")}`;const h=e.match(/^\*\/(\d+) \* \* \* \*$/);if(h)return `每 ${h[1]} 分钟`;return e}
@@ -218,7 +220,7 @@ triggers:[
  {id:"tg-parity-15min",name:"倒挂超售看门狗（R17/R18 联动）",cron:"*/15 * * * *"},
  {id:"tg-faq-mine-sun",name:"FAQ 知识库周萃取",cron:"0 3 * * 0"},
  {id:"tg-ceo-brief-0830",name:"公司CEO 晨报",cron:"30 8 * * *"},
- {id:"tg-ceo-queue-2h",name:"公司CEO 裁决巡检",cron:"7 */2 * * *"},
+ {id:"tg-ceo-queue-2h",name:"公司CEO 审批巡检",cron:"7 */2 * * *"},
  {id:"tg-ceo-deviation",name:"公司CEO 目标偏差扫描",cron:"15 */4 * * *"},
  {id:"tg-ceo-breaker",name:"公司CEO 自治熔断巡检",cron:"45 23 * * *"}],
 skillsOfficial:[
@@ -261,7 +263,7 @@ function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("show");cl
 function openSheet(html){$("#sheetbox").innerHTML=`<div class="grab"></div>`+html;$("#sheet").classList.add("open")}
 function closeSheet(){$("#sheet").classList.remove("open")}
 function tkTag(st){const c=st==="已完成"?"ok":st==="处理中"?"holo":st==="已分派"?"g":st==="已受理"?"amber":"";return `<span class="chip ${c}">${st}</span>`}
-function gradeColor(g){return g==="表扬"?"#6adf8a":g==="辅导"?"#ff8a8a":g==="关注"?"#ffbe6a":"#8ad8ff"}
+function gradeColor(g){return g==="表扬"?"#22c88a":g==="辅导"?"#ff4d6d":g==="关注"?"#ffaa33":"#4d96ff"}
 function tierText(t){return t==="l4_chairman"?"L4 董事长级":t==="l3_fleet"?"L3 集团CEO级":"L2 公司CEO级"}
 function shead(title,route,chip){return `<div class="shead"><div><div class="tt">${title}</div><div class="rt">真实路由 ${route}</div></div>${chip||""}</div>`}
 function stat(v,k){return `<div class="stat"><div class="v">${v}</div><div class="k">${k}</div></div>`}
@@ -275,7 +277,7 @@ function decide(id,g,btn){
  const gt=g==="approve"?"采纳（权重 1）":g==="edit"?"编辑后采纳（权重 2）":"驳回（权重 3，原因已必填）";
  toast(`已${gt} · 全链留痕（审批 ${id}）`)}
 function aprCard(q,showTier){
- return `<div class="card" data-apr="${q.id}" style="${q.status==="pending"?"border-color:rgba(255,190,106,.35)":""}">
+ return `<div class="card" data-apr="${q.id}" style="${q.status==="pending"?"border-color:rgba(255,170,51,.4)":""}">
   <div class="row"><b style="font-size:12px;flex:1;min-width:0;line-height:1.5" class="clamp2">${q.title}</b>
    <span class="apr-st chip ${q.status==="approved"?"ok":q.status==="rejected"?"warn":q.status==="edited"?"holo":"amber"}">${dictText(APPROVAL_STATUS_TEXT,q.status)}</span></div>
   <div class="mono" style="margin-top:5px">${q.action} · 审批 ${q.id} · ${q.rule}${showTier?" · "+tierText(q.tier):""}</div>
@@ -293,23 +295,23 @@ function brake(btn,label){
 
 /* ================= 视图（12 屏） ================= */
 const VIEWS={};
-const TABS=[["ask","Ask","问"],["theater","剧场","剧"],["p3","战报","报"],["p4","审批","审"],["svc","服务","服"],["me","我的","我"]];
+const TABS=[["ask","Ask","问"],["theater","经营主页","主"],["p3","日报","日"],["p4","审批","审"],["svc","服务","服"],["me","我的","我"]];
 const TAB_OF={ask:"ask",theater:"theater",p3:"p3",p4:"p4",svc:"svc",me:"me",kb:"svc",tickets:"svc",p6:"me",p8:"me",p9:"me",p21:"me"};
 
-/* ---- 1. #theater 剧场（镜像 /p0） ---- */
+/* ---- 1. #theater 经营主页（镜像 /p0） ---- */
 VIEWS.theater=()=>{
  const sats=D.nightTeam.map(n=>D.agents.find(a=>a.name===n));
  return `<div class="scr">
- ${shead("经营剧场","/p0","<span class=\"chip amber\">试用期 · 第 2 天</span>")}
+ ${shead("经营主页","/p0","<span class=\"chip amber\">试用期 · 第 2 天</span>")}
  <div class="holo-wrap">
   <div class="holobody">
-   <div class="or" style="inset:0;border-color:rgba(200,162,74,.53);animation:hspin 9s linear infinite"></div>
-   <div class="or" style="inset:12px;border-color:rgba(200,162,74,.33);animation:hspin 7s linear infinite reverse"></div>
-   <div class="or" style="inset:24px;border-color:rgba(200,162,74,.2);animation:hspin 5s linear infinite"></div>
+   <div class="or" style="inset:0;border-color:rgba(255,36,66,.35);animation:hspin 9s linear infinite"></div>
+   <div class="or" style="inset:12px;border-color:rgba(255,36,66,.22);animation:hspin 7s linear infinite reverse"></div>
+   <div class="or" style="inset:24px;border-color:rgba(255,36,66,.12);animation:hspin 5s linear infinite"></div>
    <svg viewBox="0 0 120 160" style="position:absolute;inset:0;margin:auto;width:86px;height:108px">
-    <defs><radialGradient id="core" cx="50%" cy="42%" r="55%"><stop offset="0%" stop-color="#ffd98a" stop-opacity=".95"/><stop offset="60%" stop-color="#c8a24a" stop-opacity=".35"/><stop offset="100%" stop-color="#c8a24a" stop-opacity="0"/></radialGradient></defs>
-    <ellipse cx="60" cy="26" rx="14" ry="16" fill="none" stroke="#ffd98a" stroke-opacity=".85" stroke-width="1.4"/>
-    <path d="M42 52 Q60 42 78 52 L86 108 Q60 122 34 108 Z" fill="none" stroke="#ffd98a" stroke-opacity=".7" stroke-width="1.4"/>
+    <defs><radialGradient id="core" cx="50%" cy="42%" r="55%"><stop offset="0%" stop-color="#ff7a9e" stop-opacity=".95"/><stop offset="60%" stop-color="#ff2442" stop-opacity=".3"/><stop offset="100%" stop-color="#ff2442" stop-opacity="0"/></radialGradient></defs>
+    <ellipse cx="60" cy="26" rx="14" ry="16" fill="none" stroke="#ff2442" stroke-opacity=".8" stroke-width="1.4"/>
+    <path d="M42 52 Q60 42 78 52 L86 108 Q60 122 34 108 Z" fill="none" stroke="#ff2442" stroke-opacity=".65" stroke-width="1.4"/>
     <ellipse cx="60" cy="72" rx="17" ry="22" fill="url(#core)"/></svg>
   </div>
   ${sats.map((a,i)=>{const ang=i/sats.length*Math.PI*2-Math.PI/2;const rx=150,ry=72;
@@ -318,45 +320,45 @@ VIEWS.theater=()=>{
  </div>
  <div class="bubble" style="margin-bottom:10px" onclick="toast('晨报全文见董事长视图（/p21）')"><b style="color:var(--gold)">公司CEO 晨报 · </b>${D.briefing}</div>
  <div class="subt"><div class="in">${D.ticker.concat(D.ticker).map(e=>`<span><b>${e[0]}</b> · ${e[1]}</span>`).join("")}</div></div>
- <div class="sect">请您决策<span class="n">${D.approvals.filter(a=>a.status==="pending").length} 件待裁决</span></div>
+ <div class="sect">请您决策<span class="n">${D.approvals.filter(a=>a.status==="pending").length} 件待审批</span></div>
  ${aprCard(D.approvals.filter(a=>a.status==="pending")[0])}
- <button class="btn g big" style="margin-bottom:10px" onclick="location.hash='p4'">去决断队列看全部（/p4）→</button>
+ <button class="btn g big" style="margin-bottom:10px" onclick="location.hash='p4'">去审批队列看全部（/p4）→</button>
  <div class="row" style="margin-top:2px"><input class="inp" placeholder="像跟 公司CEO 说话一样输入……" onkeydown="if(event.key==='Enter'){toast('收到：问句走 ask 即时应答，明确任务走 quest 立项');this.value=''}">
   <button class="btn g" style="height:34px" onclick="toast('已发送：问句走 ask，任务走 quest 立项')">发送</button></div>
 </div>`};
 
 /* ---- 2. #ask Ask 对话主屏（默认落地屏 · 全局常驻 · 真实对话而非展开态展示） ---- */
-function askU(t){return `<div style="display:flex;justify-content:flex-end;margin-bottom:10px"><div style="max-width:82%;border:1px solid var(--gline);border-radius:12px;border-top-right-radius:4px;background:rgba(233,181,88,.08);padding:8px 11px;font-size:12px;line-height:1.6">${t}</div></div>`}
-function askA(inner){return `<div style="display:flex;margin-bottom:10px"><div style="max-width:94%;border:1px solid var(--line);border-radius:12px;border-top-left-radius:4px;background:var(--panel);padding:8px 11px">${inner}</div></div>`}
-/* 星环参谋 · 差评应答（带引用/回执） */
+function askU(t){return `<div style="display:flex;justify-content:flex-end;margin-bottom:10px"><div style="max-width:82%;border:0;border-radius:14px;border-top-right-radius:4px;background:linear-gradient(135deg,var(--gold),var(--gold2));color:#fff;padding:8px 11px;font-size:12px;line-height:1.6">${t}</div></div>`}
+function askA(inner){return `<div style="display:flex;margin-bottom:10px"><div style="max-width:94%;border:1px solid var(--line);border-radius:14px;border-top-left-radius:4px;background:var(--card);padding:8px 11px">${inner}</div></div>`}
+/* AI 助手 · 差评应答（带引用/回执） */
 function askAiReview(){return `
- <div class="row" style="gap:6px;margin-bottom:4px"><b style="font-size:11px">星环参谋</b><span class="mono">线程 ···9101</span><span class="chip ok" style="height:18px;font-size:9px">✓ 回执 · 已生效</span></div>
+ <div class="row" style="gap:6px;margin-bottom:4px"><b style="font-size:11px">AI 助手</b><span class="mono">线程 ···9101</span><span class="chip ok" style="height:18px;font-size:9px">✓ 回执 · 已生效</span></div>
  <div style="font-size:11px;line-height:1.7;color:var(--ink2)">有。携程新增 2 分差评「空调半夜异响，叫醒两次没人来处理」，已 <span class="num">26 小时</span> 未回复（R19 SLA 已升级店长）。评价Agent 已拟好回复草稿，按 R6 差评必审请您拍板（审批 ···8871）。</div>
  <div class="mono" style="margin-top:6px">📖 引用：事件 ···8852 差评快照 · 组织记忆「差评回复结构」</div>
  <button class="btn g" style="margin-top:8px;height:26px;font-size:10px" onclick="location.hash='p4'">→ 去审批（/p4）</button>`}
-/* 总导演 · quest 立项卡（线程号 + 排队中 + →任务舱） */
+/* 总导演 · quest 立项卡（线程号 + 排队中 + →任务中心） */
 function askAiQuest(){return `
  <div class="row" style="gap:6px;margin-bottom:4px"><b style="font-size:11px">总导演已接单</b><span class="mono">线程 ···9106</span><span class="chip amber" style="height:18px;font-size:9px">排队中</span></div>
  <div style="font-size:11px;line-height:1.7;color:var(--ink2)">明确任务走 quest：已立项「汇总本周差评」，评价Agent 排队执行，进展我会主动汇报。</div>
- <div style="margin-top:8px;border:1px solid var(--gline);border-radius:10px;background:rgba(233,181,88,.05);padding:8px 10px">
-  <div class="row"><b style="font-size:11px;color:var(--gold2);flex:1;min-width:0">quest 立项卡 · 本周差评汇总</b><span class="chip amber">排队中</span></div>
-  <div class="mono" style="margin-top:4px">线程 ···9106 · 执行 评价Agent · 输出 → 掌上战报（/p3）</div>
-  <button class="btn" style="margin-top:8px;height:26px;font-size:10px" onclick="toast('任务舱为 PC 端视图（/p2）· 进展将投递掌上战报（/p3）')">→ 任务舱看进度</button></div>`}
-/* 星环参谋 · 知识库检索应答（住客常见问答 385 块 · 带引用） */
+ <div style="margin-top:8px;border:1px solid var(--gline);border-radius:10px;background:rgba(255,36,66,.05);padding:8px 10px">
+  <div class="row"><b style="font-size:11px;color:var(--goldhi);flex:1;min-width:0">quest 立项卡 · 本周差评汇总</b><span class="chip amber">排队中</span></div>
+  <div class="mono" style="margin-top:4px">线程 ···9106 · 执行 评价Agent · 输出 → 夜班日报（/p3）</div>
+  <button class="btn" style="margin-top:8px;height:26px;font-size:10px" onclick="toast('任务中心为 PC 端视图（/p2）· 进展将投递夜班日报（/p3）')">→ 任务中心看进度</button></div>`}
+/* AI 助手 · 知识库检索应答（住客常见问答 385 块 · 带引用） */
 function askAiKb(){return `
- <div class="row" style="gap:6px;margin-bottom:4px"><b style="font-size:11px">星环参谋</b><span class="mono">线程 ···9102</span><span class="chip ok" style="height:18px;font-size:9px">✓ 有据回答</span></div>
+ <div class="row" style="gap:6px;margin-bottom:4px"><b style="font-size:11px">AI 助手</b><span class="mono">线程 ···9102</span><span class="chip ok" style="height:18px;font-size:9px">✓ 有据回答</span></div>
  <div style="font-size:11px;line-height:1.7;color:var(--ink2)">好，演示一次真实检索「早餐在哪里吃？」——早餐在酒店一层云栖餐厅，中西自助约 60 款，每日 07:00–10:30（周末延至 11:00），住店会员免费。</div>
  <div class="mono" style="margin-top:6px">📖 引用：住客常见问答·餐饮美食（385 块语料 · 相关度 0.87）</div>
  <button class="btn g" style="margin-top:8px;height:26px;font-size:10px" onclick="location.hash='kb'">→ 去知识中台试检索（/p22/kb）</button>`}
-/* 星环参谋 · 工单超时风险应答 */
+/* AI 助手 · 工单超时风险应答 */
 function askAiSla(){return `
- <div class="row" style="gap:6px;margin-bottom:4px"><b style="font-size:11px">星环参谋</b><span class="mono">线程 ···9103</span><span class="chip ok" style="height:18px;font-size:9px">✓ 回执 · 已生效</span></div>
+ <div class="row" style="gap:6px;margin-bottom:4px"><b style="font-size:11px">AI 助手</b><span class="mono">线程 ···9103</span><span class="chip ok" style="height:18px;font-size:9px">✓ 回执 · 已生效</span></div>
  <div style="font-size:11px;line-height:1.7;color:var(--ink2)">有 <span class="num">1</span> 单已超时：···007「2021 房 WiFi 频繁掉线」受理超时，系统已升级加急、值班经理介入督办；其余 7 单 SLA 正常，无需介入。</div>
  <div class="mono" style="margin-top:6px">📖 引用：工单台聚合投影 · 事件 ···9007 超时升级</div>
  <button class="btn warn" style="margin-top:8px;height:26px;font-size:10px" onclick="location.hash='tickets'">→ 去工单台处理 ···007</button>`}
 function askAiFallback(){return `
- <div class="row" style="gap:6px;margin-bottom:4px"><b style="font-size:11px">星环参谋</b><span class="mono">ask 分流</span></div>
- <div style="font-size:11px;line-height:1.7;color:var(--ink2)">问句走 <b style="color:var(--holo)">ask</b> 即时应答；明确任务走 <b style="color:var(--gold)">quest</b> 自动立项（→ 任务舱）；含糊指令我会反问澄清，不直接建任务。再说得具体一点？</div>`}
+ <div class="row" style="gap:6px;margin-bottom:4px"><b style="font-size:11px">AI 助手</b><span class="mono">ask 分流</span></div>
+ <div style="font-size:11px;line-height:1.7;color:var(--ink2)">问句走 <b style="color:var(--holo)">ask</b> 即时应答；明确任务走 <b style="color:var(--gold)">quest</b> 自动立项（→ 任务中心）；含糊指令我会反问澄清，不直接建任务。再说得具体一点？</div>`}
 VIEWS.ask=()=>`<div class="scr" style="padding-bottom:16px">
  ${shead("Ask · 有事随时说","全局常驻","<span class=\"chip g\">待批 2</span>")}
  <div id="askFlow">
@@ -364,7 +366,7 @@ VIEWS.ask=()=>`<div class="scr" style="padding-bottom:16px">
   ${askU("汇总本周差评给我")}${askA(askAiQuest())}
   ${askU("试试知识库检索")}${askA(askAiKb())}
  </div>
- <div class="note">本屏即对话主屏：首页落地直达，全局常驻。输入分流——问句走 ask（意图路由即时应答，回答带引用与回执）；明确任务走 quest（自动立项 → 任务舱）；含糊指令反问澄清。</div>
+ <div class="note">本屏即对话主屏：首页落地直达，全局常驻。输入分流——问句走 ask（意图路由即时应答，回答带引用与回执）；明确任务走 quest（自动立项 → 任务中心）；含糊指令反问澄清。</div>
 </div>`;
 function askSend(preset){
  const inp=$("#askIn");const t=(preset||(inp?inp.value:"")||"").trim();if(!t)return;
@@ -372,7 +374,7 @@ function askSend(preset){
  const flow=$("#askFlow");if(!flow)return;
  flow.insertAdjacentHTML("beforeend",askU(esc(t)));
  const th="th"+Date.now();
- flow.insertAdjacentHTML("beforeend",`<div id="${th}" style="font-size:10px;color:var(--ink3);margin-bottom:10px">星环参谋正在思考…</div>`);
+ flow.insertAdjacentHTML("beforeend",`<div id="${th}" style="font-size:10px;color:var(--ink2);margin-bottom:10px">AI 助手正在思考…</div>`);
  $("#view").scrollTop=$("#view").scrollHeight;
  setTimeout(()=>{
   $("#"+th).remove();
@@ -387,14 +389,14 @@ function askSend(preset){
  },520);
 }
 
-/* ---- 3. #p3 掌上战报（镜像 /p3 真实移动端页面） ---- */
+/* ---- 3. #p3 夜班日报（镜像 /p3 真实移动端页面） ---- */
 VIEWS.p3=()=>`<div class="scr">
- ${shead("掌上战报","/p3","<span class=\"chip ok\">夜班 · 运行中</span>")}
- <div class="sect">夜班交接 · 今天 08:30<span class="n">战报已生成</span></div>
+ ${shead("夜班日报","/p3","<span class=\"chip ok\">夜班 · 运行中</span>")}
+ <div class="sect">夜班交接 · 今天 08:30<span class="n">日报已生成</span></div>
  <div class="grid3">
-  <div class="stat" style="border-color:rgba(106,223,138,.4)"><div class="v" style="color:var(--go)">${D.night.done}</div><div class="k">已完成</div></div>
-  <div class="stat" style="border-color:rgba(255,190,106,.4)"><div class="v" style="color:var(--amber)">${D.night.pending}</div><div class="k">待审</div></div>
-  <div class="stat" style="border-color:rgba(255,138,138,.4)"><div class="v" style="color:var(--warn)">${D.night.need_human}</div><div class="k">需介入</div></div></div>
+  <div class="stat" style="border-color:rgba(34,200,138,.4)"><div class="v" style="color:var(--go-t)">${D.night.done}</div><div class="k">已完成</div></div>
+  <div class="stat" style="border-color:rgba(255,170,51,.4)"><div class="v" style="color:var(--amber-t)">${D.night.pending}</div><div class="k">待审</div></div>
+  <div class="stat" style="border-color:rgba(182,120,255,.4)"><div class="v" style="color:var(--need)">${D.night.need_human}</div><div class="k">需介入</div></div></div>
  <div class="note" style="margin:10px 0">计数头与主甲板交接班卡同源；批量采纳仅低风险项（人工复核/硬阻断不进批量）。</div>
  <div class="sect">待审请示 · 三手势<span class="n">采纳 / 改后采纳 / 驳回</span></div>
  ${D.approvals.map(q=>aprCard(q)).join("")}
@@ -402,23 +404,23 @@ VIEWS.p3=()=>`<div class="scr">
  <div class="card"><div class="tl">
   ${D.nightEvents.map(e=>`<div class="nd"><div class="a">${shortId(e[0])} · ${e[1]}</div><div class="d">${e[2]}</div></div>`).join("")}
  </div></div>
- <div class="card" style="border-color:rgba(255,138,138,.4)"><b style="color:var(--warn);font-size:12px">求援卡 · 需介入 2 件</b>
+ <div class="card" style="border-color:rgba(255,77,109,.4)"><b style="color:var(--warn);font-size:12px">求援卡 · 需介入 2 件</b>
   <div style="font-size:11px;color:var(--ink2);margin-top:6px;line-height:1.8">① 担保订单客人失联（R5 硬阻断转人工）<br>② 夜间电梯困人误报复核</div>
   <div class="row" style="margin-top:9px;gap:6px"><button class="btn warn" style="flex:1" onclick="this.classList.add('done');this.textContent='✓ 已派单';toast('已派单 → 值班经理，SLA 计时开始')">一键派单</button>
    <button class="btn" style="flex:1" onclick="brake(this,'暂停全部夜班动作（≤60 秒全端生效）')">紧急制动</button></div></div>
 </div>`;
 
-/* ---- 4. #p4 审批（镜像 /p4 决断队列） ---- */
+/* ---- 4. #p4 审批（镜像 /p4 审批队列） ---- */
 VIEWS.p4=()=>`<div class="scr">
- ${shead("决断队列","/p4","<span class=\"chip amber\">2 件待裁决</span>")}
+ ${shead("审批队列","/p4","<span class=\"chip amber\">2 件待审批</span>")}
  <div class="note" style="margin-bottom:4px">待办收件箱 = approvals 统一投影；高危双人审、越围栏必审。三手势写回：采纳=权重 1 / 编辑后采纳=权重 2 / 驳回=权重 3（驳回必填原因）。</div>
- <div class="sect">请您裁决<span class="n">拟人化请示卡</span></div>
+ <div class="sect">请您审批<span class="n">拟人化请示卡</span></div>
  ${aprCard(D.approvals[2],true)}
  ${aprCard(D.approvals[0],true)}
  <div class="sect">今日已审<span class="n">6 件</span></div>
  <div class="card"><div class="row" style="justify-content:space-between;font-size:11px;color:var(--ink2)">
   <span>采纳 <b class="num">4</b></span><span>编辑后采纳 <b class="num">1</b></span><span>驳回 <b class="num">1</b></span></div>
-  <div style="font-size:10px;color:var(--ink3);margin-top:6px">驳回原因已进偏好模式，组织记忆随之校准。</div></div>
+  <div style="font-size:10px;color:var(--ink2);margin-top:6px">驳回原因已进偏好模式，组织记忆随之校准。</div></div>
 </div>`;
 
 /* ---- 5. #svc 服务前台（Tab · 镜像 /p22） ---- */
@@ -429,13 +431,13 @@ VIEWS.svc=()=>`<div class="scr">
   ${stat(6,"今日会话")}${stat("100%","有据率")}${stat(1,"SLA 超时")}${stat(5,"满意度")}</div>
  <div class="card" style="margin-top:10px;border-color:var(--gline)"><div class="row"><b style="font-size:12px;flex:1">金标评测 · v2.0-faq385</b><span class="mono">385 问回归</span></div>
   <div class="row" style="justify-content:space-between;margin-top:8px;font-size:11px;color:var(--ink2)">
-   <span>忠实度 <b style="color:var(--go)">100%</b></span><span>答案相关性 <b style="color:var(--go)">100%</b></span></div>
+   <span>忠实度 <b style="color:var(--go-t)">100%</b></span><span>答案相关性 <b style="color:var(--go-t)">100%</b></span></div>
   <div class="row" style="justify-content:space-between;margin-top:5px;font-size:11px;color:var(--ink2)">
-   <span>有据率 <b style="color:var(--go)">100%</b></span><span>安全合规 <b style="color:var(--go)">100%</b></span></div>
+   <span>有据率 <b style="color:var(--go-t)">100%</b></span><span>安全合规 <b style="color:var(--go-t)">100%</b></span></div>
   <div class="mono" style="margin-top:8px">金标四维 100% · p95 首答延迟 <b style="color:var(--holo)">39ms</b> · 语料 住客常见问答 385 块全量回归</div></div>
  <div class="sect">待办工单<span class="n">2 条待处理</span></div>
  <div id="svcTk"></div>
- <div class="card" style="border-color:rgba(255,138,138,.45)"><div class="row"><b style="color:var(--warn);font-size:12px;flex:1;min-width:0">SLA 预警 · ···007 已超时</b><span class="chip warn">已升级加急</span></div>
+ <div class="card" style="border-color:rgba(255,77,109,.45)"><div class="row"><b style="color:var(--warn);font-size:12px;flex:1;min-width:0">SLA 预警 · ···007 已超时</b><span class="chip warn">已升级加急</span></div>
   <div style="font-size:11px;color:var(--ink2);margin-top:6px;line-height:1.7">「2021 房 WiFi 频繁掉线」受理超时，系统已升级为加急，值班经理介入督办。</div>
   <button class="btn warn" style="margin-top:9px" onclick="location.hash='tickets'">去工单台处理 ···007</button></div>
  <div class="row" style="gap:8px">
@@ -451,7 +453,7 @@ function renderSvcTk(){
   <div class="mono" style="margin-top:4px">${t.dept?("部门 "+t.dept):"未分派"}${t.who?(" · "+t.who):""} · SLA ${t.sla}</div>
   <div class="row" style="margin-top:9px;gap:6px">
    ${t.st==="处理中"?`<button class="btn ok" style="flex:1" onclick="tkAct(${gi},'done')">✓ 办结</button>`:""}
-   ${t.st==="已分派"?`<button class="btn" style="flex:1;border-color:rgba(69,224,255,.4);color:var(--holo)" onclick="tkAct(${gi},'start')">▶ 开始处理</button><button class="btn ok" style="flex:1" onclick="tkAct(${gi},'done')">✓ 办结</button>`:""}
+   ${t.st==="已分派"?`<button class="btn" style="flex:1;border-color:rgba(77,150,255,.4);color:var(--holo)" onclick="tkAct(${gi},'start')">▶ 开始处理</button><button class="btn ok" style="flex:1" onclick="tkAct(${gi},'done')">✓ 办结</button>`:""}
    ${t.st==="已完成"?`<button class="btn done" style="flex:1">✓ 已办结</button>`:""}
    <button class="btn" style="flex:1" onclick="tkSheet(${gi})">时间线</button></div></div>`}).join("")}
 function tkAct(i,act){
@@ -465,7 +467,7 @@ function tkSheet(i){
  <div class="row" style="align-items:flex-start"><div style="flex:1;min-width:0"><b style="font-size:14px;line-height:1.4" class="clamp2">${t.title}</b><div class="mono" style="margin-top:3px">工单 ${t.id} · ${t.kind}${t.pri?" · "+t.pri:""} · SLA ${t.sla}</div></div>${tkTag(t.st)}${t.rate?`<span class="chip g">满意度 ${t.rate} 星</span>`:""}</div>
  <div class="sect">流转时间线<span class="n">create→assign→start→complete</span></div>
  <div class="tl">${t.tl.map(e=>`<div class="nd"><div class="a">${e[0]}</div><div class="d">${e[1]} · ${e[2]}</div></div>`).join("")}
-  ${fut.map(e=>`<div class="nd fut"><div class="a" style="color:var(--ink3)">${e[0]}</div><div class="d" style="color:var(--ink3)">${e[1]} · ${e[2]}</div></div>`).join("")}</div>
+  ${fut.map(e=>`<div class="nd fut"><div class="a" style="color:var(--ink2)">${e[0]}</div><div class="d" style="color:var(--ink2)">${e[1]} · ${e[2]}</div></div>`).join("")}</div>
  <div class="mono" style="margin-top:10px">状态机：已受理 → 已分派 → 处理中 → 已完成/已关闭；非法跃迁拒绝。</div>
  <button class="btn big" style="margin-top:12px" onclick="closeSheet()">关闭</button>`)}
 
@@ -497,8 +499,8 @@ function kbSearch(){
  const q=($("#kbQ").value||"").trim()||"早餐在哪里吃";
  $("#kbHits").innerHTML=`<div class="mono" style="margin-bottom:7px">「${esc(q)}」命中 ${KB_HITS.length} 块（相关度 0..1 归一化）</div>`+KB_HITS.map(h=>`
   <div style="border:1px solid var(--line);border-radius:10px;background:var(--panel);padding:8px 10px;margin-bottom:7px">
-   <div class="row"><span style="font-size:11px;color:var(--ink2);flex:1;min-width:0" class="clamp1">${h[0]} · ${h[1]}</span><span class="num" style="color:var(--holo);font-size:11px">${h[3]}</span></div>
-   <div style="font-size:11px;color:var(--ink3);margin-top:4px;line-height:1.7" class="clamp2">${h[2]}</div>
+   <div class="row"><span style="font-size:11px;color:var(--ink);flex:1;min-width:0" class="clamp1">${h[0]} · ${h[1]}</span><span class="num" style="color:var(--holo);font-size:11px">${h[3]}</span></div>
+   <div style="font-size:11px;color:var(--ink2);margin-top:4px;line-height:1.7" class="clamp2">${h[2]}</div>
    <div class="mono" style="margin-top:4px">引用块 → 回答必带引用，不臆造（有据率 100%）</div></div>`).join("")}
 
 /* ---- 7. #tickets 工单台 ---- */
@@ -520,65 +522,65 @@ function renderTkList(){
  el.innerHTML=rows.map(t=>{const i=TK.indexOf(t);return `
  <div class="li" style="cursor:pointer;height:auto;min-height:44px;padding:6px 0" onclick="tkSheet(${i})">
   <span class="mono" style="flex:none">${t.id}</span>
-  <div class="t"><div class="clamp1" style="font-size:12px">${t.title}</div>
+  <div class="t"><div class="clamp1" style="font-size:12px;color:var(--ink)">${t.title}</div>
    <div class="mono" style="margin-top:1px">${t.kind}${t.pri?" · "+t.pri:""} · ${t.dept||"未分派"} · SLA ${t.sla}</div></div>
   ${t.overdue?'<span class="chip warn">超时</span>':""}${tkTag(t.st)}</div>`}).join("")}
 
-/* ---- 8. #p6 技能（镜像 /p6 装备库） ---- */
+/* ---- 8. #p6 技能（镜像 /p6 技能中心） ---- */
 VIEWS.p6=()=>`<div class="scr">
- ${shead("技能市场","/p6","<span class=\"chip g\">hotel bundle</span>")}
+ ${shead("技能中心","/p6","<span class=\"chip g\">hotel bundle</span>")}
  <div class="sect">官方套件<span class="n">金边 · 绑定围栏可见</span></div>
- ${D.skillsOfficial.map(s=>`<div class="card" style="border-color:rgba(233,181,88,.45)">
-  <div class="row"><b style="font-size:12px;color:var(--gold2);flex:1;min-width:0">${s[0]}</b><span class="chip g">官方 · 已安装</span></div>
+ ${D.skillsOfficial.map(s=>`<div class="card" style="border-color:rgba(255,36,66,.35)">
+  <div class="row"><b style="font-size:12px;color:var(--goldhi);flex:1;min-width:0">${s[0]}</b><span class="chip g">官方 · 已安装</span></div>
   <div style="font-size:11px;color:var(--ink2);margin-top:6px;line-height:1.7" class="clamp2">${s[2]}</div>
   <div class="mono" style="margin-top:5px">${s[1]} · v2.0</div></div>`).join("")}
  <div class="sect">团队技能<span class="n">银边</span></div>
- ${D.skillsTeam.map(s=>`<div class="card" style="border-color:rgba(196,205,240,.4)">
+ ${D.skillsTeam.map(s=>`<div class="card" style="border-color:rgba(185,169,176,.6)">
   <div class="row"><b style="font-size:12px;flex:1;min-width:0">${s[0]}</b><span class="chip">团队 · v1.2.0</span></div>
   <div style="font-size:11px;color:var(--ink2);margin-top:6px;line-height:1.7" class="clamp2">${s[1]}</div></div>`).join("")}
  <div class="sect">行业共享<span class="n">铜边 · 已脱敏</span></div>
- ${D.skillsIndustry.map(s=>`<div class="card" style="border-color:rgba(200,132,42,.5)">
+ ${D.skillsIndustry.map(s=>`<div class="card" style="border-color:rgba(255,170,51,.5)">
   <div class="row"><b style="font-size:12px;flex:1;min-width:0">${s[0]}</b><span class="chip amber">326 店在用</span></div>
   <div style="font-size:11px;color:var(--ink2);margin-top:6px;line-height:1.7" class="clamp2">${s[1]}</div>
   <button class="btn g" style="margin-top:9px" onclick="this.classList.add('done');this.textContent='✓ 已安装';toast('已安装到工作区，围栏绑定 R1/R2 生效')">安装（绑定 R1/R2）</button></div>`).join("")}
 </div>`;
 
-/* ---- 9. #p8 名册（镜像 /p8 人机混编） ---- */
+/* ---- 9. #p8 团队成员（镜像 /p8 人机混编） ---- */
 VIEWS.p8=()=>`<div class="scr">
- ${shead("班组名册","/p8","<span class=\"chip holo\">人机混编</span>")}
+ ${shead("团队成员","/p8","<span class=\"chip holo\">人机混编</span>")}
  <div class="sect">人类成员<span class="n">${D.members.length} 人 · 三端权限一致</span></div>
  <div class="card" style="padding:0 12px">
   ${D.members.map(m=>`<div class="li">
-   <span style="width:30px;height:30px;flex:none;border-radius:50%;background:linear-gradient(135deg,#2a3a7a,#141c3f);display:flex;align-items:center;justify-content:center;border:1px solid var(--line);font-size:12px">${m.name[0]}</span>
-   <div class="t"><div style="font-size:12px">${m.name}</div><div class="mono">${m.id}</div></div>
+   <span style="width:30px;height:30px;flex:none;border-radius:50%;background:linear-gradient(135deg,#ffe0ec,#ffd0de);display:flex;align-items:center;justify-content:center;border:1px solid var(--line);font-size:12px;color:var(--gold)">${m.name[0]}</span>
+   <div class="t"><div style="font-size:12px;color:var(--ink)">${m.name}</div><div class="mono">${m.id}</div></div>
    <span class="chip ${m.role==="只读"?"":"g"}">${m.role}</span></div>`).join("")}</div>
  <div class="sect">Agent 成员<span class="n">${D.agents.length} 员 · 绩效态色点</span></div>
  <div class="card" style="padding:0 12px">
   ${D.agents.map(a=>`<div class="li" style="cursor:pointer;height:auto;min-height:44px;padding:5px 0" onclick="toast('${a.name} · ${a.v} · 围栏 ${a.fences.join("/")||"只读 · 无写工具"} · 绩效态 ${a.grade}')">
    <span style="width:8px;height:8px;flex:none;border-radius:50%;background:${gradeColor(a.grade)};box-shadow:0 0 8px ${gradeColor(a.grade)}"></span>
-   <div class="t"><div style="font-size:12px">${a.name} <span class="mono">${a.v}</span></div>
+   <div class="t"><div style="font-size:12px;color:var(--ink)">${a.name} <span class="mono">${a.v}</span></div>
     <div class="mono">${a.job}工种 · ${a.ro?"只读 · 无写工具":"围栏 "+a.fences.join("/")}</div></div>
    <span class="chip ${a.grade==="表扬"?"ok":a.grade==="辅导"?"warn":a.grade==="关注"?"amber":"holo"}">${a.grade}</span></div>`).join("")}</div>
- <div class="note">色点口径：青=正常 · 绿=表扬 · 橙=关注 · 红=辅导；夜班窗口 22:00–08:00 自动上线。</div>
+ <div class="note">色点口径：蓝=正常 · 绿=表扬 · 橙=关注 · 红=辅导；夜班窗口 22:00–08:00 自动上线。</div>
 </div>`;
 
-/* ---- 10. #p9 守夜（镜像 /p9 守夜战队频道） ---- */
+/* ---- 10. #p9 夜班中心（镜像 /p9 夜班频道） ---- */
 VIEWS.p9=()=>`<div class="scr">
- ${shead("守夜战队","/p9","<span class=\"chip ok\">夜班 · 运行中</span>")}
+ ${shead("夜班中心","/p9","<span class=\"chip ok\">夜班 · 运行中</span>")}
  <div class="sect">夜班班次卡<span class="n">夜窗 22:00–08:00</span></div>
  <div class="card">
   <div class="row"><b style="font-size:12px;flex:1;min-width:0">昨夜班组 · 7 Agent 在线</b><span class="chip holo">${D.night.fence}</span></div>
   <div class="grid3" style="margin-top:10px">
-   <div class="stat"><div class="v" style="color:var(--go)">${D.night.done}</div><div class="k">已完成</div></div>
-   <div class="stat"><div class="v" style="color:var(--amber)">${D.night.pending}</div><div class="k">待审</div></div>
-   <div class="stat"><div class="v" style="color:var(--warn)">${D.night.need_human}</div><div class="k">需介入</div></div></div>
-  <div class="mono" style="margin-top:9px">积分消耗 ${D.night.credits} / ${D.night.est} 估 · 战报每天 08:30 投递 · 夜班动作 100% 过围栏</div>
+   <div class="stat"><div class="v" style="color:var(--go-t)">${D.night.done}</div><div class="k">已完成</div></div>
+   <div class="stat"><div class="v" style="color:var(--amber-t)">${D.night.pending}</div><div class="k">待审</div></div>
+   <div class="stat"><div class="v" style="color:var(--need)">${D.night.need_human}</div><div class="k">需介入</div></div></div>
+  <div class="mono" style="margin-top:9px">积分消耗 ${D.night.credits} / ${D.night.est} 估 · 日报每天 08:30 投递 · 夜班动作 100% 过围栏</div>
   <div class="row" style="flex-wrap:wrap;gap:5px;margin-top:8px">
    ${D.nightTeam.map(n=>`<span class="chip holo">${n.replace("Agent","")}</span>`).join("")}</div></div>
  <div class="sect">触发器<span class="n">${D.triggers.length} 个 · cron 中文读法</span></div>
  <div class="card" style="padding:0 12px">
   ${D.triggers.map(t=>`<div class="li" style="height:auto;min-height:44px;padding:5px 0">
-   <div class="t"><div class="clamp1" style="font-size:12px">${t.name}</div><div class="mono">${t.id}</div></div>
+   <div class="t"><div class="clamp1" style="font-size:12px;color:var(--ink)">${t.name}</div><div class="mono">${t.id}</div></div>
    <span class="chip g">${cronText(t.cron)}</span></div>`).join("")}</div>
  <button class="btn warn big" onclick="brake(this,'暂停全部夜班动作（≤60 秒全端生效）')">一键暂停夜班班组</button>
 </div>`;
@@ -587,19 +589,19 @@ VIEWS.p9=()=>`<div class="scr">
 VIEWS.me=()=>`<div class="scr">
  ${shead("我的","/me","<span class=\"chip amber\">试用期 · 第 2 天</span>")}
  <div class="card" style="border-color:var(--gline)">
-  <div class="row"><span style="width:40px;height:40px;flex:none;border-radius:50%;background:linear-gradient(135deg,#2a3a7a,#141c3f);display:flex;align-items:center;justify-content:center;border:1px solid var(--gline);font-size:15px;color:var(--gold)">王</span>
+  <div class="row"><span style="width:40px;height:40px;flex:none;border-radius:50%;background:linear-gradient(135deg,#ffe0ec,#ffd0de);display:flex;align-items:center;justify-content:center;border:1px solid var(--gline);font-size:15px;color:var(--gold)">王</span>
    <div style="flex:1;min-width:0"><b style="font-size:14px">王店长</b><div class="mono" style="margin-top:2px">MEM-001 · 经营者 · 云栖酒店（杭州 · 86 间 · 四钻）</div></div></div></div>
  <div class="sect">夜班状态<span class="n">与班组</span></div>
  <div class="card" onclick="location.hash='p9'" style="cursor:pointer">
   <div class="row"><b style="font-size:12px;flex:1">夜班班组 · 运行中</b><span class="chip ok">9 完成</span></div>
-  <div style="font-size:11px;color:var(--ink2);margin-top:7px;line-height:1.8">7 Agent 在线 · 夜窗 22:00–08:00 · 战报每天 08:30 投递<br>昨夜 9 完成 / 3 待审 / 2 需介入 · ${D.night.fence}</div></div>
+  <div style="font-size:11px;color:var(--ink2);margin-top:7px;line-height:1.8">7 Agent 在线 · 夜窗 22:00–08:00 · 日报每天 08:30 投递<br>昨夜 9 完成 / 3 待审 / 2 需介入 · ${D.night.fence}</div></div>
  <div class="sect">治理<span class="n">授权宪章 v1 已签署</span></div>
  <div class="card">
   <div style="font-size:11px;color:var(--ink2);line-height:1.9">自治区间：调价带 85%–115% · 采购上限 ¥5,000<br>模式：试用期（边界降一档执行中）· 熔断：未触发</div>
   <button class="btn warn big" style="margin-top:10px" onclick="brake(this,'撤回全部自治授权')">一键收权</button></div>
  <div class="sect">全部功能<span class="n">九宫格 · 真实路由</span></div>
  <div class="grid9">
-  ${[["Ask 对话","ask","全局常驻","问"],["剧场","theater","/p0","剧"],["战报","p3","/p3","报"],["审批","p4","/p4","审"],["服务前台","svc","/p22","服"],["知识库","kb","/p22/kb","知"],["工单台","tickets","/p22/tk","单"],["技能","p6","/p6","技"],["名册","p8","/p8","册"],["守夜","p9","/p9","夜"],["董事长","p21","/p21","董"],["我的","me","/me","我"]].map(g=>`
+  ${[["Ask 对话","ask","全局常驻","问"],["经营主页","theater","/p0","主"],["日报","p3","/p3","日"],["审批","p4","/p4","审"],["服务前台","svc","/p22","服"],["知识库","kb","/p22/kb","知"],["工单台","tickets","/p22/tk","单"],["技能","p6","/p6","技"],["团队","p8","/p8","团"],["夜班","p9","/p9","夜"],["董事长","p21","/p21","董"],["我的","me","/me","我"]].map(g=>`
   <button class="stat" style="padding:10px 2px" onclick="location.hash='${g[1]}'">
    <div style="font-size:15px;color:var(--gold);font-weight:700">${g[3]}</div>
    <div style="font-size:10px;color:var(--ink);margin-top:4px">${g[0]}</div>
@@ -615,16 +617,16 @@ VIEWS.p21=()=>`<div class="scr">
   <div class="mono" style="margin-top:8px">事件 ···8999 · 依据：CEO Loop 日频晨报 · 模型 mock-hotel-001</div></div>
  <div class="sect">成绩单<span class="n">试用期</span></div>
  <div class="grid3">
-  ${stat("86%","裁决采纳率")}${stat("100%","边界守规率")}${stat("100%","晨报准点率")}</div>
+  ${stat("86%","审批采纳率")}${stat("100%","边界守规率")}${stat("100%","晨报准点率")}</div>
  <div class="card" style="margin-top:10px">
   <div class="row" style="justify-content:space-between;font-size:11px;color:var(--ink2)"><span>采纳 31 / 36</span><span>0 越线</span><span>晨报 9 / 9 准点</span></div>
   <div class="mono" style="margin-top:6px">熔断观察窗 14 天 · KPI 下限 OCC 70%</div></div>
  <div class="sect">待审分层<span class="n">3 层</span></div>
  <div class="card" style="padding:0 12px">
   <div class="li"><span class="t">L2 公司CEO级</span><span class="chip ok">1 件 · 已批准</span></div>
-  <div class="li"><span class="t">L3 集团CEO级</span><span class="chip amber">1 件 · 待裁决</span></div>
-  <div class="li"><span class="t">L4 董事长级</span><span class="chip amber">1 件 · 待裁决</span></div></div>
- <button class="btn g big" onclick="location.hash='p4'">去决断队列（/p4）</button>
+  <div class="li"><span class="t">L3 集团CEO级</span><span class="chip amber">1 件 · 待审批</span></div>
+  <div class="li"><span class="t">L4 董事长级</span><span class="chip amber">1 件 · 待审批</span></div></div>
+ <button class="btn g big" onclick="location.hash='p4'">去审批队列（/p4）</button>
  <div class="sect">治理<span class="n">授权宪章 v1</span></div>
  <div class="card">
   <div style="font-size:11px;color:var(--ink2);line-height:1.9">授予 MEM-001 王店长 · 影子期 3 天已满 · 披露 risk-v1 已签署<br>AI 非法律责任主体 · 授权人承担经营决策责任</div>
