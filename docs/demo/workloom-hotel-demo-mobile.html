@@ -113,7 +113,8 @@ input.inp::placeholder{color:var(--ink3)}
 #sheet .box{position:absolute;left:0;right:0;bottom:0;max-height:78%;overflow-y:auto;border-top:1px solid var(--gline);border-radius:16px 16px 0 0;background:var(--bg);padding:14px 14px 20px}
 #sheet .grab{width:36px;height:4px;border-radius:2px;background:#e9cfd8;margin:0 auto 10px}
 /* 经营主页 */
-.holo-wrap{position:relative;width:100%;height:190px;overflow:hidden}
+.holo-wrap{position:relative;width:100%;height:190px;overflow:hidden;border:1px solid #ebdde0;border-radius:16px;
+ background:radial-gradient(70% 85% at 50% 46%,#fff0f4 0%,rgba(255,240,244,.7) 60%,#fff8fa 100%)}
 .holobody{position:absolute;left:50%;top:52%;transform:translate(-50%,-50%);width:130px;height:130px}
 .holobody .or{position:absolute;border-radius:50%;border:1px solid;transform:rotateX(68deg)}
 @keyframes hspin{to{transform:rotateX(68deg) rotate(360deg)}}
@@ -134,8 +135,14 @@ input.inp::placeholder{color:var(--ink3)}
 .tl .nd .a{font-size:11px;color:var(--ink);font-weight:600}
 .tl .nd .d{font-size:11px;color:var(--ink2);margin-top:2px;line-height:1.6}
 .tl .nd .m{font-size:10px;color:var(--ink2);font-family:ui-monospace,monospace;margin-top:2px}
+/* 模块色块分区（淡色晕染 · 仅背景不做功能色 · 16px 圆角 + 同色深 8% 极浅描边） */
+.tint-peach{background:#fff0f4;border:1px solid #ebdde0;border-radius:16px}
+.tint-blue{background:#f0f7ff;border:1px solid #dce3ea;border-radius:16px}
+.tint-mint{background:#f0fbf6;border:1px solid #dce7e2;border-radius:16px}
+.tint-amber{background:#fff6ec;border:1px solid #ebe2d8;border-radius:16px}
+.tint-grape{background:#f7f2ff;border:1px solid #e3deea;border-radius:16px}
 /* 矮视口适配：视口偏矮时手机壳等比缩小顶对齐，保证底 Tab 完整可见 */
-@media(max-height:905px){#stage{align-items:flex-start;height:auto;min-height:100vh}#phone{transform:scale(.94);transform-origin:top center;flex:none}}
+
 </style>
 </head>
 <body>
@@ -225,8 +232,8 @@ triggers:[
  {id:"tg-ceo-breaker",name:"公司CEO 自治熔断巡检",cron:"45 23 * * *"}],
 skillsOfficial:[
  ["差评危机公关","review-crisis","差评 24h 内响应四段式 SOP，R6/R19 联动必审。"],
- ["价格日历套件","pricing-matrix","未来 90 天价格日历，R1 涨幅上限/R2 保底价红线内置。"],
- ["AI 语音前台套件","phone-concierge","24 小时接听，意图六分类，夜间转值班手机不叫醒店长。"]],
+ ["价格日历技能","pricing-matrix","未来 90 天价格日历，R1 涨幅上限/R2 保底价红线内置。"],
+ ["AI 语音前台技能","phone-concierge","24 小时接听，意图六分类，夜间转值班手机不叫醒店长。"]],
 skillsTeam:[["周一经营复盘","每周一 09:00 自动汇总上周 OCC/ADR/差评/断点，输出复盘纪要（已装给 陈经理）。"]],
 skillsIndustry:[["旺季满房冲刺包","竞对盯价 + 满房溢价节奏 + 差评快反 SOP；华东酒店联盟 326 店在用，采纳率 78%。"]],
 };
@@ -277,7 +284,7 @@ function decide(id,g,btn){
  const gt=g==="approve"?"采纳（权重 1）":g==="edit"?"编辑后采纳（权重 2）":"驳回（权重 3，原因已必填）";
  toast(`已${gt} · 全链留痕（审批 ${id}）`)}
 function aprCard(q,showTier){
- return `<div class="card" data-apr="${q.id}" style="${q.status==="pending"?"border-color:rgba(255,170,51,.4)":""}">
+ return `<div class="card tint-amber" data-apr="${q.id}" style="${q.status==="pending"?"border-color:rgba(255,170,51,.4)":""}">
   <div class="row"><b style="font-size:12px;flex:1;min-width:0;line-height:1.5" class="clamp2">${q.title}</b>
    <span class="apr-st chip ${q.status==="approved"?"ok":q.status==="rejected"?"warn":q.status==="edited"?"holo":"amber"}">${dictText(APPROVAL_STATUS_TEXT,q.status)}</span></div>
   <div class="mono" style="margin-top:5px">${q.action} · 审批 ${q.id} · ${q.rule}${showTier?" · "+tierText(q.tier):""}</div>
@@ -329,16 +336,16 @@ VIEWS.theater=()=>{
 
 /* ---- 2. #ask Ask 对话主屏（默认落地屏 · 全局常驻 · 真实对话而非展开态展示） ---- */
 function askU(t){return `<div style="display:flex;justify-content:flex-end;margin-bottom:10px"><div style="max-width:82%;border:0;border-radius:14px;border-top-right-radius:4px;background:linear-gradient(135deg,var(--gold),var(--gold2));color:#fff;padding:8px 11px;font-size:12px;line-height:1.6">${t}</div></div>`}
-function askA(inner){return `<div style="display:flex;margin-bottom:10px"><div style="max-width:94%;border:1px solid var(--line);border-radius:14px;border-top-left-radius:4px;background:var(--card);padding:8px 11px">${inner}</div></div>`}
+function askA(inner){return `<div style="display:flex;margin-bottom:10px"><div style="max-width:94%;border:1px solid #dce3ea;border-radius:14px;border-top-left-radius:4px;background:#f0f7ff;padding:8px 11px">${inner}</div></div>`}
 /* AI 助手 · 差评应答（带引用/回执） */
 function askAiReview(){return `
  <div class="row" style="gap:6px;margin-bottom:4px"><b style="font-size:11px">AI 助手</b><span class="mono">线程 ···9101</span><span class="chip ok" style="height:18px;font-size:9px">✓ 回执 · 已生效</span></div>
  <div style="font-size:11px;line-height:1.7;color:var(--ink2)">有。携程新增 2 分差评「空调半夜异响，叫醒两次没人来处理」，已 <span class="num">26 小时</span> 未回复（R19 SLA 已升级店长）。评价Agent 已拟好回复草稿，按 R6 差评必审请您拍板（审批 ···8871）。</div>
  <div class="mono" style="margin-top:6px">📖 引用：事件 ···8852 差评快照 · 组织记忆「差评回复结构」</div>
  <button class="btn g" style="margin-top:8px;height:26px;font-size:10px" onclick="location.hash='p4'">→ 去审批（/p4）</button>`}
-/* 总导演 · quest 立项卡（线程号 + 排队中 + →任务中心） */
+/* 前厅 Agent · quest 立项卡（线程号 + 排队中 + →任务中心） */
 function askAiQuest(){return `
- <div class="row" style="gap:6px;margin-bottom:4px"><b style="font-size:11px">总导演已接单</b><span class="mono">线程 ···9106</span><span class="chip amber" style="height:18px;font-size:9px">排队中</span></div>
+ <div class="row" style="gap:6px;margin-bottom:4px"><b style="font-size:11px">前厅 Agent 已接单</b><span class="mono">线程 ···9106</span><span class="chip amber" style="height:18px;font-size:9px">排队中</span></div>
  <div style="font-size:11px;line-height:1.7;color:var(--ink2)">明确任务走 quest：已立项「汇总本周差评」，评价Agent 排队执行，进展我会主动汇报。</div>
  <div style="margin-top:8px;border:1px solid var(--gline);border-radius:10px;background:rgba(255,36,66,.05);padding:8px 10px">
   <div class="row"><b style="font-size:11px;color:var(--goldhi);flex:1;min-width:0">quest 立项卡 · 本周差评汇总</b><span class="chip amber">排队中</span></div>
@@ -393,7 +400,7 @@ function askSend(preset){
 VIEWS.p3=()=>`<div class="scr">
  ${shead("夜班日报","/p3","<span class=\"chip ok\">夜班 · 运行中</span>")}
  <div class="sect">夜班交接 · 今天 08:30<span class="n">日报已生成</span></div>
- <div class="grid3">
+ <div class="grid3 tint-mint" style="padding:8px;margin-bottom:10px">
   <div class="stat" style="border-color:rgba(34,200,138,.4)"><div class="v" style="color:var(--go-t)">${D.night.done}</div><div class="k">已完成</div></div>
   <div class="stat" style="border-color:rgba(255,170,51,.4)"><div class="v" style="color:var(--amber-t)">${D.night.pending}</div><div class="k">待审</div></div>
   <div class="stat" style="border-color:rgba(182,120,255,.4)"><div class="v" style="color:var(--need)">${D.night.need_human}</div><div class="k">需介入</div></div></div>
@@ -401,10 +408,10 @@ VIEWS.p3=()=>`<div class="scr">
  <div class="sect">待审请示 · 三手势<span class="n">采纳 / 改后采纳 / 驳回</span></div>
  ${D.approvals.map(q=>aprCard(q)).join("")}
  <div class="sect">昨夜发生<span class="n">6 条事件</span></div>
- <div class="card"><div class="tl">
+ <div class="card tint-mint"><div class="tl">
   ${D.nightEvents.map(e=>`<div class="nd"><div class="a">${shortId(e[0])} · ${e[1]}</div><div class="d">${e[2]}</div></div>`).join("")}
  </div></div>
- <div class="card" style="border-color:rgba(255,77,109,.4)"><b style="color:var(--warn);font-size:12px">求援卡 · 需介入 2 件</b>
+ <div class="card tint-amber" style="border-color:rgba(255,77,109,.4)"><b style="color:var(--warn);font-size:12px">求援卡 · 需介入 2 件</b>
   <div style="font-size:11px;color:var(--ink2);margin-top:6px;line-height:1.8">① 担保订单客人失联（R5 硬阻断转人工）<br>② 夜间电梯困人误报复核</div>
   <div class="row" style="margin-top:9px;gap:6px"><button class="btn warn" style="flex:1" onclick="this.classList.add('done');this.textContent='✓ 已派单';toast('已派单 → 值班经理，SLA 计时开始')">一键派单</button>
    <button class="btn" style="flex:1" onclick="brake(this,'暂停全部夜班动作（≤60 秒全端生效）')">紧急制动</button></div></div>
@@ -418,7 +425,7 @@ VIEWS.p4=()=>`<div class="scr">
  ${aprCard(D.approvals[2],true)}
  ${aprCard(D.approvals[0],true)}
  <div class="sect">今日已审<span class="n">6 件</span></div>
- <div class="card"><div class="row" style="justify-content:space-between;font-size:11px;color:var(--ink2)">
+ <div class="card tint-mint"><div class="row" style="justify-content:space-between;font-size:11px;color:var(--ink2)">
   <span>采纳 <b class="num">4</b></span><span>编辑后采纳 <b class="num">1</b></span><span>驳回 <b class="num">1</b></span></div>
   <div style="font-size:10px;color:var(--ink2);margin-top:6px">驳回原因已进偏好模式，组织记忆随之校准。</div></div>
 </div>`;
@@ -427,9 +434,9 @@ VIEWS.p4=()=>`<div class="scr">
 VIEWS.svc=()=>`<div class="scr">
  ${shead("服务前台","/p22","<span class=\"chip holo\">有据率 100%</span>")}
  <div class="sect">今日概览<span class="n">2026-08-25</span></div>
- <div class="grid3" style="grid-template-columns:repeat(4,1fr)">
+ <div class="grid3 tint-blue" style="grid-template-columns:repeat(4,1fr);padding:8px;margin-bottom:10px">
   ${stat(6,"今日会话")}${stat("100%","有据率")}${stat(1,"SLA 超时")}${stat(5,"满意度")}</div>
- <div class="card" style="margin-top:10px;border-color:var(--gline)"><div class="row"><b style="font-size:12px;flex:1">金标评测 · v2.0-faq385</b><span class="mono">385 问回归</span></div>
+ <div class="card tint-mint" style="margin-top:10px;border-color:var(--gline)"><div class="row"><b style="font-size:12px;flex:1">金标评测 · v2.0-faq385</b><span class="mono">385 问回归</span></div>
   <div class="row" style="justify-content:space-between;margin-top:8px;font-size:11px;color:var(--ink2)">
    <span>忠实度 <b style="color:var(--go-t)">100%</b></span><span>答案相关性 <b style="color:var(--go-t)">100%</b></span></div>
   <div class="row" style="justify-content:space-between;margin-top:5px;font-size:11px;color:var(--ink2)">
@@ -437,7 +444,7 @@ VIEWS.svc=()=>`<div class="scr">
   <div class="mono" style="margin-top:8px">金标四维 100% · p95 首答延迟 <b style="color:var(--holo)">39ms</b> · 语料 住客常见问答 385 块全量回归</div></div>
  <div class="sect">待办工单<span class="n">2 条待处理</span></div>
  <div id="svcTk"></div>
- <div class="card" style="border-color:rgba(255,77,109,.45)"><div class="row"><b style="color:var(--warn);font-size:12px;flex:1;min-width:0">SLA 预警 · ···007 已超时</b><span class="chip warn">已升级加急</span></div>
+ <div class="card tint-amber" style="border-color:rgba(255,77,109,.45)"><div class="row"><b style="color:var(--warn);font-size:12px;flex:1;min-width:0">SLA 预警 · ···007 已超时</b><span class="chip warn">已升级加急</span></div>
   <div style="font-size:11px;color:var(--ink2);margin-top:6px;line-height:1.7">「2021 房 WiFi 频繁掉线」受理超时，系统已升级为加急，值班经理介入督办。</div>
   <button class="btn warn" style="margin-top:9px" onclick="location.hash='tickets'">去工单台处理 ···007</button></div>
  <div class="row" style="gap:8px">
@@ -475,7 +482,7 @@ function tkSheet(i){
 VIEWS.kb=()=>`<div class="scr">
  ${shead("知识中台","/p22/kb","<span class=\"chip ok\">3 集合 · 生效中</span>")}
  <div class="sect">知识集合<span class="n">3 个</span></div>
- <div class="card" onclick="toast('住客常见问答：10 文档 385 块，AI 服务前台核心知识源')" style="cursor:pointer">
+ <div class="card tint-blue" onclick="toast('住客常见问答：10 文档 385 块，AI 服务前台核心知识源')" style="cursor:pointer">
   <div class="row"><b style="font-size:12px;flex:1">住客常见问答</b><span class="chip g">10 文档 · <span class="num">385</span> 块</span></div>
   <div class="row" style="flex-wrap:wrap;gap:5px;margin-top:9px">
    ${KB_FAQ.map(c=>`<span class="chip">${c[0]} <b class="num" style="font-size:10px">${c[1]}</b></span>`).join("")}</div>
@@ -490,7 +497,7 @@ VIEWS.kb=()=>`<div class="scr">
    <button class="btn g" style="flex:1" onclick="this.classList.add('done');this.textContent='✓ 已抓取';toast('抓取完成：结构化条目入知识库')">⚡ 立即抓取</button>
    <button class="btn" style="flex:1" onclick="toast('指纹比对：官网暂无更新')">◎ 检查更新</button></div></div>
  <div class="sect">试检索<span class="n">混合检索投影</span></div>
- <div class="card">
+ <div class="card tint-blue">
   <div class="row"><input class="inp" id="kbQ" value="早餐在哪里吃" onkeydown="if(event.key==='Enter')kbSearch()">
    <button class="btn g" style="height:34px" onclick="kbSearch()">检索</button></div>
   <div id="kbHits" style="margin-top:9px"></div></div>
@@ -529,13 +536,13 @@ function renderTkList(){
 /* ---- 8. #p6 技能（镜像 /p6 技能中心） ---- */
 VIEWS.p6=()=>`<div class="scr">
  ${shead("技能中心","/p6","<span class=\"chip g\">hotel bundle</span>")}
- <div class="sect">官方套件<span class="n">金边 · 绑定围栏可见</span></div>
- ${D.skillsOfficial.map(s=>`<div class="card" style="border-color:rgba(255,36,66,.35)">
+ <div class="sect">官方技能<span class="n">金边 · 绑定围栏可见</span></div>
+ ${D.skillsOfficial.map(s=>`<div class="card tint-grape" style="border-color:rgba(255,36,66,.35)">
   <div class="row"><b style="font-size:12px;color:var(--goldhi);flex:1;min-width:0">${s[0]}</b><span class="chip g">官方 · 已安装</span></div>
   <div style="font-size:11px;color:var(--ink2);margin-top:6px;line-height:1.7" class="clamp2">${s[2]}</div>
   <div class="mono" style="margin-top:5px">${s[1]} · v2.0</div></div>`).join("")}
  <div class="sect">团队技能<span class="n">银边</span></div>
- ${D.skillsTeam.map(s=>`<div class="card" style="border-color:rgba(185,169,176,.6)">
+ ${D.skillsTeam.map(s=>`<div class="card tint-grape" style="border-color:rgba(185,169,176,.6)">
   <div class="row"><b style="font-size:12px;flex:1;min-width:0">${s[0]}</b><span class="chip">团队 · v1.2.0</span></div>
   <div style="font-size:11px;color:var(--ink2);margin-top:6px;line-height:1.7" class="clamp2">${s[1]}</div></div>`).join("")}
  <div class="sect">行业共享<span class="n">铜边 · 已脱敏</span></div>
@@ -549,13 +556,13 @@ VIEWS.p6=()=>`<div class="scr">
 VIEWS.p8=()=>`<div class="scr">
  ${shead("团队成员","/p8","<span class=\"chip holo\">人机混编</span>")}
  <div class="sect">人类成员<span class="n">${D.members.length} 人 · 三端权限一致</span></div>
- <div class="card" style="padding:0 12px">
+ <div class="card tint-grape" style="padding:0 12px">
   ${D.members.map(m=>`<div class="li">
    <span style="width:30px;height:30px;flex:none;border-radius:50%;background:linear-gradient(135deg,#ffe0ec,#ffd0de);display:flex;align-items:center;justify-content:center;border:1px solid var(--line);font-size:12px;color:var(--gold)">${m.name[0]}</span>
    <div class="t"><div style="font-size:12px;color:var(--ink)">${m.name}</div><div class="mono">${m.id}</div></div>
    <span class="chip ${m.role==="只读"?"":"g"}">${m.role}</span></div>`).join("")}</div>
  <div class="sect">Agent 成员<span class="n">${D.agents.length} 员 · 绩效态色点</span></div>
- <div class="card" style="padding:0 12px">
+ <div class="card tint-grape" style="padding:0 12px">
   ${D.agents.map(a=>`<div class="li" style="cursor:pointer;height:auto;min-height:44px;padding:5px 0" onclick="toast('${a.name} · ${a.v} · 围栏 ${a.fences.join("/")||"只读 · 无写工具"} · 绩效态 ${a.grade}')">
    <span style="width:8px;height:8px;flex:none;border-radius:50%;background:${gradeColor(a.grade)};box-shadow:0 0 8px ${gradeColor(a.grade)}"></span>
    <div class="t"><div style="font-size:12px;color:var(--ink)">${a.name} <span class="mono">${a.v}</span></div>
@@ -568,7 +575,7 @@ VIEWS.p8=()=>`<div class="scr">
 VIEWS.p9=()=>`<div class="scr">
  ${shead("夜班中心","/p9","<span class=\"chip ok\">夜班 · 运行中</span>")}
  <div class="sect">夜班班次卡<span class="n">夜窗 22:00–08:00</span></div>
- <div class="card">
+ <div class="card tint-mint">
   <div class="row"><b style="font-size:12px;flex:1;min-width:0">昨夜班组 · 7 Agent 在线</b><span class="chip holo">${D.night.fence}</span></div>
   <div class="grid3" style="margin-top:10px">
    <div class="stat"><div class="v" style="color:var(--go-t)">${D.night.done}</div><div class="k">已完成</div></div>
@@ -578,7 +585,7 @@ VIEWS.p9=()=>`<div class="scr">
   <div class="row" style="flex-wrap:wrap;gap:5px;margin-top:8px">
    ${D.nightTeam.map(n=>`<span class="chip holo">${n.replace("Agent","")}</span>`).join("")}</div></div>
  <div class="sect">触发器<span class="n">${D.triggers.length} 个 · cron 中文读法</span></div>
- <div class="card" style="padding:0 12px">
+ <div class="card tint-blue" style="padding:0 12px">
   ${D.triggers.map(t=>`<div class="li" style="height:auto;min-height:44px;padding:5px 0">
    <div class="t"><div class="clamp1" style="font-size:12px;color:var(--ink)">${t.name}</div><div class="mono">${t.id}</div></div>
    <span class="chip g">${cronText(t.cron)}</span></div>`).join("")}</div>
@@ -592,7 +599,7 @@ VIEWS.me=()=>`<div class="scr">
   <div class="row"><span style="width:40px;height:40px;flex:none;border-radius:50%;background:linear-gradient(135deg,#ffe0ec,#ffd0de);display:flex;align-items:center;justify-content:center;border:1px solid var(--gline);font-size:15px;color:var(--gold)">王</span>
    <div style="flex:1;min-width:0"><b style="font-size:14px">王店长</b><div class="mono" style="margin-top:2px">MEM-001 · 经营者 · 云栖酒店（杭州 · 86 间 · 四钻）</div></div></div></div>
  <div class="sect">夜班状态<span class="n">与班组</span></div>
- <div class="card" onclick="location.hash='p9'" style="cursor:pointer">
+ <div class="card tint-mint" onclick="location.hash='p9'" style="cursor:pointer">
   <div class="row"><b style="font-size:12px;flex:1">夜班班组 · 运行中</b><span class="chip ok">9 完成</span></div>
   <div style="font-size:11px;color:var(--ink2);margin-top:7px;line-height:1.8">7 Agent 在线 · 夜窗 22:00–08:00 · 日报每天 08:30 投递<br>昨夜 9 完成 / 3 待审 / 2 需介入 · ${D.night.fence}</div></div>
  <div class="sect">治理<span class="n">授权宪章 v1 已签署</span></div>
@@ -612,17 +619,17 @@ VIEWS.me=()=>`<div class="scr">
 VIEWS.p21=()=>`<div class="scr">
  ${shead("董事长视图","/p21","<span class=\"chip amber\">试用期 · 第 2 天</span>")}
  <div class="sect">CEO 汇报<span class="n">晨报 · 每天 08:30</span></div>
- <div class="card" style="border-color:var(--gline)">
+ <div class="card tint-peach" style="border-color:var(--gline)">
   <div style="font-size:12px;line-height:1.8">${D.briefing}</div>
   <div class="mono" style="margin-top:8px">事件 ···8999 · 依据：CEO Loop 日频晨报 · 模型 mock-hotel-001</div></div>
  <div class="sect">成绩单<span class="n">试用期</span></div>
- <div class="grid3">
+ <div class="grid3 tint-blue" style="padding:8px;margin-bottom:10px">
   ${stat("86%","审批采纳率")}${stat("100%","边界守规率")}${stat("100%","晨报准点率")}</div>
  <div class="card" style="margin-top:10px">
   <div class="row" style="justify-content:space-between;font-size:11px;color:var(--ink2)"><span>采纳 31 / 36</span><span>0 越线</span><span>晨报 9 / 9 准点</span></div>
   <div class="mono" style="margin-top:6px">熔断观察窗 14 天 · KPI 下限 OCC 70%</div></div>
  <div class="sect">待审分层<span class="n">3 层</span></div>
- <div class="card" style="padding:0 12px">
+ <div class="card tint-amber" style="padding:0 12px">
   <div class="li"><span class="t">L2 公司CEO级</span><span class="chip ok">1 件 · 已批准</span></div>
   <div class="li"><span class="t">L3 集团CEO级</span><span class="chip amber">1 件 · 待审批</span></div>
   <div class="li"><span class="t">L4 董事长级</span><span class="chip amber">1 件 · 待审批</span></div></div>

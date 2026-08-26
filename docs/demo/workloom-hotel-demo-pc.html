@@ -136,7 +136,7 @@ input.inp::placeholder,textarea.inp::placeholder{color:var(--ink3)}
 #askrail{position:fixed;top:0;right:0;bottom:0;width:var(--railw);z-index:65;display:flex;flex-direction:column;
  border-left:1px solid var(--gline);background:rgba(255,255,255,.96);backdrop-filter:blur(8px);
  box-shadow:-20px 0 60px rgba(214,0,42,.10)}
-#askrail .ar-head{display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--line);padding:10px 12px}
+#askrail .ar-head{display:flex;align-items:center;gap:8px;border-bottom:1px solid #ebdde0;padding:10px 12px;background:#fff0f4}
 #askrail .ar-logo{position:relative;width:32px;height:32px;flex:none;border-radius:50%;
  background:linear-gradient(135deg,#ff7a9e,#ff2442 45%,#ff2442);box-shadow:0 0 16px rgba(255,36,66,.22);
  display:flex;align-items:center;justify-content:center;border:0;cursor:pointer}
@@ -181,7 +181,8 @@ input.inp::placeholder,textarea.inp::placeholder{color:var(--ink3)}
 #askrail.rail-min .ar-x{border:1px solid var(--line);border-radius:6px;padding:4px 6px;font-size:11px;color:var(--ink3);background:transparent}
 #askrail.rail-min .ar-x:hover{border-color:var(--gline);color:var(--gold)}
 /* 经营主页 */
-.theater{position:relative;min-height:560px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px}
+.theater{position:relative;min-height:560px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px;margin:6px 14px 0;border:1px solid #ebdde0;border-radius:18px;
+ background:radial-gradient(55% 50% at 50% 30%,#fff0f4 0%,rgba(255,240,244,.65) 55%,rgba(255,240,244,.25) 100%),linear-gradient(180deg,#fff7f9,#fff0f4)}
 .holo-wrap{position:relative;width:420px;height:280px}
 .holobody{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);width:200px;height:200px}
 .holobody .or{position:absolute;border-radius:50%;border:1px solid;transform:rotateX(68deg)}
@@ -190,7 +191,7 @@ input.inp::placeholder,textarea.inp::placeholder{color:var(--ink3)}
 .sat small{position:absolute;top:14px;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:10px;color:var(--ink3);opacity:0;transition:.2s}
 .sat:hover small{opacity:1}
 .bubble{max-width:640px;width:100%;border:1px solid var(--gline);border-radius:12px;background:rgba(255,255,255,.94);padding:12px 16px;font-size:13px;line-height:1.7;backdrop-filter:blur(6px)}
-.askcard{border:1px solid rgba(255,170,51,.4);border-radius:14px;background:rgba(255,170,51,.06);padding:12px;box-shadow:0 0 40px rgba(255,170,51,.06)}
+.askcard{border:1px solid #e8d4ba;border-radius:14px;background:#fff6ec;padding:12px;box-shadow:0 0 40px rgba(255,170,51,.06)}
 .subt{overflow:hidden;border-top:1px solid rgba(255,36,66,.12);background:rgba(255,240,244,.85);padding:6px 0}
 .subt .in{display:flex;gap:32px;white-space:nowrap;font-size:11px;color:var(--ink3);animation:tk 36s linear infinite;width:max-content}
 #ceremony{position:absolute;inset:0;z-index:40;background:#fff5f7;display:flex;align-items:center;justify-content:center;transition:opacity .7s}
@@ -212,6 +213,12 @@ input.inp::placeholder,textarea.inp::placeholder{color:var(--ink3)}
 .diff-del{text-decoration:line-through;color:var(--warn);opacity:.75}
 .diff-add{color:#0e7a4a;background:rgba(34,200,138,.10);border-radius:3px;padding:0 3px}
 .note{border-left:2px solid var(--gline);padding:6px 12px;font-size:11px;color:var(--ink3);background:rgba(255,36,66,.04);border-radius:0 6px 6px 0}
+/* 模块色块分区（淡色晕染 · 仅背景不做功能色 · 16px 圆角 + 同色深 8% 极浅描边） */
+.tint-peach{background:#fff0f4;border:1px solid #ebdde0;border-radius:16px}
+.tint-blue{background:#f0f7ff;border:1px solid #dce3ea;border-radius:16px}
+.tint-mint{background:#f0fbf6;border:1px solid #dce7e2;border-radius:16px}
+.tint-amber{background:#fff6ec;border:1px solid #ebe2d8;border-radius:16px}
+.tint-grape{background:#f7f2ff;border:1px solid #e3deea;border-radius:16px}
 @media(max-width:1100px){.col-l,.col-r{display:none}}
 </style>
 </head>
@@ -320,7 +327,7 @@ fences:[
  ["R13","涉费用客服承诺必审","review"],["R14","赔偿类事项必审","review"],["R15","直播/新渠道内容首发必审","review"],
  ["R16","夜班高危动作禁区","block"],["R17","跨渠道价格倒挂防护","block"],["R18","超售漏售防护","block"],
  ["R19","差评响应 SLA 升级","review"],["R20","布草损耗异常","review"]],
-skills:[["morning-briefing","晨会简报套件"],["night-audit-suite","夜审套件"],["ota-operations","OTA 运营套件"],["overbooking-parity-guard","超售与价格倒挂看门狗套件"],["phone-concierge","AI 语音前台套件"],["pricing-matrix","价格日历套件"],["review-crisis","差评危机公关"],["review-asset-mining","评价资产化套件"],["incident-postmortem","断点根因闭环套件"],["inspection-suite","全域巡检套件"],["checkin-checkout","入住退房全流程套件"],["maintenance-dispatch","维修闭环套件"],["room-service-dispatch","客房派单套件"],["channel-reconciler","渠道对账师"],["content-marketing","内容营销套件"],["customer-service","客服套件"],["finance-reporting","经营报表套件"],["guest-profile-crm","客户画像套件"],["handover-manager","交接班套件"],["inventory-procurement","库存采购套件"],["retention-manager","客户留存套件"],["revenue-manager","收益管理专家"],["safety-compliance","安全合规套件"],["staff-scheduler","排班套件"],["ai-live-assistant","AI 直播助手套件"]],
+skills:[["morning-briefing","晨会简报技能"],["night-audit-suite","夜审技能"],["ota-operations","OTA 运营技能"],["overbooking-parity-guard","超售与价格倒挂看门狗技能"],["phone-concierge","AI 语音前台技能"],["pricing-matrix","价格日历技能"],["review-crisis","差评危机公关"],["review-asset-mining","评价资产化技能"],["incident-postmortem","断点根因闭环技能"],["inspection-suite","全域巡检技能"],["checkin-checkout","入住退房全流程技能"],["maintenance-dispatch","维修闭环技能"],["room-service-dispatch","客房派单技能"],["channel-reconciler","渠道对账师"],["content-marketing","内容营销技能"],["customer-service","客服技能"],["finance-reporting","经营报表技能"],["guest-profile-crm","客户画像技能"],["handover-manager","交接班技能"],["inventory-procurement","库存采购技能"],["retention-manager","客户留存技能"],["revenue-manager","收益管理专家"],["safety-compliance","安全合规技能"],["staff-scheduler","排班技能"],["ai-live-assistant","AI 直播助手技能"]],
 channels:[
  {name:"美团",kind:"OTA",price:458,parity:true,status:"online",isNew:false},
  {name:"携程",kind:"OTA",price:458,parity:true,status:"online",isNew:false},
@@ -492,7 +499,7 @@ VIEWS.floor=()=>`
   <a class="hbtn" href="#p1">工作台</a>
  </div>
  <div style="font-size:11px;color:var(--ink3);margin:6px 0">点员工看绩效 · 点举手者原地审批　<span class="route-tag" style="margin:0">真实路由 /（P0 办公区视图 · Floor.tsx）</span></div>
- <canvas id="floorcv"></canvas>
+ <div class="tint-blue" style="padding:10px"><canvas id="floorcv"></canvas></div>
  <div class="legend" style="margin-top:8px">
   <span><i style="background:#22c88a"></i>工作中（打字）</span>
   <span><i style="background:#4d96ff"></i>请示中（举手 · 聚光灯）</span>
@@ -517,9 +524,9 @@ function drawFloor(){const cv=$("#floorcv");if(!cv)return;const ctx=cv.getContex
  const w=cv.offsetWidth,h=cv.offsetHeight,gw=10,gh=8;
  const tile=Math.min(w*0.92*2/(gw+gh),h*0.78*4/(gw+gh)),th=tile/2,cx=w/2,cy=h*0.08;
  const iso=(x,y)=>({sx:cx+(x-y)*tile/2,sy:cy+(x+y)*th/2});
- const g=ctx.createLinearGradient(0,0,w,h);g.addColorStop(0,"#fff1e9");g.addColorStop(1,"#ffe8f0");
+ const g=ctx.createLinearGradient(0,0,w,h);g.addColorStop(0,"#e8f2ff");g.addColorStop(1,"#f0f7ff");
  const p=[iso(0,0),iso(gw,0),iso(gw,gh),iso(0,gh)];
- ctx.beginPath();ctx.moveTo(p[0].sx,p[0].sy);p.slice(1).forEach(q=>ctx.lineTo(q.sx,q.sy));ctx.closePath();ctx.fillStyle=g;ctx.fill();ctx.strokeStyle="#ffd0dc";ctx.lineWidth=2;ctx.stroke();
+ ctx.beginPath();ctx.moveTo(p[0].sx,p[0].sy);p.slice(1).forEach(q=>ctx.lineTo(q.sx,q.sy));ctx.closePath();ctx.fillStyle=g;ctx.fill();ctx.strokeStyle="#c3d8ef";ctx.lineWidth=2;ctx.stroke();
  ctx.strokeStyle="rgba(51,38,43,.07)";ctx.lineWidth=1;
  for(let i=1;i<gw;i++){const a=iso(i,0),b=iso(i,gh);ctx.beginPath();ctx.moveTo(a.sx,a.sy);ctx.lineTo(b.sx,b.sy);ctx.stroke()}
  for(let j=1;j<gh;j++){const a=iso(0,j),b=iso(gw,j);ctx.beginPath();ctx.moveTo(a.sx,a.sy);ctx.lineTo(b.sx,b.sy);ctx.stroke()}
@@ -569,15 +576,15 @@ VIEWS.p1=()=>shell(
   ${D.threads.map(threadCard).join("")}`,
  `${pageHead("/p1","工作台 · 晨报","系统分隔线 → 交接班卡 → KPI 投影 → 巡检雷达推送；底部航线设定台")}
   <div class="mono" style="margin-bottom:10px">── 今天 08:30 · 夜班交接 ──</div>
-  <div class="card panel">
+  <div class="card panel tint-mint">
    <div class="row" style="justify-content:space-between;margin-bottom:10px"><b>夜班交接班卡</b><span class="tag ok">日报已生成 · ${D.night.pkg}</span></div>
    <div class="grid4">${stat(D.night.done,"已完成")}${stat(D.night.pending,"待审")}${stat(D.night.need_human,"需介入")}${stat(D.night.credits,"积分消耗")}</div>
    <div class="row" style="margin-top:10px"><button class="btn g sm" data-flip="已采纳 ✓|批量采纳仅低风险项，已写回事件库">批量采纳（低风险）</button>
    <button class="btn sm" onclick="location.hash='p3'">去掌上日报逐条审（/p3）</button></div>
   </div>
-  <div class="card panel"><div class="ptitle">KPI 投影 · 门店档案 history_curve（2026-08）</div>
+  <div class="card panel tint-blue"><div class="ptitle">KPI 投影 · 门店档案 history_curve（2026-08）</div>
    <div class="row" style="justify-content:space-around">${gauge(.78,"OCC")}${gauge(.62,"ADR ¥496")}${gauge(.48,"RevPAR ¥387")}</div></div>
-  <div class="card panel" style="border-color:rgba(255,77,109,.4)"><div class="ptitle" style="color:var(--warn)">巡检雷达推送 · 07:00 检出</div>
+  <div class="card panel tint-amber" style="border-color:rgba(255,77,109,.4)"><div class="ptitle" style="color:var(--warn)">巡检雷达推送 · 07:00 检出</div>
    <div class="card" style="margin-bottom:8px;border-color:rgba(255,77,109,.35)"><b style="color:var(--warn)">高危</b> · 携程 2 分差评已 26 小时未回复（R19 SLA 升级）
     <div class="row" style="margin-top:6px"><button class="btn warn sm" data-flip="已派单 ✓|差评处置已派单 → 评价Agent，SLA 计时中">一键派单</button></div></div>
    <div class="card" style="border-color:rgba(255,170,51,.35)"><b style="color:var(--amberdk)">中危</b> · 飞猪渠道价格倒挂 4.4%（R17）· 亲子房库存未同步（R18）
@@ -599,7 +606,7 @@ VIEWS.p2=()=>shell(navLeft("p2"),
    <div class="step"><div class="ic">系</div><div class="bd"><span class="mono">E-SEED-8846 · 系统</span><div style="margin-top:4px;color:var(--ink2)">巡检检出：携程新增 2 分差评「空调半夜异响，叫醒两次没人来处理」（事件 ${shortId("E-SEED-8846")}）</div></div></div>
    <div class="step"><div class="ic">评</div><div class="bd"><span class="mono">E-SEED-8852 · 评价Agent</span><div style="margin-top:4px;color:var(--ink2)">已调取订单 o-8820 与维修工单 ···001，核实：8306 空调异响属实，工程部已检修。</div></div></div>
    <div class="step"><div class="ic">围</div><div class="bd"><span class="mono">围栏判定</span><div style="margin-top:4px"><span class="tag amber">R6 差评必审 → 人工复核</span> <span class="tag amber">R19 差评响应 SLA 升级（已 26 小时）</span></div></div></div>
-   <div class="step"><div class="ic">草</div><div class="bd"><span class="mono">E-SEED-8871 · 回复草稿（待您审批）</span>
+   <div class="step"><div class="ic">草</div><div class="bd tint-amber"><span class="mono">E-SEED-8871 · 回复草稿（待您审批）</span>
     <div style="margin-top:6px;font-size:12px;line-height:1.8">
      <div class="diff-del">（旧草稿）深表歉意，我们赠送您全额房费补偿……</div>
      <div class="diff-add">（新草稿）非常抱歉给您带来不好的体验，我们已核实空调异响问题并安排检修，当晚值班响应不及时我们诚恳致歉。已为您升级服务跟进通道，欢迎随时联系值班经理。</div>
@@ -622,10 +629,10 @@ VIEWS.p2=()=>shell(navLeft("p2"),
 VIEWS.p3=()=>`<div style="display:flex;justify-content:center;padding:20px">
  <div style="width:430px">
   ${pageHead("/p3","掌上日报 · 夜班交接","移动端监督者视角 · 计数头与工作台交接班卡同源")}
-  <div class="grid3" style="margin-bottom:12px">${stat(D.night.done,"已完成")}${stat(D.night.pending,"待审")}${stat(D.night.need_human,"需介入")}</div>
+  <div class="grid3 tint-mint" style="margin-bottom:12px;padding:10px">${stat(D.night.done,"已完成")}${stat(D.night.pending,"待审")}${stat(D.night.need_human,"需介入")}</div>
   <div class="note" style="margin-bottom:12px">批量采纳仅低风险项（人工复核/硬阻断不进批量）；待审超 24 小时将虚框提醒，高危项无超时放行。</div>
   ${D.approvals.map(q=>`
-  <div class="card panel" data-apr="${q.id}">
+  <div class="card panel tint-amber" data-apr="${q.id}">
    <div class="row" style="justify-content:space-between"><b>${q.title}</b><span class="apr-st tag ${q.status==="approved"?"ok":"amber"}">${dictText(APPROVAL_STATUS_TEXT,q.status)}</span></div>
    <div style="font-size:11px;color:var(--ink3);margin-top:4px">事件 ${shortId(q.ev)} · 审批 ${shortId(q.id)} · ${q.rule} · ${q.who}</div>
    <div style="font-size:12px;color:var(--ink2);margin-top:6px">${q.rationale}</div>
@@ -635,7 +642,7 @@ VIEWS.p3=()=>`<div style="display:flex;justify-content:center;padding:20px">
     <button class="btn sm" data-flip="已改派 ✓|编辑后采纳已写回（权重 2）">✎ 编辑后采纳</button>
     <button class="btn warn sm" onclick="decide('${q.id}','reject')">✕ 驳回</button></div>
   </div>`).join("")}
-  <div class="card" style="border-color:rgba(255,77,109,.4)"><b style="color:var(--warn)">求援卡 · 需介入 2 件</b>
+  <div class="card tint-amber" style="border-color:rgba(255,77,109,.4)"><b style="color:var(--warn)">求援卡 · 需介入 2 件</b>
    <div style="font-size:12px;color:var(--ink2);margin-top:6px">① 担保订单客人失联（R5 硬阻断转人工）　② 夜间电梯困人误报复核</div>
    <div class="row" style="margin-top:8px"><button class="btn warn sm" data-flip="已派单 ✓|已派单 → 值班经理，SLA 计时开始">一键派单</button>
    <button class="btn sm" style="margin-left:auto" id="brake2">⛔ 紧急制动（暂停全部夜班动作）</button></div></div>
@@ -646,11 +653,11 @@ VIEWS.p4=()=>shell(navLeft("p4"),
  `${pageHead("/p4","审批中心 · 统一审查面板","待办收件箱 = approvals 统一投影；高危双人审、越围栏必审、其余逐步审")}
   <div class="grid2">
    <div>${D.approvals.map((q,i)=>`
-    <div class="card hov panel" onclick="toast('已选中：${q.title}')" style="${i===0?"border-color:var(--gline)":""}">
+    <div class="card hov panel tint-amber" onclick="toast('已选中：${q.title}')" style="${i===0?"border-color:var(--gline)":""}">
      <div class="row" style="justify-content:space-between"><b style="font-size:12px">${q.title}</b><span class="tag ${q.status==="approved"?"ok":"amber"}">${dictText(APPROVAL_STATUS_TEXT,q.status)}</span></div>
      <div class="mono" style="margin-top:4px">${actionText(q.action)} · ${shortId(q.id)} · ${q.tier==="l4_chairman"?"L4 董事长级":q.tier==="l3_fleet"?"L3 集团CEO级":"L2 公司CEO级"}</div></div>`).join("")}
     <div class="note">今日已审 6 件：采纳 4 / 编辑后采纳 1 / 驳回 1（驳回原因已进偏好模式）</div></div>
-   <div class="card">
+   <div class="card tint-amber">
     <div class="ptitle">审批卡 · ${D.approvals[0].title}</div>
     <table class="dt"><tr><th style="width:70px">变更</th><th>前</th><th>后</th></tr>
      <tr><td>回复文案</td><td class="diff-del">（未回复）</td><td class="diff-add">已核实空调异响并安排检修，当晚响应不及时诚恳致歉……</td></tr>
@@ -692,21 +699,21 @@ VIEWS.p5=()=>shell(navLeft("p5"),
 
 /* ---- P6 技能中心 ---- */
 VIEWS.p6=()=>shell(navLeft("p6"),
- `${pageHead("/p6","技能中心 · 技能市场","官方套件（金边）/ 团队技能（银边）/ 行业共享（铜边 · 已脱敏 ✓）")}
-  <div class="card panel" style="border-color:rgba(77,150,255,.4)"><b style="color:var(--holo)">意识系统建议</b>
+ `${pageHead("/p6","技能中心 · 技能市场","官方技能（金边）/ 团队技能（银边）/ 行业共享（铜边 · 已脱敏 ✓）")}
+  <div class="card panel tint-blue" style="border-color:rgba(77,150,255,.4)"><b style="color:var(--holo)">意识系统建议</b>
    <span style="color:var(--ink2)">「飞猪首图发布」近 7 天人工触发 4 次，建议固化为触发器。</span>
    <div class="row" style="margin-top:8px"><button class="btn g sm" data-flip="已固化 ✓|已生成触发器草稿，待审批后生效">一键固化</button>
    <button class="btn sm" data-flip="已生成 ✓|草稿已进入「打造新技能」向导">生成草稿</button>
    <button class="btn warn sm" data-flip="已驳回 ✓|已降权，30 天内不再建议">驳回</button></div></div>
-  <div class="ptitle">官方套件 · hotel bundle（25 技能 · 绑定围栏可见）</div>
-  <div class="grid4 panel">${D.skills.map((s,i)=>`
+  <div class="ptitle">官方技能 · 酒店行业包（25 技能 · 绑定围栏可见）</div>
+  <div class="grid4 panel tint-grape" style="padding:10px">${D.skills.map((s,i)=>`
    <div class="card hov" style="border-color:rgba(255,36,66,.45)" data-toast="技能「${s[1]}」已安装 · 调用 ${ 40+((i*37)%160)} 次/30 天">
     <div style="font-size:12px;color:var(--goldhi)">${s[1]}</div>
-    <div class="mono" style="margin-top:4px">官方套件 · v${1+(i%3)}.0 · 已安装</div>
+    <div class="mono" style="margin-top:4px">官方技能 · v${1+(i%3)}.0 · 已安装</div>
     <div style="margin-top:4px"><span class="tag" style="font-size:10px">围栏 ${D.fences[i%20][0]}</span></div></div>`).join("")}</div>
   <div class="ptitle">团队技能（银边）</div>
   <div class="grid2 panel">
-   <div class="card" style="border-color:rgba(196,205,240,.4)"><b>周一经营复盘</b> <span class="tag">v1.2.0 · 已装给 陈经理</span>
+   <div class="card tint-grape" style="border-color:rgba(196,205,240,.4)"><b>周一经营复盘</b> <span class="tag">v1.2.0 · 已装给 陈经理</span>
     <div style="font-size:11px;color:var(--ink3);margin-top:4px">团队沉淀：每周一 09:00 自动汇总上周 OCC/ADR/差评/断点，输出复盘纪要。</div></div>
   </div>
   <div class="ptitle">行业共享（铜边 · 已脱敏 ✓ · 调用与采纳率公开）</div>
@@ -719,36 +726,36 @@ VIEWS.p6=()=>shell(navLeft("p6"),
   </div>`,
  `<div class="glabel">已装给谁</div>
   <div class="card" style="font-size:12px;line-height:2.2;color:var(--ink2)">
-   价格日历套件 → 调价Agent<br>差评危机公关 → 评价Agent<br>超售与价格倒挂看门狗套件 → 竞对Agent<br>AI 语音前台套件 → 语音前台Agent<br>全域巡检套件 → 巡检Agent
+   价格日历技能 → 调价Agent<br>差评危机公关 → 评价Agent<br>超售与价格倒挂看门狗技能 → 竞对Agent<br>AI 语音前台技能 → 语音前台Agent<br>全域巡检技能 → 巡检Agent
    <hr style="border-color:var(--line);margin:8px 0"><a class="holo-tag" href="#p8">团队对账 →/p8</a></div>`);
 
 /* ---- P8 团队 ---- */
 VIEWS.p8=()=>shell(navLeft("p8"),
  `${pageHead("/p8","团队成员 · 人机混编","Agent 是一等公民：方头像 + 版本角标 + 段位；30 天工时事件库聚合投影")}
   <div class="ptitle">人类成员</div>
-  <div class="grid3 panel">${D.members.map(m=>`
+  <div class="grid3 panel tint-grape" style="padding:10px">${D.members.map(m=>`
    <div class="card hov" data-toast="成员 ${m.name}（${m.id}）权限：${m.role} · 三端一致">
     <div class="row"><span style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#ff7a9e,#ff2442);display:flex;align-items:center;justify-content:center;color:#fff">${m.name[0]}</span>
     <div><b>${m.name}</b><div class="mono">${m.id}</div></div><span class="tag ${m.role==="只读"?"":"g"}" style="margin-left:auto">${m.role}</span></div>
     <div class="mono" style="margin-top:6px">近 24h 有事件留痕 · 在线</div></div>`).join("")}</div>
   <div class="ptitle">Agent 成员（夜班窗口 22:00–08:00 自动上线 · 青脉冲）</div>
-  <div class="grid4">${D.agents.map(a=>`
+  <div class="grid4 tint-grape" style="padding:10px">${D.agents.map(a=>`
    <div class="card hov" onclick='agentCard(${JSON.stringify(a.key)})'>
     <div class="row"><span style="width:30px;height:30px;border-radius:6px;background:linear-gradient(135deg,#e3f0ff,#ffffff);border:1px solid rgba(77,150,255,.4);display:flex;align-items:center;justify-content:center;font-size:11px;color:#2a6ac8">AI</span>
     <div><b style="font-size:12px">${a.name}</b><div class="mono">${a.v}</div></div>
     <span class="tag ${a.grade==="表扬"?"ok":a.grade==="辅导"?"warn":a.grade==="关注"?"amber":"holo"}" style="margin-left:auto;font-size:10px">${a.grade}</span></div>
     <div style="margin-top:6px">${a.ro?'<span class="tag ok" style="font-size:10px">只读 · 无写工具</span>':a.fences.map(f=>`<span class="tag" style="font-size:10px;margin-right:3px">${f}</span>`).join("")}</div>
     <div class="mono" style="margin-top:5px">30 天动作 ${40+a.key.length*7} · 采纳率 ${88+(a.key.length%9)}%</div></div>`).join("")}</div>`,
- `<div class="glabel">加装 preset</div>
+ `<div class="glabel">加装员工</div>
   <div class="card" style="font-size:12px;line-height:2">
-   <button class="btn g sm" style="width:100%" data-toast="舰船换装坞（/p7）：行业 Bundle 分发入口">＋ 加装 preset（/p7）</button>
+   <button class="btn g sm" style="width:100%" data-toast="舰船换装坞（/p7）：行业 Bundle 分发入口">＋ 加装员工（/p7）</button>
    <hr style="border-color:var(--line);margin:10px 0">
    <span style="color:var(--ink3)">加载校验失败标红 + 原因；非管理员隐藏加装/派遣入口（隐藏非置灰）。</span></div>`);
 
 /* ---- P9 夜班中心 ---- */
 VIEWS.p9=()=>shell(navLeft("p9"),
  `${pageHead("/p9","夜班中心频道 · AI–AI 协作现场","夜班动作 100% 过围栏，无例外通道；越围栏项「未生效·待审批」")}
-  <div class="card panel" style="border-color:rgba(255,77,109,.45)"><b style="color:var(--warn)">需介入卡 · 担保订单客人失联（R5 硬阻断）</b>
+  <div class="card panel tint-amber" style="border-color:rgba(255,77,109,.45)"><b style="color:var(--warn)">需介入卡 · 担保订单客人失联（R5 硬阻断）</b>
    <div style="font-size:12px;color:var(--ink2);margin-top:4px">订单 o-8816 担保到店未至，电话 3 次未接；夜间不确定不执行，请您定夺。</div>
    <div class="row" style="margin-top:8px"><button class="btn warn sm" data-flip="已派单 ✓|已派单 → 值班经理，G5 计时留痕">一键派单</button>
    <button class="btn sm" data-toast="已转远程店长视频核身（二级兜底）">远程视频核身</button></div></div>
@@ -759,7 +766,7 @@ VIEWS.p9=()=>shell(navLeft("p9"),
      ["E-SEED-8922","对账Agent","夜间对账三轮比对完成，差异 0 笔","receipt"],
      ["E-SEED-8931","语音前台Agent","夜间来电 9 通：知识问答 6 · 转值班手机 3","receipt"],
      ["E-SEED-8940","内容Agent","飞猪首图定时发布已排期 06:00（R15 已审）","receipt"]].map(m=>`
-   <div class="step"><div class="ic">${m[1][0]}</div><div class="bd">
+   <div class="step"><div class="ic">${m[1][0]}</div><div class="bd tint-mint">
     <div class="row"><span class="mono">${shortId(m[0])} · ${m[1]}</span>
     ${m[3]==="pending"?'<span class="tag amber" style="margin-left:auto">未生效 · 待审批</span>':m[3]==="fence"?'<span class="tag warn" style="margin-left:auto">围栏动作 · 回执已留痕</span>':'<span class="tag ok" style="margin-left:auto">回执 ✓</span>'}</div>
     <div style="margin-top:4px;color:var(--ink2);font-size:12px">${m[2]}</div></div></div>`).join("")}
@@ -768,15 +775,15 @@ VIEWS.p9=()=>shell(navLeft("p9"),
  `<div class="glabel">班组状态</div>
   <div class="card" style="margin-bottom:10px"><div class="ptitle">成员 · 7 Agent 在线</div>
    ${["巡检Agent","评价Agent","对账Agent","竞对Agent","语音前台Agent","内容Agent","前台Agent"].map(n=>`<div class="row" style="margin:5px 0"><span style="width:7px;height:7px;border-radius:50%;background:var(--holo);box-shadow:0 0 6px var(--holo);animation:pl 2s infinite"></span><span style="color:var(--ink2)">${n}</span><span class="mono" style="margin-left:auto">夜班窗口内</span></div>`).join("")}</div>
-  <div class="card" style="margin-bottom:10px"><div class="ptitle">峰谷计量</div>${hbar("积分消耗",81,"96 / 118 估")}${hbar("已完成",64,"9 / 14 项")}</div>
+  <div class="card tint-blue" style="margin-bottom:10px"><div class="ptitle">峰谷计量</div>${hbar("积分消耗",81,"96 / 118 估")}${hbar("已完成",64,"9 / 14 项")}</div>
   <div class="card"><div class="ptitle">围栏快照</div><div style="font-size:12px;color:var(--ink2)">hotel-baseline/v3（当晚版本可回溯）</div>
   <div class="ptitle" style="margin-top:10px">交接班预告</div><div style="font-size:12px;color:var(--ink2)">每天 08:30 → 掌上日报（/p3）</div></div>`);
 
 /* ---- P10 断点看板 ---- */
 VIEWS.p10=()=>shell(navLeft("p10"),
  `${pageHead("/p10","断点看板 · 无人酒店三级兜底","根因强制四分类：数据缺失 / 规则未覆盖 / 能力边界 / 真随机；同类周均 ≥3 次 → 固化建议")}
-  <div class="grid4 panel">${stat(4,"本周断点")}${stat("3 级","兜底层级")}${stat("100%","当周闭环率")}${stat("-33%","周频收敛")}</div>
-  <div class="card panel"><div class="ptitle">断点流（incident.report / incident.resolve 事件投影）</div>
+  <div class="grid4 panel tint-blue" style="padding:10px">${stat(4,"本周断点")}${stat("3 级","兜底层级")}${stat("100%","当周闭环率")}${stat("-33%","周频收敛")}</div>
+  <div class="card panel tint-blue"><div class="ptitle">断点流（incident.report / incident.resolve 事件投影）</div>
    <table class="dt"><tr><th>事件</th><th>断点</th><th>兜底处置</th><th>根因分类</th><th>修复与下周同类预估</th></tr>
    ${D.incidents.map(x=>`<tr><td class="mono">${shortId(x.ev)}</td><td>${x.bp}</td><td>${x.fb}</td>
     <td><span class="tag ${x.rc==="真随机"?"":x.rc==="数据缺失"?"holo":x.rc==="规则未覆盖"?"amber":"warn"}">${x.rc}</span></td><td>${x.fix}</td></tr>`).join("")}</table></div>
@@ -795,15 +802,15 @@ VIEWS.p10=()=>shell(navLeft("p10"),
 VIEWS.p11=()=>shell(navLeft("p11"),
  `${pageHead("/p11","价格健康 · 倒挂熔断与超售防护","检出 → 处置 → 结果三段式修复留痕（R17/R18）")}
   <div class="grid2 panel">
-   <div class="card" style="border-color:rgba(255,77,109,.45)"><div class="ptitle" style="color:var(--warn)">倒挂熔断 · R17</div>
+   <div class="card tint-amber" style="border-color:rgba(255,77,109,.45)"><div class="ptitle" style="color:var(--warn)">倒挂熔断 · R17</div>
     <div style="font-size:12px;line-height:2;color:var(--ink2)">检出：飞猪 <b style="color:var(--warn)">¥438</b> 低于携程/美团 <b>¥458</b>（价差 4.4%）<br>
     处置：硬阻断 → 飞猪渠道报价自动下架<br>结果：竞对Agent 修复 <span class="diff-add">¥438 → ¥458</span>，已恢复上架（回执 ${shortId("E-SEED-8908")}）</div>
     <div class="row" style="margin-top:8px"><button class="btn sm" data-flip="已恢复 ✓|恢复库存上架：飞猪报价 ¥458 已重新上架">恢复上架</button></div></div>
-   <div class="card" style="border-color:rgba(255,170,51,.4)"><div class="ptitle" style="color:var(--amberdk)">超售·同步失败防护 · R18</div>
+   <div class="card tint-amber" style="border-color:rgba(255,170,51,.4)"><div class="ptitle" style="color:var(--amberdk)">超售·同步失败防护 · R18</div>
     <div style="font-size:12px;line-height:2;color:var(--ink2)">检出：亲子房 PMS 同步失败，可售数存疑<br>
     处置：亲子房全渠道临时关房（防超售）<br>结果：对账Agent 重试同步成功，已自动开房（回执 ${shortId("E-SEED-8911")}）</div>
     <div class="row" style="margin-top:8px"><button class="btn sm" data-flip="已同步 ✓|同步库存：亲子房可售 6 间已回写全渠道">手动重试同步</button></div></div></div>
-  <div class="card"><div class="ptitle">连续调价事件流（白班 R1 / 夜班 R7，含前后值与依据）</div>
+  <div class="card tint-blue"><div class="ptitle">连续调价事件流（白班 R1 / 夜班 R7，含前后值与依据）</div>
    <table class="dt"><tr><th>时间</th><th>动作</th><th>执行者</th><th>前 → 后</th><th>命中规则</th><th>依据</th></tr>
    <tr><td class="mono">昨日 16:40</td><td>${actionText("调整房价")}</td><td>调价Agent</td><td>¥588 → <b class="diff-add">¥628</b></td><td><span class="tag ok">R1 自动放行</span></td><td>竞对西湖云舍 ¥640 · 组织记忆「周五弹性规律」</td></tr>
    <tr><td class="mono">昨夜 23:12</td><td>${actionText("调整房价")}</td><td>调价Agent（夜班）</td><td>¥458 → <b class="diff-add">¥462</b></td><td><span class="tag ok">R7 微调上限内</span></td><td>夜班窗口微调 ≤2%</td></tr>
@@ -820,7 +827,7 @@ VIEWS.p13=()=>shell(navLeft("p13"),
   <div class="row" style="margin-bottom:12px"><input class="inp" placeholder="搜索订单号 / 客人 / 房号" onkeydown="if(event.key==='Enter')toast('已按「'+this.value+'」过滤订单事件')"><button class="btn" data-toast="已刷新订单事件投影">刷新</button></div>
   <div class="grid2">
    <div>${D.orders.map((o,i)=>`
-    <div class="card hov panel" onclick="document.querySelectorAll('.ordcard').forEach(c=>c.style.borderColor='');this.style.borderColor='var(--gold)';document.getElementById('trail-${o.id}').scrollIntoView({behavior:'smooth'})" style="${i===0?"border-color:var(--gline)":""}">
+    <div class="card hov panel tint-blue" onclick="document.querySelectorAll('.ordcard').forEach(c=>c.style.borderColor='');this.style.borderColor='var(--gold)';document.getElementById('trail-${o.id}').scrollIntoView({behavior:'smooth'})" style="${i===0?"border-color:var(--gline)":""}">
      <div class="row" style="justify-content:space-between"><b>${o.guest}</b><span class="tag ${o.st==="在住"?"holo":"ok"}">${o.st}</span></div>
      <div class="mono" style="margin-top:4px">订单 ${o.id} · ${o.room} · ${o.amount}</div></div>`).join("")}
     <div class="note">订单状态再不用打电话问技术——每环含执行者（人/Agent）、耗时、围栏判定与依据。</div></div>
@@ -840,7 +847,7 @@ VIEWS.p13=()=>shell(navLeft("p13"),
 /* ---- P14 渠道运营 ---- */
 VIEWS.p14=()=>shell(navLeft("p14"),
  `${pageHead("/p14","渠道运营 · 一屏巡检","5 渠道价格/库存/活动/图评；渠道「三失」（失控/失时/失准）在此收口")}
-  <div class="grid3 panel">${D.channels.map(c=>`
+  <div class="grid3 panel tint-blue" style="padding:10px">${D.channels.map(c=>`
    <div class="card" style="${c.parity===false?"border-color:rgba(255,77,109,.45)":""}">
     <div class="row" style="justify-content:space-between"><b>${c.name}</b><span class="tag ${c.parity===false?"warn":"ok"}">${c.parity===false?"倒挂":c.parity?"平价":"内容渠道"}</span></div>
     <div class="mono" style="margin-top:4px">${c.kind}${c.isNew?" · 新渠道（R3/R15 首发必审）":""}</div>
@@ -862,8 +869,8 @@ VIEWS.p14=()=>shell(navLeft("p14"),
 /* ---- P15 口碑与差评 ---- */
 VIEWS.p15=()=>shell(navLeft("p15"),
  `${pageHead("/p15","口碑与差评 · 防线前移","差评防御窗口前移到在住期间；处置案例沉淀组织记忆")}
-  <div class="grid4 panel">${stat(2,"在途差评")}${stat("26h","最长未回复（SLA 24h）")}${stat(1,"已升级店长")}${stat("96%","30 天回复率")}</div>
-  <div class="card panel"><div class="ptitle">差评 SLA · 处置留痕</div>
+  <div class="grid4 panel tint-blue" style="padding:10px">${stat(2,"在途差评")}${stat("26h","最长未回复（SLA 24h）")}${stat(1,"已升级店长")}${stat("96%","30 天回复率")}</div>
+  <div class="card panel tint-amber"><div class="ptitle">差评 SLA · 处置留痕</div>
    ${D.reviews.map(r=>`
    <div class="card" style="margin-bottom:8px;${r.score<=2?"border-color:rgba(255,77,109,.45)":""}">
     <div class="row"><b>${r.ch} · ${"★".repeat(r.score)}${"☆".repeat(5-r.score)}</b><span class="mono">${r.id}</span>
@@ -882,11 +889,11 @@ VIEWS.p15=()=>shell(navLeft("p15"),
 /* ---- P16 语音前台 ---- */
 VIEWS.p16=()=>shell(navLeft("p16"),
  `${pageHead("/p16","AI 语音前台 · 24 小时接听","意图六分类 / FAQ 知识库自生长 / 三级转人工；夜间默认转值班手机而非叫醒店长")}
-  <div class="grid4 panel">${stat(D.calls.total,"本周来电")}${stat("96%","AI 直接解答率")}${stat("3 通","转值班手机")}${stat("0 次","夜间叫醒店长")}</div>
+  <div class="grid4 panel tint-blue" style="padding:10px">${stat(D.calls.total,"本周来电")}${stat("96%","AI 直接解答率")}${stat("3 通","转值班手机")}${stat("0 次","夜间叫醒店长")}</div>
   <div class="grid2">
    <div class="card"><div class="ptitle">意图六分类（本周）</div>
     ${D.calls.intents.map(x=>hbar(x[0],Math.round(x[1]/D.calls.total*100),x[1]+" 通",x[0]==="转人工"?"c":"")).join("")}</div>
-   <div class="card"><div class="ptitle">FAQ 知识库 · 自生长</div>
+   <div class="card tint-blue"><div class="ptitle">FAQ 知识库 · 自生长</div>
     ${D.calls.faq.map(f=>`<div style="margin-bottom:8px"><b style="font-size:12px">${f[0]}</b> <span class="tag ok">已确认</span><div style="font-size:11px;color:var(--ink3)">${f[1]}</div></div>`).join("")}
     <div class="ptitle" style="margin-top:10px">待确认候选（周萃取 · 每周日 03:00）</div>
     ${D.calls.pending.map(f=>`<div class="row" style="margin-bottom:6px"><span style="font-size:12px;color:var(--ink2)">${f[0]}</span><span class="mono">周命中 ${f[1]}</span>
@@ -904,7 +911,7 @@ VIEWS.p16=()=>shell(navLeft("p16"),
 /* ---- P17 前厅与客房 ---- */
 VIEWS.p17=()=>shell(navLeft("p17"),
  `${pageHead("/p17","前厅与客房 · 入退 / 排房 / 派单质检 / 布草","清洁质量画像回流派单权重：急单给高画像服务员")}
-  <div class="grid4 panel">${stat(D.rooms.arrive,"今日预抵")}${stat(D.rooms.inhouse,"在住")}${stat(D.rooms.departed,"已退房")}${stat(D.rooms.cleaning,"清扫中")}</div>
+  <div class="grid4 panel tint-blue" style="padding:10px">${stat(D.rooms.arrive,"今日预抵")}${stat(D.rooms.inhouse,"在住")}${stat(D.rooms.departed,"已退房")}${stat(D.rooms.cleaning,"清扫中")}</div>
   <div class="card panel"><div class="ptitle">入退看板 + 智能排房（智能排房 事件投影）</div>
    <table class="dt"><tr><th>房号</th><th>房型</th><th>状态</th><th>客人 / 预抵</th><th>操作</th></tr>
    ${D.rooms.assign.map(r=>`<tr><td class="mono">${r[0]}</td><td>${r[1]}</td>
@@ -925,7 +932,7 @@ VIEWS.p17=()=>shell(navLeft("p17"),
 /* ---- P18 多店驾驶舱 ---- */
 VIEWS.p18=()=>shell(navLeft("p18"),
  `${pageHead("/p18","多店驾驶舱 · 一屏管多店","owner-cockpit：管理半径 3 → 5–8 家（同租户各工作区 RLS 轮询）")}
-  <div class="card panel"><table class="dt"><tr><th>门店</th><th>房量</th><th>OCC</th><th>ADR</th><th>RevPAR</th><th>昨夜班组</th><th>夜班包</th></tr>
+  <div class="card panel tint-blue"><table class="dt"><tr><th>门店</th><th>房量</th><th>OCC</th><th>ADR</th><th>RevPAR</th><th>昨夜班组</th><th>夜班包</th></tr>
    ${D.stores.map(s=>`<tr><td><b>${s.name}</b></td><td>${s.rooms} 间</td>
     <td><b style="color:${s.occ>=0.8?"var(--go)":s.occ>=0.75?"var(--goldhi)":"var(--amber)"}">${Math.round(s.occ*100)}%</b></td>
     <td>¥${s.adr}</td><td>¥${s.revpar}</td>
@@ -946,14 +953,14 @@ VIEWS.p19=()=>shell(navLeft("p19"),
   <div class="row panel" style="flex-wrap:wrap">
    ${[["channel_revenue","本月各渠道收入与订单量"],["occ_trend","近 30 天 OCC/ADR/RevPAR 走势"],["price_attribution","调价动作与依据归因"]].map((q,i)=>`
    <button class="kbd-chip" style="${i===0?"border-color:var(--gold);color:var(--gold)":""}" onclick="document.querySelectorAll('.rpt').forEach((r,j)=>r.style.display=j===${i}?'block':'none')">${q[1]}</button>`).join("")}</div>
-  <div class="card rpt"><div class="ptitle">本月各渠道收入与订单量（8 月 · 目标 ¥108,000）</div>
+  <div class="card rpt tint-blue"><div class="ptitle">本月各渠道收入与订单量（8 月 · 目标 ¥108,000）</div>
    <table class="dt"><tr><th>渠道</th><th>收入</th><th>占比</th><th>订单量</th></tr>
    ${D.reports.channel_revenue.map(r=>`<tr><td>${r[0]}</td><td><b style="color:var(--goldhi)">${r[1]}</b></td><td>${r[2]}</td><td>${r[3]}</td></tr>`).join("")}</table>
    ${D.reports.channel_revenue.map(r=>hbar(r[0],parseInt(r[2]),r[1])).join("")}</div>
-  <div class="card rpt" style="display:none"><div class="ptitle">近 30 天 OCC / ADR / RevPAR 走势</div>
+  <div class="card rpt tint-blue" style="display:none"><div class="ptitle">近 30 天 OCC / ADR / RevPAR 走势</div>
    <table class="dt"><tr><th>月份</th><th>OCC</th><th>ADR</th><th>RevPAR</th></tr>
    ${D.reports.occ_trend.map(r=>`<tr><td class="mono">${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td><b style="color:var(--goldhi)">${r[3]}</b></td></tr>`).join("")}</table></div>
-  <div class="card rpt" style="display:none"><div class="ptitle">调价动作与依据归因</div>
+  <div class="card rpt tint-blue" style="display:none"><div class="ptitle">调价动作与依据归因</div>
    <table class="dt"><tr><th>执行者</th><th>动作</th><th>依据</th><th>结果</th></tr>
    ${D.reports.price_attribution.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td><b style="color:var(--go)">${r[3]}</b></td></tr>`).join("")}</table></div>`,
  `<div class="glabel">收益分析 · BI</div>
@@ -963,9 +970,9 @@ VIEWS.p19=()=>shell(navLeft("p19"),
 
 /* ---- P20 门店档案 ---- */
 VIEWS.p20=()=>shell(navLeft("p20"),
- `${pageHead("/p20","门店档案全景 · 五类 21 字段组","Agent 生成内容前必读三要素之一；forbidden 硬约束独立成列")}
+ `${pageHead("/p20","门店档案全景 · 全景档案","Agent 生成内容前必读三要素之一；forbidden 硬约束独立成列")}
   <div class="grid2">
-   <div class="card"><div class="ptitle">基础类</div>
+   <div class="card tint-blue"><div class="ptitle">基础类</div>
     <table class="dt">
      <tr><th style="width:90px">门店</th><td>云栖酒店 · 杭州 · 86 间 · 四钻 · 示例PMS</td></tr>
      <tr><th>品牌口径</th><td>真诚克制，不夸大、不承诺档案外补偿；禁用词「最低价全网保证」「百分百满意」</td></tr>
@@ -976,7 +983,7 @@ VIEWS.p20=()=>shell(navLeft("p20"),
      <tr><th>硬约束</th><td><span class="tag warn">升级承诺禁止</span> <span class="tag warn">安全事件禁区</span> <span class="tag warn">夜班高危禁区</span></td></tr>
      <tr><th>审批矩阵</th><td>退款 &gt;¥500 必审 · 采购 &gt;¥1000 必审 · 赔偿仅复核 · 夜班高危阻断</td></tr>
      <tr><th>赔偿政策</th><td>善意补偿上限 ¥200 · 退款走对账Agent 通道</td></tr></table></div>
-   <div class="card"><div class="ptitle">业务类</div>
+   <div class="card tint-blue"><div class="ptitle">业务类</div>
     <table class="dt">
      <tr><th style="width:90px">保底价</th><td>¥380；区间：雅致大床 398–688 / 亲子双床 468–788 / 商旅大床 358–588</td></tr>
      <tr><th>佣金</th><td>美团 10% · 携程 12% · 飞猪 8% · 直连 0%</td></tr>
@@ -1003,7 +1010,7 @@ VIEWS.p20=()=>shell(navLeft("p20"),
 VIEWS.p21=()=>shell(navLeft("p21"),
  `${pageHead("/p21","董事长视图 · 数字CEO 治理","治理状态 / 简报流 / 待审分层 / 成绩单 / 节拍手动触发 / 深度授权 / 一键撤回")}
   <div class="grid2 panel">
-   <div class="card"><div class="ptitle">治理状态 · 授权宪章 v1</div>
+   <div class="card tint-mint"><div class="ptitle">治理状态 · 授权宪章 v1</div>
     <div class="row" style="flex-wrap:wrap;gap:6px"><span class="tag amber">模式：试用期（第 2 天 / 共 7 天）</span><span class="tag ok">熔断：未触发</span><span class="tag">披露 risk-v1 已签署</span></div>
     <div style="font-size:12px;color:var(--ink2);line-height:2;margin-top:8px">
      自治区间：调价带 85%–115% · 采购上限 ¥5,000 · 活动上限 ¥2,000<br>
@@ -1014,10 +1021,10 @@ VIEWS.p21=()=>shell(navLeft("p21"),
     <div class="bubble" style="max-width:none">${D.briefing}</div>
     <div class="mono" style="margin-top:6px">事件 ${shortId("E-SEED-8999")} · 依据：CEO Loop 日频晨报 · 模型 mock-hotel-001</div></div></div>
   <div class="grid3 panel">
-   <div class="card"><div class="ptitle">待审分层</div>
+   <div class="card tint-amber"><div class="ptitle">待审分层</div>
     ${hbar("L2 公司CEO级",30,"1 件（已批准）")}${hbar("L3 集团CEO级",60,"1 件")}${hbar("L4 董事长级",90,"1 件","c")}
     <button class="btn g sm" style="margin-top:6px" onclick="location.hash='p4'">去审批中心（/p4）</button></div>
-   <div class="card"><div class="ptitle">成绩单 · 试用期</div>
+   <div class="card tint-blue"><div class="ptitle">成绩单 · 试用期</div>
     ${hbar("审批采纳率",86,"31 / 36")}${hbar("边界守规率",100,"0 越线")}${hbar("晨报准点率",100,"9 / 9","c")}</div>
    <div class="card"><div class="ptitle">节拍手动触发</div>
     ${D.triggers.slice(6).map(t=>`<div class="row" style="margin:6px 0"><span style="font-size:12px;color:var(--ink2)">${t.name}</span><span class="mono">${cronText(t.cron)}</span>
@@ -1091,23 +1098,23 @@ VIEWS.p22=()=>shell(
     <button class="kbd-chip" title="送物清单、餐饮、康体 SPA 等服务与价格" onclick="p22ColFilter('cat',this)">商品与服务目录 · 3 文档</button>
     <button class="kbd-chip" title="官网抓取来源" onclick="p22ColFilter('site',this)">官网源 · 每天 03:00 抓取</button></div>
    <div class="ptitle">文档（<span id="p22DocCount">13</span>）</div>
-   <div class="card panel" style="padding:0;overflow:hidden"><table class="dt">
+   <div class="card panel tint-blue" style="padding:0;overflow:hidden"><table class="dt">
     <tr><th>标题</th><th>来源</th><th>版本</th><th>状态</th><th>切块数</th><th></th></tr>
     <tbody id="p22DocRows"></tbody></table></div>
    <div class="ptitle">待审区（待审核 · 1）</div>
-   <div class="card panel" style="border-color:rgba(255,170,51,.35)" id="p22PendDoc">
+   <div class="card panel tint-amber" style="border-color:rgba(255,170,51,.35)" id="p22PendDoc">
     <div class="row"><span style="font-size:16px">▧</span>
      <div style="flex:1"><b style="font-size:12px">云栖酒店住客服务须知 <span class="mono">v2</span></b>
       <div class="mono" style="margin-top:2px">手工录入 · 提交于 今天 09:12</div></div>
      <button class="btn ok sm" onclick="p22Approve()">✓ 批准生效</button></div>
     <div class="mono" style="margin-top:6px">批准即发布：文档状态/五元事件/approvals 审批行三写同一 COMMIT（围栏动作「发布知识文档」，审批台可见）。</div></div>
    <div class="grid2">
-    <div class="card"><div class="ptitle">◎ 官网源（登记 / 立即抓取 / 检查更新）</div>
+    <div class="card tint-blue"><div class="ptitle">◎ 官网源（登记 / 立即抓取 / 检查更新）</div>
      <div class="row"><input class="inp" value="https://www.yunqi-hotel.example" readonly><button class="btn g sm" data-toast="抓取源已登记：···site（指纹 fp-a91c）">登记</button></div>
      <div class="row" style="margin-top:8px"><button class="btn sm" data-flip="已抓取 ✓|抓取完成：结构化条目入知识库（LLM 结构化正常）">⚡ 立即抓取</button>
       <button class="btn sm" data-toast="指纹比对：官网暂无更新">◎ 检查更新</button></div>
      <div class="mono" style="margin-top:8px">调度 每天 03:00 · 状态 <span style="color:var(--go)">运行中</span></div></div>
-    <div class="card"><div class="ptitle">◎ 试检索（混合检索投影）</div>
+    <div class="card tint-blue"><div class="ptitle">◎ 试检索（混合检索投影）</div>
      <div class="row"><input class="inp" id="p22QIn" value="早餐在哪里吃" onkeydown="if(event.key==='Enter')p22Search()"><button class="btn g sm" onclick="p22Search()">检索</button></div>
      <div id="p22Hits" style="margin-top:8px"></div></div></div></div>
 
@@ -1121,7 +1128,7 @@ VIEWS.p22=()=>shell(
 
   <div id="p22-st" style="display:none">
    <div class="ptitle">今日运营总览（2026-08-25 · 会话/工单聚合投影）</div>
-   <div class="grid3 panel">${[["今日会话","6"],["问答量","8"],["平均置信度","93%"],["有据率（带引用回答）","100%"],["平均首答延迟","25ms"],["今日工单","8"],["工单完结率","38%"],["SLA 超时","1"],["满意度均分","5"]].map(s=>stat(s[1],s[0])).join("")}</div>
+   <div class="grid3 panel tint-blue" style="padding:10px">${[["今日会话","6"],["问答量","8"],["平均置信度","93%"],["有据率（带引用回答）","100%"],["平均首答延迟","25ms"],["今日工单","8"],["工单完结率","38%"],["SLA 超时","1"],["满意度均分","5"]].map(s=>stat(s[1],s[0])).join("")}</div>
    <div class="ptitle">今日会话（6 · 住客/会员多客群）</div>
    <div class="card panel" style="padding:0;overflow:hidden"><table class="dt">
     <tr><th>住客</th><th>客群/会员</th><th>渠道</th><th>主题</th><th>意图</th><th>置信度</th><th>状态</th></tr>
@@ -1130,7 +1137,7 @@ VIEWS.p22=()=>shell(
    <div class="card panel" style="padding:0;overflow:hidden"><table class="dt">
     <tr><th>编号</th><th>住客</th><th>内容</th><th>状态</th></tr>
     ${P22_NOTIF.map(n=>`<tr><td class="mono">${n[0]}</td><td>${n[1]}</td><td>${n[2]}</td><td><span class="tag ok">已送达</span></td></tr>`).join("")}</table></div>
-   <div class="card panel" style="border-color:var(--gline)"><div class="ptitle">金标评测 · v2.0-faq385（385 问回归）</div>
+   <div class="card panel tint-mint" style="border-color:var(--gline)"><div class="ptitle">金标评测 · v2.0-faq385（385 问回归）</div>
     <div class="grid4">${["忠实度","答案相关性","有据率","安全合规"].map(k=>`<div class="stat"><div class="v" style="color:var(--go)">100%</div><div class="k">${k}</div></div>`).join("")}</div>
     <div class="mono" style="margin-top:8px">p95 首答延迟 <b style="color:var(--holo)">39ms</b> · 满意度 <b style="color:var(--gold)">5.0</b> · 语料 住客常见问答 385 块全量回归</div></div>
    <div class="card"><div class="ptitle">解读</div>
@@ -1182,7 +1189,7 @@ function p22TkTag(st){const c=st==="已完成"?"ok":st==="处理中"?"holo":st==
 function p22RenderTk(f){
  const rows=P22_TK.filter(t=>!f||t.st===f);
  $("#p22TkList").innerHTML=rows.map(t=>{const i=P22_TK.indexOf(t);return `
-  <div class="card" style="margin-bottom:8px;${t.overdue?"border-color:rgba(255,77,109,.5)":""}">
+  <div class="card" style="margin-bottom:8px;${t.overdue?"border-color:rgba(255,77,109,.5);background:#fff6ec":""}">
    <div class="row" style="flex-wrap:wrap">
     <span class="mono">${t.id}</span>${p22TkTag(t.st)}<span class="tag">${t.kind}</span>
     ${t.pri?`<span class="tag amber">${t.pri}</span>`:""}
@@ -1226,16 +1233,16 @@ VIEWS.ask=()=>`<div style="padding:18px 20px 8px">
    ["② 可收起为 56px 图标条","头部「⇥」收起：金色场记板圆钮 + 竖排 ASK·AI 助手 + 待批红 badge，主区同步回弹；点圆钮或「⇤」随时展开——是收起，不是隐藏。"],
    ["③ 移动端底部首 Tab 即对话","B 端移动壳底部 Tab 第一个就是「对话」，与 PC 通栏同一消息流、同一分流口径（demo 移动版已镜像）。"],
    ["④ ⌘K 全局唤起","⌘K / Ctrl+K 任意页面聚焦输入框（收起态自动展开）；输入上限 500 字；Esc 不做强制退出，通栏始终在场。"],
-   ["⑤ 输入分流 ask · quest","问句走 ask（threads.dispatch 意图路由 → AI 助手即时应答，带引用事件号与回执）；明确任务走 quest（总导演自动立项 → P2 任务中心）；含糊指令反问澄清，不直接建任务。"],
+   ["⑤ 输入分流 ask · quest","问句走 ask（threads.dispatch 意图路由 → AI 助手即时应答，带引用事件号与回执）；明确任务走 quest（前厅 Agent 自动立项 → P2 任务中心）；含糊指令反问澄清，不直接建任务。"],
    ["⑥ 情境感知 + 待批 badge","useLocation 读当前路由预置情境 chips（/p22 服务前台、/p13 订单、/p4 审批…）；红点 badge = approvals 待批数，10s 轮询，断线保留上次计数。"]
-  ].map(c=>`<div class="card"><b style="color:var(--goldhi);font-size:13px">${c[0]}</b><div style="font-size:12px;color:var(--ink2);line-height:1.9;margin-top:6px">${c[1]}</div></div>`).join("")}
+  ].map(c=>`<div class="card tint-blue"><b style="color:var(--goldhi);font-size:13px">${c[0]}</b><div style="font-size:12px;color:var(--ink2);line-height:1.9;margin-top:6px">${c[1]}</div></div>`).join("")}
  </div>
  <div class="row" style="align-items:stretch;gap:16px">
   <div style="flex:1;min-width:0">
    <div class="glabel">通栏特写 · 栏内构成（头部 / 消息流 / 情境快捷钮 / 输入栏）</div>
    <div style="display:flex;gap:14px">
     <div style="width:300px;flex:none;display:flex;flex-direction:column;border:1px solid var(--gline);border-radius:12px;background:rgba(255,255,255,.96);overflow:hidden;box-shadow:0 16px 50px rgba(214,0,42,.15)">
-     <div class="ar-head" style="flex-wrap:wrap;row-gap:6px">
+     <div class="ar-head" style="flex-wrap:wrap;row-gap:6px;background:#fff0f4;border-bottom:1px solid #ebdde0">
       <span class="ar-logo">${CLAPPER(18)}</span>
       <div><div class="ar-title">Ask · AI 助手对话</div><div class="ar-route">/p22 · 全局常驻</div></div>
       <span class="ar-badge" style="position:static">2</span>
@@ -1243,7 +1250,7 @@ VIEWS.ask=()=>`<div style="padding:18px 20px 8px">
      </div>
      <div style="padding:12px;display:flex;flex-direction:column;gap:12px">
       ${arHuman("汇总本周差评给我")}
-      ${arAgent({sender:"总导演",action:"总导演已接单",refId:"线程 ···9106",receipt:"unverified",text:"明确任务已自动立项（quest）。",extra:arQuestCard("本周差评汇总","···9106","评价Agent")})}
+      ${arAgent({sender:"前厅 Agent",action:"前厅 Agent 已接单",refId:"线程 ···9106",receipt:"unverified",text:"明确任务已自动立项（quest）。",extra:arQuestCard("本周差评汇总","···9106","评价Agent")})}
      </div>
      <div class="ar-chips"><button class="kbd-chip" data-toast="情境快捷问：随当前路由预置">⚡ 试试知识库检索</button><button class="kbd-chip" data-toast="情境快捷问：随当前路由预置">⚡ 今天工单有什么超时风险</button></div>
      <div class="ar-input"><input placeholder="问点什么，或派个任务…（⌘K 唤起）" readonly><button class="ar-send" data-toast="金色发送钮：问句走 ask · 任务走 quest">发送</button></div>
@@ -1305,7 +1312,7 @@ AR_MSGS.push(
  {role:"agent",html:arAgent({action:"AI 助手 · 应答",refId:"事件 ···8846",receipt:"synced",
   text:"有，1 件新增：携程 2 分差评「空调半夜异响，叫醒两次没人来处理」已 26 小时未回复（引用事件 ···8846，R19 SLA 已升级店长）。评价Agent 已生成致歉→核实→措施→承诺四段式回复草稿，待您审批（审批 ···8871 · R6 差评必审）。"})},
  {role:"human",html:arHuman("汇总本周差评给我")},
- {role:"agent",html:arAgent({sender:"总导演",action:"总导演已接单",refId:"线程 ···9106",receipt:"unverified",
+ {role:"agent",html:arAgent({sender:"前厅 Agent",action:"前厅 Agent 已接单",refId:"线程 ···9106",receipt:"unverified",
   text:"明确任务已自动立项（quest），进展我会主动汇报。",
   extra:arQuestCard("本周差评汇总","···9106","评价Agent")})},
  {role:"human",html:arHuman("试试知识库检索")},
@@ -1362,11 +1369,11 @@ function arAnswer(q){
  if(/检索|知识库/.test(q))return arAgent({action:"AI 助手 · 应答",refId:"事件 ···9104",receipt:"synced",text:`已检索知识库，「${esc(q.slice(0,20))}」命中 3 块，Top1 如下：`,extra:arCiteCard()});
  if(/超时/.test(q))return arAgent({action:"AI 助手 · 应答",refId:"事件 ···9105",receipt:"synced",text:"今日工单侧 1 起 SLA 超时：工单 ···007「2021 房 WiFi 频繁掉线」受理超时，系统已自动升级为加急并通知值班经理介入督办（引用事件 ···9105）。其余 7 单 SLA 正常，可去工单台跟进（/p22）。"});
  if(/差评|口碑/.test(q))return arAgent({action:"AI 助手 · 应答",refId:"事件 ···8846",receipt:"synced",text:"本周差评 2 件：① 携程 2 分「空调异响」已 26 小时未回复，回复草稿待您审批（审批 ···8871 · R6）；② 美团 4 分「电梯等得久」已回复闭环。差评响应 SLA 达标率 75%（18h / 24h）。"});
- if(/汇总|报告|总结/.test(q))return arAgent({sender:"总导演",action:"总导演已接单",refId:"线程 ···9107",receipt:"unverified",text:"明确任务已自动立项（quest），产出将投递掌上日报（/p3）。",extra:arQuestCard(esc(q.slice(0,14)),"···9107","评价Agent")});
+ if(/汇总|报告|总结/.test(q))return arAgent({sender:"前厅 Agent",action:"前厅 Agent 已接单",refId:"线程 ···9107",receipt:"unverified",text:"明确任务已自动立项（quest），产出将投递掌上日报（/p3）。",extra:arQuestCard(esc(q.slice(0,14)),"···9107","评价Agent")});
  if(/订单/.test(q))return arAgent({action:"AI 助手 · 应答",refId:"事件 ···8911",receipt:"synced",text:"今日订单侧 2 起异常均已收口：① 飞猪倒挂 4.4%——R17 硬阻断后已修复回 ¥458（回执 ···8908）；② 亲子房 PMS 同步失败——临时关房防超售，重试成功已开房（回执 ···8911）。另有大额退款 ¥1,180 待您审批（审批 ···9064）。"});
  if(/审批|高危|决断|待审/.test(q))return arAgent({action:"AI 助手 · 应答",refId:"事件 ···8871",receipt:"synced",text:"当前待您审批 2 件：① L4 董事长级 · 差评应急回复（R6 差评必审 · 审批 ···8871）；② L3 集团CEO级 · 大额退款 ¥1,180（R4 · 审批 ···9064）。无越围栏高危项，可去审批中心逐条审（/p4）。"});
  if(/概况|怎么样|经营/.test(q))return arAgent({action:"AI 助手 · 应答",refId:"事件 ···8999",receipt:"synced",text:"当前经营概况：OCC 78% · ADR ¥496 · RevPAR ¥387；昨夜班组 9 完成 / 3 待审 / 2 需介入；携程 2 分差评处置请您拍板，其余各线正常（晨报事件 ···8999）。"});
- return arAgent({sender:"总导演",action:"总导演已接单",refId:"线程 ···9108",receipt:"unverified",text:`已立项执行：「${esc(q.slice(0,24))}」，每一步先请您确认再动手。`,extra:arQuestCard(esc(q.slice(0,14)),"···9108","公司CEO")});
+ return arAgent({sender:"前厅 Agent",action:"前厅 Agent 已接单",refId:"线程 ···9108",receipt:"unverified",text:`已立项执行：「${esc(q.slice(0,24))}」，每一步先请您确认再动手。`,extra:arQuestCard(esc(q.slice(0,14)),"···9108","公司CEO")});
 }
 function arSend(raw){
  const q=String(raw||"").trim();if(!q||arSending)return;
