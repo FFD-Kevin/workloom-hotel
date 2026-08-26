@@ -145,7 +145,7 @@ P.today=()=>{const k=K[document.getElementById("storeSel").value];return `
 </div></div>`};
 
 P.apr=()=>`
-<div class="card"><h3>✋ 决断队列 · 三手势（看快照 → 给理由 → 一个手势）</h3>
+<div class="card"><h3>✋ 审批队列 · 三手势（看快照 → 给理由 → 一个手势）</h3>
 <div class="note" style="font-size:11.5px;color:var(--sub);margin-bottom:8px">机器做 99%，你只在最关键的 1% 出现——每次 30 秒。</div>
 ${APR.filter(a=>a.st==="pending").map(a=>`
 <div class="item" style="border:1px solid var(--line)">
@@ -155,9 +155,9 @@ ${APR.filter(a=>a.st==="pending").map(a=>`
 <button class="btn sm gold" onclick="decide('${a.id}',1)">👍 采纳</button>
 <button class="btn sm ghost" onclick="decide('${a.id}',0)">👎 驳回</button>
 <button class="btn sm ghost" onclick="toast('快照溯源：五元事件+围栏判定留痕（模拟）')">溯源</button>
-</div></div>`).join("")||'<div class="item" style="text-align:center;color:var(--green);padding:20px">🎉 队列清空 · 全部决断完毕</div>'}
+</div></div>`).join("")||'<div class="item" style="text-align:center;color:var(--green);padding:20px">🎉 队列清空 · 全部审批完毕</div>'}
 </div>
-<div class="card"><h3>历史决断（全部留痕可追责）</h3>
+<div class="card"><h3>历史审批（全部留痕可追责）</h3>
 <div class="item"><b>✓ 退款 ¥620 已批准</b><span>王店长 · 昨 13:22 · 理由「客人行程变更属实」</span></div>
 <div class="item"><b>✗ 调价上限放宽 8%→10% 已驳回</b><span>单调守卫拒绝（基线只紧不松）· 店长留痕</span></div>
 <div class="item"><b>✓ 采购 ¥1,280 已批准</b><span>备选供应商比价 -¥0.3/套</span></div></div>`;
@@ -200,7 +200,7 @@ P.me=()=>`
 
 let nightPaused=false;
 function toggleNight(){nightPaused=!nightPaused;document.getElementById("nightSt").textContent=nightPaused?"已暂停（实测 1ms）· 断点续跑待命":"自治运行中 · 已 2,147 动作零越线";document.getElementById("nb").textContent=nightPaused?"▶ 恢复夜班（断点续跑）":"⏸ 一键暂停（≤60s 全端生效）";toast(nightPaused?"夜班已暂停":"夜班已恢复")}
-function decide(id,ok){const a=APR.find(x=>x.id===id);a.st=ok?"approved":"rejected";const n=APR.filter(x=>x.st==="pending").length;document.getElementById("aprBadge").textContent=n;document.getElementById("aprBadge").style.display=n?"":"none";render("apr");toast(ok?"已采纳：决断写回事件库":"已驳回：理由将回流校准")}
+function decide(id,ok){const a=APR.find(x=>x.id===id);a.st=ok?"approved":"rejected";const n=APR.filter(x=>x.st==="pending").length;document.getElementById("aprBadge").textContent=n;document.getElementById("aprBadge").style.display=n?"":"none";render("apr");toast(ok?"已采纳：审批写回事件库":"已驳回：理由将回流校准")}
 function genie(t,m){toast("🧞 "+t+"："+m);if(t==="差评危机"){APR.unshift({id:"a"+Date.now(),t:"差评回复草稿（美团 2 分·新）",lv:"R6 · 必审",snap:"管家现场生成：客人投诉空调异响，AI 致歉草稿+¥50 券已备好。",st:"pending",store:"云栖"});const n=APR.filter(x=>x.st==="pending").length;document.getElementById("aprBadge").textContent=n;document.getElementById("aprBadge").style.display=""}}
 
 let cur="today";

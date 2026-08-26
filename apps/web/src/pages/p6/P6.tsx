@@ -254,7 +254,7 @@ export default function P6() {
                 onClick={() => void install(s.id)}
                 className="cursor-pointer rounded-md border border-gline bg-bg800/60 px-2.5 py-1 text-caption font-bold text-goldhi hover:border-gold/60 disabled:opacity-40"
               >
-                ⚙ 装备到船员
+                ⚙ 装备到成员
               </button>
             )
           )}

@@ -41,7 +41,7 @@
     {
       "page": "p1",
       "name": "夜班交接",
-      "expect": "package_generated 显昨夜战报卡"
+      "expect": "package_generated 显昨夜日报卡"
     },
     {
       "page": "p1",
@@ -220,7 +220,7 @@
     },
     {
       "page": "p9",
-      "name": "打包·战报",
+      "name": "打包·日报",
       "expect": "package_generated 快照"
     },
     {
@@ -285,7 +285,7 @@
     },
     {
       "page": "p6",
-      "name": "官方套件 25 技能",
+      "name": "官方技能 25 项",
       "expect": "技能市场三栏（官方 25/团队/行业共享）首屏全渲染，技能卡含围栏绑定徽标"
     },
     {
@@ -300,8 +300,8 @@
     },
     {
       "page": "p8",
-      "name": "新船员名册",
-      "expect": "前台Agent/客房Agent 名册卡含围栏绑定徽标"
+      "name": "新成员档案",
+      "expect": "前台Agent/客房Agent 档案卡含围栏绑定徽标"
     },
     {
       "page": "p8",

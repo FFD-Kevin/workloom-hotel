@@ -43,7 +43,7 @@ const NAV: Array<{ group: string; items: Array<{ path: string; label: string; ta
       { path: "/p5", label: "围栏管制台", tag: "P5" },
       { path: "/p6", label: "技能市场", tag: "P6" },
       { path: "/p7", label: "组织记忆", tag: "P7" },
-      { path: "/p8", label: "班组名册", tag: "P8" },
+      { path: "/p8", label: "团队成员", tag: "P8" },
     ],
   },
   {

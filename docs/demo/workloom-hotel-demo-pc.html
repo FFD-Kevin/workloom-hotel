@@ -718,7 +718,7 @@ VIEWS.p6=()=>shell(navLeft("p6"),
   </div>
   <div class="ptitle">行业共享（铜边 · 已脱敏 ✓ · 调用与采纳率公开）</div>
   <div class="grid2">
-   <div class="card" style="border-color:rgba(200,132,42,.5)"><b>旺季满房冲刺包</b> <span class="tag amber">华东酒店联盟 · 326 店在用</span>
+   <div class="card" style="border-color:rgba(255,36,66,.5)"><b>旺季满房冲刺包</b> <span class="tag amber">华东酒店联盟 · 326 店在用</span>
     <div style="font-size:11px;color:var(--ink3);margin-top:4px">竞对盯价 + 满房溢价节奏 + 差评快反 SOP；绑定 R1/R2，不低于保底价红线。采纳率 78%。</div>
     <button class="btn g sm" style="margin-top:8px" data-flip="已安装 ✓|已安装到工作区，围栏绑定 R1/R2 生效">安装</button></div>
    <div class="card"><b>打造新技能</b><div style="font-size:11px;color:var(--ink3);margin-top:4px">零代码三要素向导：何时用 / 怎么做 / 什么不做（边界自动转围栏声明）。</div>
@@ -748,7 +748,7 @@ VIEWS.p8=()=>shell(navLeft("p8"),
     <div class="mono" style="margin-top:5px">30 天动作 ${40+a.key.length*7} · 采纳率 ${88+(a.key.length%9)}%</div></div>`).join("")}</div>`,
  `<div class="glabel">加装员工</div>
   <div class="card" style="font-size:12px;line-height:2">
-   <button class="btn g sm" style="width:100%" data-toast="舰船换装坞（/p7）：行业 Bundle 分发入口">＋ 加装员工（/p7）</button>
+   <button class="btn g sm" style="width:100%" data-toast="舰船装配中心（/p7）：行业 Bundle 分发入口">＋ 加装员工（/p7）</button>
    <hr style="border-color:var(--line);margin:10px 0">
    <span style="color:var(--ink3)">加载校验失败标红 + 原因；非管理员隐藏加装/派遣入口（隐藏非置灰）。</span></div>`);
 
@@ -1371,7 +1371,7 @@ function arAnswer(q){
  if(/差评|口碑/.test(q))return arAgent({action:"AI 助手 · 应答",refId:"事件 ···8846",receipt:"synced",text:"本周差评 2 件：① 携程 2 分「空调异响」已 26 小时未回复，回复草稿待您审批（审批 ···8871 · R6）；② 美团 4 分「电梯等得久」已回复闭环。差评响应 SLA 达标率 75%（18h / 24h）。"});
  if(/汇总|报告|总结/.test(q))return arAgent({sender:"前厅 Agent",action:"前厅 Agent 已接单",refId:"线程 ···9107",receipt:"unverified",text:"明确任务已自动立项（quest），产出将投递掌上日报（/p3）。",extra:arQuestCard(esc(q.slice(0,14)),"···9107","评价Agent")});
  if(/订单/.test(q))return arAgent({action:"AI 助手 · 应答",refId:"事件 ···8911",receipt:"synced",text:"今日订单侧 2 起异常均已收口：① 飞猪倒挂 4.4%——R17 硬阻断后已修复回 ¥458（回执 ···8908）；② 亲子房 PMS 同步失败——临时关房防超售，重试成功已开房（回执 ···8911）。另有大额退款 ¥1,180 待您审批（审批 ···9064）。"});
- if(/审批|高危|决断|待审/.test(q))return arAgent({action:"AI 助手 · 应答",refId:"事件 ···8871",receipt:"synced",text:"当前待您审批 2 件：① L4 董事长级 · 差评应急回复（R6 差评必审 · 审批 ···8871）；② L3 集团CEO级 · 大额退款 ¥1,180（R4 · 审批 ···9064）。无越围栏高危项，可去审批中心逐条审（/p4）。"});
+ if(/审批|高危|审批|待审/.test(q))return arAgent({action:"AI 助手 · 应答",refId:"事件 ···8871",receipt:"synced",text:"当前待您审批 2 件：① L4 董事长级 · 差评应急回复（R6 差评必审 · 审批 ···8871）；② L3 集团CEO级 · 大额退款 ¥1,180（R4 · 审批 ···9064）。无越围栏高危项，可去审批中心逐条审（/p4）。"});
  if(/概况|怎么样|经营/.test(q))return arAgent({action:"AI 助手 · 应答",refId:"事件 ···8999",receipt:"synced",text:"当前经营概况：OCC 78% · ADR ¥496 · RevPAR ¥387；昨夜班组 9 完成 / 3 待审 / 2 需介入；携程 2 分差评处置请您拍板，其余各线正常（晨报事件 ···8999）。"});
  return arAgent({sender:"前厅 Agent",action:"前厅 Agent 已接单",refId:"线程 ···9108",receipt:"unverified",text:`已立项执行：「${esc(q.slice(0,24))}」，每一步先请您确认再动手。`,extra:arQuestCard(esc(q.slice(0,14)),"···9108","公司CEO")});
 }
