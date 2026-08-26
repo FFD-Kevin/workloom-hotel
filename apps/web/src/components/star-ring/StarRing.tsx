@@ -63,6 +63,7 @@ function ClapperIcon({ size = 24 }: { size?: number }) {
 
 /** 布局事件：通知 Bridge 预留右侧空间 */
 function emitRailWidth(w: number) {
+  (window as unknown as { __askrailW?: number }).__askrailW = w;
   window.dispatchEvent(new CustomEvent("askrail-width", { detail: { width: w } }));
 }
 
