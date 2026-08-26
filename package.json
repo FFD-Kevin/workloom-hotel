@@ -28,7 +28,8 @@
     "demo:twin:snapshot": "bash scripts/snapshot-twin.sh",
     "demo:twin:restore": "bash scripts/restore-twin.sh",
     "demo:twin:live": "tsx --env-file=.env scripts/twin-genie.ts",
-    "release:gate": "tsx --env-file=.env scripts/release-gate.ts"
+    "release:gate": "tsx --env-file=.env scripts/release-gate.ts",
+    "agent:tour": "bash scripts/agent-tour.sh"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
