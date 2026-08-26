@@ -1,5 +1,5 @@
 {
-  "name": "workloom-im",
+  "name": "workloom-hotel",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -30,7 +30,11 @@
     "demo:twin:live": "tsx --env-file=.env scripts/twin-genie.ts",
     "release:gate": "tsx --env-file=.env scripts/release-gate.ts",
     "agent:tour": "bash scripts/agent-tour.sh",
-    "preview:all": "bash scripts/preview-all.sh"
+    "preview:all": "bash scripts/preview-all.sh",
+    "capabilities": "node scripts/generate-capabilities.mjs",
+    "capabilities:check": "node scripts/generate-capabilities.mjs --check",
+    "capabilities:pptx": "python3 scripts/build-capability-pptx.py",
+    "postinstall": "node scripts/postinstall-note.js || true"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
@@ -44,5 +48,6 @@
     "typescript": "^5.9.0",
     "vitest": "^3.2.0",
     "yaml": "2.9.0"
-  }
+  },
+  "description": "WorkLoom 酒店智能经营系统 · AI 前厅/客房/收益一体化（酒店垂直版）"
 }
