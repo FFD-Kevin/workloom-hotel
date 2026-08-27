@@ -1,7 +1,7 @@
 {
  "repo": "workloom-hotel",
  "description": "WorkLoom 酒店智能经营系统 · AI 前厅/客房/收益一体化（酒店垂直版）",
- "generatedAt": "2026-08-27T00:58:22.198Z",
+ "generatedAt": "2026-08-27T01:23:55.141Z",
  "demoPages": [
   "service-front-b-mobile.html",
   "service-front-b-pc.html",
@@ -115,6 +115,11 @@
    "icon": "✅",
    "title": "验证与质量（工程纪律）",
    "items": [
+    {
+     "name": "一键安装（bootstrap）",
+     "how": "`pnpm setup`",
+     "desc": "克隆后一条命令装好全部能力：环境/依赖/PG/迁移种子/桌面栈，幂等"
+    },
     {
      "name": "主测试套件",
      "how": "`pnpm suite`",
